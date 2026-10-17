@@ -323,28 +323,30 @@ namespace MyShadowQuit.Core
             string tagText = "";
             Color col = new Color(1f, 0.82f, 0.35f, 0.3f);
 
-            // Dynamic guidance for Level 8 (Grand Finale) when the final Sanctuary Door is open
-            if (GameManager.Instance != null && GameManager.Instance.CurrentLevelIndex == 7 && player != null && shadow != null)
+            // Dynamic guidance for any level requiring Flame & Shadow reunion at the exit (Level 8 and Level 10)
+            if (GameManager.Instance != null && player != null && shadow != null)
             {
                 LevelExitPortal exit = FindFirstObjectByType<LevelExitPortal>();
-                if (exit != null && exit.GuardingDoor != null && exit.GuardingDoor.IsOpen)
+                if (exit != null && exit.RequireReconnectedShadow && exit.GuardingDoor != null && exit.GuardingDoor.IsOpen)
                 {
                     bool playerAtArch = exit.IsCharacterAtArch(player.transform.position);
                     bool shadowAtArch = exit.IsCharacterAtArch(shadow.transform.position);
                     string finaleHint;
+                    bool isWorldFinale = GameManager.Instance.CurrentLevelIndex >= _levelManager.TotalLevels - 1;
+                    string archName = isWorldFinale ? "Dawn Portal" : "Sanctuary Arch";
 
                     if (playerAtArch && !shadowAtArch)
                     {
                         if (!isShadow)
                         {
-                            finaleHint = "The Sanctuary Arch awaits you both! Press TAB to bring your Shadow to the Arch.";
+                            finaleHint = $"The {archName} awaits you both! Press TAB to bring your Shadow to the threshold.";
                             target = shadow.transform;
                             tagText = "[TAB] Control Shadow";
                             col = new Color(0.75f, 0.48f, 1f, 0.42f);
                         }
                         else
                         {
-                            finaleHint = "Guide your Shadow into the Sanctuary Arch beside the Protagonist.";
+                            finaleHint = $"Guide your Shadow into the {archName} beside the Protagonist.";
                             target = exit.transform;
                             tagText = "Reunite Here";
                             col = new Color(0.75f, 0.48f, 1f, 0.42f);
@@ -354,28 +356,28 @@ namespace MyShadowQuit.Core
                     {
                         if (isShadow)
                         {
-                            finaleHint = "Your Shadow is at the Arch! Press TAB to bring the Protagonist to the Arch.";
+                            finaleHint = $"Your Shadow is at the {archName}! Press TAB to bring the Protagonist to the threshold.";
                             target = player.transform;
                             tagText = "[TAB] Control Protagonist";
                         }
                         else
                         {
-                            finaleHint = "Walk the Protagonist into the Sanctuary Arch beside your Shadow.";
+                            finaleHint = $"Walk the Protagonist into the {archName} beside your Shadow.";
                             target = exit.transform;
                             tagText = "Reunite Here";
                         }
                     }
                     else
                     {
-                        finaleHint = "The final seal is open! Reconnect Flame and Shadow together at the Sanctuary Arch.";
+                        finaleHint = $"All seals are open! Bring Flame and Shadow together at the {archName}.";
                         target = exit.transform;
-                        tagText = "Sanctuary Arch";
+                        tagText = archName;
                     }
 
                     ActiveInstruction = finaleHint;
                     if (_uiManager != null)
                     {
-                        _uiManager.UpdateHUDText(LevelManager.LevelTitles[7], finaleHint, isShadow);
+                        _uiManager.UpdateHUDText(_levelManager.GetLevelTitle(GameManager.Instance.CurrentLevelIndex), finaleHint, isShadow);
                     }
                     UpdateBeaconAndWorldTag(target, col, tagText);
                     return;

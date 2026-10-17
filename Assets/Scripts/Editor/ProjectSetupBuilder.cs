@@ -48,17 +48,54 @@ namespace MyShadowQuit.EditorTools
         [MenuItem("MyShadowQuit/Build Prefabs, Scenes & Verify All Systems")]
         public static void BuildAndVerifyAll()
         {
-            Debug.Log("[ProjectSetupBuilder] Starting asset import refresh, prefab generation, scene building, and automated verification...");
+            Debug.Log("[ProjectSetupBuilder] Starting asset import refresh, prefab generation, world asset creation, scene building, and automated verification...");
             AssetDatabase.Refresh();
 
             ConfigureLandscapePlayerSettings();
             ConfigureTextureImporters();
+            BuildWorldAssets();
             BuildReusablePrefabs();
             BuildScenes();
             RunAutomatedVerification();
 
             AssetDatabase.SaveAssets();
-            Debug.Log("[ProjectSetupBuilder] SUCCESS: All prefabs, scenes, and automated verifications completed with zero errors!");
+            Debug.Log("[ProjectSetupBuilder] SUCCESS: All prefabs, world definitions, scenes, and automated verifications completed with zero errors!");
+        }
+
+        private static void BuildWorldAssets()
+        {
+            Directory.CreateDirectory("Assets/Resources/Worlds");
+
+            WorldDefinition w1 = WorldCatalog.CreateDefaultWorld1();
+            SaveOrUpdateWorldAsset(w1, "Assets/Resources/Worlds/World1_TheRuinsOfTheLastFlame.asset");
+
+            WorldDefinition w2 = WorldCatalog.CreateDefaultWorld2();
+            SaveOrUpdateWorldAsset(w2, "Assets/Resources/Worlds/World2_ComingSoon.asset");
+
+            Debug.Log("[ProjectSetupBuilder] Created/Updated WorldDefinition ScriptableObjects in Assets/Resources/Worlds/.");
+        }
+
+        private static void SaveOrUpdateWorldAsset(WorldDefinition source, string assetPath)
+        {
+            WorldDefinition existing = AssetDatabase.LoadAssetAtPath<WorldDefinition>(assetPath);
+            if (existing == null)
+            {
+                AssetDatabase.CreateAsset(source, assetPath);
+            }
+            else
+            {
+                existing.Configure(
+                    source.WorldIndex,
+                    source.WorldId,
+                    source.WorldTitle,
+                    source.WorldSubtitle,
+                    source.CompletionQuote,
+                    source.IsUnlocked,
+                    source.IsImplemented,
+                    new List<LevelEntry>(source.Levels)
+                );
+                EditorUtility.SetDirty(existing);
+            }
         }
 
         public static void CleanupEditModeSceneArtifacts(bool saveIfCleaned = false)
@@ -623,6 +660,192 @@ namespace MyShadowQuit.EditorTools
                 {
                     LevelExitPortal.OnLevelExitReached -= onExit8;
                 }
+                // =====================================================================
+                // 6. Verify World System (World 1: 10 Levels, World 2: Coming Soon)
+                // =====================================================================
+                if (lm.TotalLevels != 10)
+                {
+                    throw new Exception($"[Verification Failed] Expected World 1 to have 10 levels, got {lm.TotalLevels}!");
+                }
+                WorldDefinition world1Def = WorldCatalog.GetWorld(0);
+                WorldDefinition world2Def = WorldCatalog.GetWorld(1);
+                if (world1Def == null || world1Def.LevelCount != 10 || !world1Def.IsUnlocked || !world1Def.IsImplemented)
+                {
+                    throw new Exception("[Verification Failed] World 1 definition invalid or not 10 levels!");
+                }
+                if (world2Def == null || world2Def.IsUnlocked || world2Def.IsImplemented)
+                {
+                    throw new Exception("[Verification Failed] World 2 definition should be present as Locked / Coming Soon!");
+                }
+
+                // =====================================================================
+                // 7. Verify Level 9 ("IX. ECHOES IN THE DARK") Complete Puzzle Flow
+                // =====================================================================
+                lm.BuildLevel(8, null);
+                TorchPedestal pedestal9 = UnityEngine.Object.FindFirstObjectByType<TorchPedestal>();
+                LightSwitch crystal9 = UnityEngine.Object.FindFirstObjectByType<LightSwitch>();
+                DarknessBarrier barrier9 = UnityEngine.Object.FindFirstObjectByType<DarknessBarrier>();
+                ShadowSwitch shadowSw9 = UnityEngine.Object.FindFirstObjectByType<ShadowSwitch>();
+                MovableBlock block9 = UnityEngine.Object.FindFirstObjectByType<MovableBlock>();
+                PressurePlate plate9 = UnityEngine.Object.FindFirstObjectByType<PressurePlate>();
+                AncientDoor[] doors9 = UnityEngine.Object.FindObjectsByType<AncientDoor>(FindObjectsSortMode.None);
+                LevelExitPortal exitPortal9 = UnityEngine.Object.FindFirstObjectByType<LevelExitPortal>();
+
+                if (pedestal9 == null || crystal9 == null || barrier9 == null || shadowSw9 == null || block9 == null || plate9 == null || doors9.Length < 2 || exitPortal9 == null)
+                {
+                    throw new Exception("[Verification Failed] Level 9 (Echoes in the Dark) puzzle components missing!");
+                }
+
+                AncientDoor lowerGate9 = doors9[0].transform.position.x < 10f ? doors9[0] : doors9[1];
+                AncientDoor exitDoor9 = doors9[0].transform.position.x >= 10f ? doors9[0] : doors9[1];
+
+                // Step 1: Place Torch on West Altar Pedestal -> illuminates Solar Crystal & dissolves upper DarknessBarrier
+                lm.Torch.PlaceInPedestal(pedestal9);
+                crystal9.EvaluateIllumination();
+                if (!crystal9.IsActivated)
+                {
+                    throw new Exception("[Verification Failed] Level 9 Solar Crystal did not activate when Torch placed on West Altar Pedestal!");
+                }
+
+                // Step 2: Shadow double jumps to Upper Route and activates ShadowSwitch -> unlocks lowerGate9
+                lm.Shadow.transform.position = shadowSw9.transform.position;
+                shadowSw9.ActivateByShadow(lm.Shadow);
+                if (!lowerGate9.IsOpen)
+                {
+                    throw new Exception("[Verification Failed] Level 9 lower AncientDoor did not unlock when ShadowSwitch was activated!");
+                }
+
+                // Step 3: Protagonist pushes MovableBlock onto lower PressurePlate -> exitDoor9 opens!
+                block9.transform.position = plate9.transform.position + new Vector3(0f, 0.45f, 0f);
+                Physics2D.SyncTransforms();
+                plate9.EvaluateOccupancy();
+                if (!plate9.IsActivated || !exitDoor9.IsOpen)
+                {
+                    throw new Exception("[Verification Failed] Level 9 exit AncientDoor did not open after Crystal + ShadowSwitch + MovableBlock on PressurePlate!");
+                }
+
+                // Step 4: Protagonist reaches ExitSanctuary -> transitions to Level 10
+                bool level9ExitFired = false;
+                Action onExit9 = () => { level9ExitFired = true; };
+                LevelExitPortal.OnLevelExitReached += onExit9;
+                try
+                {
+                    lm.Player.transform.position = exitPortal9.transform.position;
+                    if (!exitPortal9.TryCompleteLevel(lm.Player) || !level9ExitFired)
+                    {
+                        throw new Exception("[Verification Failed] Level 9 ExitSanctuary did not trigger transition to Level 10!");
+                    }
+                }
+                finally
+                {
+                    LevelExitPortal.OnLevelExitReached -= onExit9;
+                }
+
+                // =====================================================================
+                // 8. Verify Level 10 ("X. THE FIRST DAWN") Multi-Phase World 1 Finale
+                // =====================================================================
+                lm.BuildLevel(9, null);
+                PressurePlate plate10 = UnityEngine.Object.FindFirstObjectByType<PressurePlate>();
+                MovableBlock block10 = UnityEngine.Object.FindFirstObjectByType<MovableBlock>();
+                TorchPedestal[] pedestals10 = UnityEngine.Object.FindObjectsByType<TorchPedestal>(FindObjectsSortMode.None);
+                LightSwitch[] crystals10 = UnityEngine.Object.FindObjectsByType<LightSwitch>(FindObjectsSortMode.None);
+                ShadowSwitch[] shadowSwitches10 = UnityEngine.Object.FindObjectsByType<ShadowSwitch>(FindObjectsSortMode.None);
+                ShadowPassage[] passages10 = UnityEngine.Object.FindObjectsByType<ShadowPassage>(FindObjectsSortMode.None);
+                AncientDoor ceremonialDoor10 = UnityEngine.Object.FindFirstObjectByType<AncientDoor>();
+                LevelExitPortal dawnPortal10 = UnityEngine.Object.FindFirstObjectByType<LevelExitPortal>();
+
+                if (plate10 == null || block10 == null || pedestals10.Length < 2 || crystals10.Length < 2 || shadowSwitches10.Length < 2 || passages10.Length < 2 || ceremonialDoor10 == null || dawnPortal10 == null)
+                {
+                    throw new Exception("[Verification Failed] Level 10 (The First Dawn) puzzle components missing!");
+                }
+                if (ceremonialDoor10.RequiredNodes.Count != 5)
+                {
+                    throw new Exception($"[Verification Failed] Level 10 Ceremonial Gate must require all 5 seals, got {ceremonialDoor10.RequiredNodes.Count}!");
+                }
+                if (!dawnPortal10.RequireReconnectedShadow)
+                {
+                    throw new Exception("[Verification Failed] Level 10 Dawn Portal must require both Protagonist and Shadow to reunite!");
+                }
+
+                TorchPedestal phase2Ped = pedestals10[0].transform.position.x < 10f ? pedestals10[0] : pedestals10[1];
+                TorchPedestal phase4Ped = pedestals10[0].transform.position.x >= 10f ? pedestals10[0] : pedestals10[1];
+                LightSwitch phase2Crys = crystals10[0].transform.position.x < 10f ? crystals10[0] : crystals10[1];
+                LightSwitch phase4Crys = crystals10[0].transform.position.x >= 10f ? crystals10[0] : crystals10[1];
+                ShadowSwitch phase3Sw = shadowSwitches10[0].transform.position.x < 16f ? shadowSwitches10[0] : shadowSwitches10[1];
+                ShadowSwitch phase4Sw = shadowSwitches10[0].transform.position.x >= 16f ? shadowSwitches10[0] : shadowSwitches10[1];
+
+                // Phase 1: Push MovableBlock onto phase1Plate -> Seal 1 active
+                block10.transform.position = plate10.transform.position + new Vector3(0f, 0.45f, 0f);
+                Physics2D.SyncTransforms();
+                plate10.EvaluateOccupancy();
+                if (!plate10.IsActivated)
+                {
+                    throw new Exception("[Verification Failed] Level 10 Phase 1 PressurePlate failed to activate!");
+                }
+
+                // Phase 2: Place Torch on Central Altar Pedestal -> Seal 2 (phase2Crystal) active & latch
+                lm.Torch.PlaceInPedestal(phase2Ped);
+                phase2Crys.EvaluateIllumination();
+                if (!phase2Crys.IsActivated)
+                {
+                    throw new Exception("[Verification Failed] Level 10 Phase 2 Solar Crystal failed to activate!");
+                }
+
+                // Phase 3: Shadow double jumps to High Balcony and activates phase3Sw -> Seal 3 active & lower passage opens
+                lm.Shadow.transform.position = phase3Sw.transform.position;
+                phase3Sw.ActivateByShadow(lm.Shadow);
+                if (!phase3Sw.IsActivated)
+                {
+                    throw new Exception("[Verification Failed] Level 10 Phase 3 ShadowSwitch failed to activate!");
+                }
+
+                // Phase 4: Protagonist carries Torch to Eastern Wing phase4Ped -> Seal 4 (phase4Crystal) active; Shadow activates phase4Sw -> Seal 5 active
+                lm.Player.ForceEquipTorch(lm.Torch);
+                lm.Torch.PlaceInPedestal(phase4Ped);
+                phase4Crys.EvaluateIllumination();
+                if (!phase4Crys.IsActivated)
+                {
+                    throw new Exception("[Verification Failed] Level 10 Phase 4 Eastern Solar Crystal failed to activate!");
+                }
+
+                lm.Shadow.transform.position = phase4Sw.transform.position;
+                phase4Sw.ActivateByShadow(lm.Shadow);
+                if (!phase4Sw.IsActivated)
+                {
+                    throw new Exception("[Verification Failed] Level 10 Phase 4 Eastern ShadowSwitch failed to activate!");
+                }
+
+                // Phase 5: Ceremonial Gate opens when all 5 seals are active!
+                if (!ceremonialDoor10.IsOpen)
+                {
+                    throw new Exception("[Verification Failed] Level 10 Ceremonial Gate did not open when all 5 seals were activated!");
+                }
+
+                // Phase 6: Protagonist arrives at Dawn Portal first -> waits for Shadow; Shadow reunites -> triggers World 1 Complete!
+                lm.Player.transform.position = dawnPortal10.transform.position;
+                dawnPortal10.EvaluatePortalProximity();
+                if (dawnPortal10.IsTriggered)
+                {
+                    throw new Exception("[Verification Failed] Level 10 Dawn Portal triggered before Shadow reunited with Protagonist!");
+                }
+
+                bool level10ExitFired = false;
+                Action onExit10 = () => { level10ExitFired = true; };
+                LevelExitPortal.OnLevelExitReached += onExit10;
+                try
+                {
+                    lm.Shadow.transform.position = dawnPortal10.transform.position + new Vector3(-0.6f, 0f, 0f);
+                    Physics2D.SyncTransforms();
+                    dawnPortal10.EvaluatePortalProximity();
+                    if (!dawnPortal10.IsTriggered || !level10ExitFired)
+                    {
+                        throw new Exception("[Verification Failed] Level 10 Dawn Portal did not trigger when Flame and Shadow reunited!");
+                    }
+                }
+                finally
+                {
+                    LevelExitPortal.OnLevelExitReached -= onExit10;
+                }
             }
             finally
             {
@@ -631,7 +854,7 @@ namespace MyShadowQuit.EditorTools
                 CleanupEditModeSceneArtifacts(saveIfCleaned: false);
             }
 
-            // 6. Verify EditMode scene is 100% clean (0 leaked Protagonists, Shadows, Torches; 1 of each core Manager)
+            // 9. Verify EditMode scene is 100% clean (0 leaked Protagonists, Shadows, Torches; 1 of each core Manager)
             int leakedPlayers = UnityEngine.Object.FindObjectsByType<PlayerController>(FindObjectsSortMode.None).Length;
             int leakedShadows = UnityEngine.Object.FindObjectsByType<ShadowController>(FindObjectsSortMode.None).Length;
             int leakedTorches = UnityEngine.Object.FindObjectsByType<TorchController>(FindObjectsSortMode.None).Length;
@@ -640,7 +863,7 @@ namespace MyShadowQuit.EditorTools
                 throw new Exception($"[Verification Failed] Leaked entities remain in EditMode scene: Players={leakedPlayers}, Shadows={leakedShadows}, Torches={leakedTorches}!");
             }
 
-            Debug.Log("[Verification Passed] Zero Duplicated Objects, Idempotent Level Lifecycle, Shadow Double Jump (2 jumps max, 50% gravity), Level 1, Level 2 & Level 8 + Ending Completion, Audio dB Mix, and 16:9 Landscape verified!");
+            Debug.Log("[Verification Passed] World 1 (10 Levels: I. Awakening to X. The First Dawn), Level 9 & Level 10 Solvability, World 1 Complete Transition, World System + World 2 Coming Soon, Zero Duplicated Objects, Shadow Double Jump, Audio dB Mix, and 16:9 Landscape verified!");
         }
 
         [MenuItem("MyShadowQuit/Build WebGL Release")]

@@ -44,6 +44,29 @@ namespace MyShadowQuit.Core
                 return loadedSprite;
             }
 
+#if UNITY_EDITOR
+            string diskPath = "Assets/Resources/" + fullPath + ".png";
+            if (System.IO.File.Exists(diskPath))
+            {
+                byte[] bytes = System.IO.File.ReadAllBytes(diskPath);
+                Texture2D diskTex = new Texture2D(2, 2, TextureFormat.RGBA32, false);
+                if (ImageConversion.LoadImage(diskTex, bytes))
+                {
+                    diskTex.filterMode = filterMode;
+                    diskTex.wrapMode = TextureWrapMode.Clamp;
+                    Sprite diskSprite = Sprite.Create(
+                        diskTex,
+                        new Rect(0f, 0f, diskTex.width, diskTex.height),
+                        new Vector2(0.5f, 0.5f),
+                        ppu
+                    );
+                    diskSprite.name = relativePath;
+                    SpriteCache[relativePath] = diskSprite;
+                    return diskSprite;
+                }
+            }
+#endif
+
             Debug.LogWarning($"[AssetRegistry] Missing sprite at Resources/{fullPath}");
             return null;
         }

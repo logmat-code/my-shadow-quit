@@ -6,7 +6,8 @@ using MyShadowQuit.Puzzle;
 namespace MyShadowQuit.Core
 {
     /// <summary>
-    /// Constructs and manages all 8 levels of MY SHADOW QUIT: THE LAST FLAME using original pixel-art assets:
+    /// Constructs and manages all 10 levels of World 1 ("The Ruins of the Last Flame")
+    /// in MY SHADOW QUIT: THE LAST FLAME using original pixel-art assets:
     /// 1. Awakening
     /// 2. The Separation
     /// 3. Follow the Light
@@ -15,6 +16,8 @@ namespace MyShadowQuit.Core
     /// 6. Two Sides
     /// 7. The Last Light
     /// 8. My Shadow Quit
+    /// 9. Echoes in the Dark
+    /// 10. The First Dawn
     /// </summary>
     public class LevelManager : MonoBehaviour
     {
@@ -27,7 +30,9 @@ namespace MyShadowQuit.Core
             "V. DARK PASSAGE",
             "VI. TWO SIDES",
             "VII. THE LAST LIGHT",
-            "VIII. MY SHADOW QUIT"
+            "VIII. MY SHADOW QUIT",
+            "IX. ECHOES IN THE DARK",
+            "X. THE FIRST DAWN"
         };
 
         public static readonly string[] LevelHints =
@@ -39,18 +44,41 @@ namespace MyShadowQuit.Core
             "Push the carved stone block onto the plate while your Shadow unlocks the inner sanctum.",
             "Two parallel tiers: the Flame walks above, the Shadow walks below.",
             "Transfer the Torch between pedestals to clear Darkness Webs and open the final seal.",
-            "One last ascent together. Reconnect Flame and Shadow at the Sanctuary Arch."
+            "Unite the three ancient seals and reconnect Flame and Shadow at the Sanctuary Arch.",
+            "Mount the Torch to awaken the upper path, Double Jump with your Shadow across the high vault, and weight the lower seal.",
+            "Awaken all five ceremonial seals of light and shadow to open the Great Gate toward the First Dawn."
         };
 
         private GameObject _levelRoot;
         private PlayerController _player;
         private ShadowController _shadow;
         private TorchController _torch;
+        private WorldDefinition _activeWorld;
 
         public PlayerController Player => _player;
         public ShadowController Shadow => _shadow;
         public TorchController Torch => _torch;
-        public int TotalLevels => LevelTitles.Length;
+        public WorldDefinition ActiveWorld => _activeWorld != null ? _activeWorld : (_activeWorld = WorldCatalog.GetWorld(0));
+        public int TotalLevels => ActiveWorld != null && ActiveWorld.LevelCount > 0 ? ActiveWorld.LevelCount : LevelTitles.Length;
+
+        public void SetActiveWorld(WorldDefinition world)
+        {
+            _activeWorld = world;
+        }
+
+        public string GetLevelTitle(int levelIndex)
+        {
+            LevelEntry entry = ActiveWorld != null ? ActiveWorld.GetLevel(levelIndex) : null;
+            if (entry != null && !string.IsNullOrEmpty(entry.title)) return entry.title;
+            return LevelTitles[Mathf.Clamp(levelIndex, 0, LevelTitles.Length - 1)];
+        }
+
+        public string GetLevelHint(int levelIndex)
+        {
+            LevelEntry entry = ActiveWorld != null ? ActiveWorld.GetLevel(levelIndex) : null;
+            if (entry != null && !string.IsNullOrEmpty(entry.hint)) return entry.hint;
+            return LevelHints[Mathf.Clamp(levelIndex, 0, LevelHints.Length - 1)];
+        }
 
         public void BuildLevel(int levelIndex, CameraController cam)
         {
@@ -58,16 +86,21 @@ namespace MyShadowQuit.Core
 
             _levelRoot = new GameObject($"Level_{levelIndex + 1}");
 
+            bool isExtendedCeremonialChamber = (levelIndex == 9);
+            int maxChamberX = isExtendedCeremonialChamber ? 29 : 23;
+
             if (cam != null)
             {
+                cam.ResetZoom();
                 cam.BuildParallaxLayers();
                 // 16:9 orthographic size 4.5 = 16 units wide x 9 units tall.
-                // Clamp camera so outer walls (-9..23) and floor/ceiling (-4..8) fill the 16:9 frame cleanly.
-                cam.SetBounds(new Vector2(-1.2f, 0.2f), new Vector2(14.8f, 2.8f));
+                // Clamp camera so outer walls and floor/ceiling fill the 16:9 frame cleanly.
+                float maxCamX = isExtendedCeremonialChamber ? 20.8f : 14.8f;
+                cam.SetBounds(new Vector2(-1.2f, 0.2f), new Vector2(maxCamX, 2.8f));
             }
 
             // Base outer chamber walls & floor common framing
-            BuildChamberFrame(-9, 23, -4, 8);
+            BuildChamberFrame(-9, maxChamberX, -4, 8);
 
             switch (levelIndex)
             {
@@ -92,8 +125,14 @@ namespace MyShadowQuit.Core
                 case 6:
                     BuildLevel7_TheLastLight();
                     break;
-                default:
+                case 7:
                     BuildLevel8_MyShadowQuit();
+                    break;
+                case 8:
+                    BuildLevel9_EchoesInTheDark();
+                    break;
+                default:
+                    BuildLevel10_TheFirstDawn();
                     break;
             }
         }
@@ -475,8 +514,145 @@ namespace MyShadowQuit.Core
                 requireAll: true
             );
 
-            // Final Sanctuary requires both Protagonist and Shadow to reunite at the exit!
+            // Final Sanctuary of Level 8 requires both Protagonist and Shadow to reunite at the exit!
             CreateExitPortal(new Vector2(19.5f, -1.75f), finalDoor, requireShadowNear: true);
+        }
+
+        // =========================================================================
+        // LEVEL 9: ECHOES IN THE DARK
+        // Advanced vertical cooperation:
+        // 1. Protagonist carries Torch and places it in West Altar Pedestal (-1.0, -0.25).
+        // 2. Illumination activates Solar Crystal (0.8, -0.25) and dissolves upper Darkness Barrier (1.2, 2.2).
+        // 3. Shadow uses Double Jump + 50% Low Gravity to reach Upper Vault Platform (x=2..12, y=2, deltaY=3.0u).
+        // 4. Shadow passes upper Violet Barrier (6.5, 3.4) and activates Upper Shadow Switch (10.0, 3.22).
+        // 5. Upper Shadow Switch unlocks lower Shadow Passage (4.5, -2.0) for Protagonist.
+        // 6. Protagonist pushes Movable Block (6.8, -2.1) onto Lower Pressure Plate (9.8, -2.85).
+        // 7. All three seals unlock the Ancient Door (15.5, -1.5) and Protagonist reaches Exit (18.8, -1.75).
+        // =========================================================================
+        private void BuildLevel9_EchoesInTheDark()
+        {
+            CreateProp("Environment/echo_shrine_pillar", new Vector2(-4.5f, -1.8f), 1);
+            CreateProp("Environment/echo_shrine_pillar", new Vector2(8.0f, 3.2f), 1);
+            CreateProp("Environment/ancient_column", new Vector2(2.5f, -1.5f), 1);
+            CreateProp("Environment/ancient_column", new Vector2(12.5f, -1.5f), 1);
+            CreateProp("Environment/ruined_arch", new Vector2(8.2f, -1.0f), 0);
+            CreateProp("Environment/hanging_chain", new Vector2(-1.5f, 4.2f), 2);
+            CreateProp("Environment/hanging_chain", new Vector2(14.0f, 4.2f), 2);
+
+            SpawnCharactersAndTorch(
+                playerPos: new Vector2(-6.8f, -2.2f),
+                shadowPos: new Vector2(-7.6f, -2.2f),
+                torchPos: new Vector2(-5.4f, -2.4f),
+                startWithTorch: true
+            );
+
+            // Step 1-3: Stepped access (-5..-4, y=-2) -> West Altar (-3..0, y=-1) with Pedestal & Solar Crystal
+            CreatePlatformRow(-5, -4, -2, true);
+            CreatePlatformRow(-3, 0, -1, true);
+            TorchPedestal pedestal9 = CreateTorchPedestal(new Vector2(-1.0f, -0.25f));
+            LightSwitch crystal9 = CreateLightSwitch(new Vector2(0.8f, -0.25f), latch: true);
+            _ = pedestal9;
+
+            // Darkness Barrier guarding the aerial ascent to the Upper Shadow Route (dissolves when Torch is in pedestal9)
+            CreateDarknessBarrier(new Vector2(1.2f, 2.2f), dissolvesWhenLit: true);
+
+            // Step 4-6: Upper Shadow Route (x=2..12, y=2 -> top at y=+2.47, 3.00u above West Altar at y=-0.53)
+            // Reachable ONLY via Shadow's Double Jump + 50% Reduced Gravity!
+            CreatePlatformRow(2, 12, 2, true);
+            CreateShadowPassage(new Vector2(6.5f, 3.4f));
+            ShadowSwitch upperShadowSw = CreateShadowSwitch(new Vector2(10.0f, 3.22f));
+
+            // Lower route gate at x=4.5 unlocks when Shadow activates upperShadowSw
+            ShadowPassage lowerGate9 = CreateShadowPassage(new Vector2(4.5f, -2.0f));
+            lowerGate9.ConfigureUnlockNodes(new List<PuzzleNode> { upperShadowSw }, requireAll: true, latchOpen: true);
+
+            // Step 7: Protagonist pushes MovableBlock (6.8, -2.1) onto PressurePlate (9.8, -2.85) on flat lower route
+            CreateMovableBlock(new Vector2(6.8f, -2.1f));
+            PressurePlate lowerPlate9 = CreatePressurePlate(new Vector2(9.8f, -2.85f), true);
+
+            // Step 8-9: Final Door requires Crystal + Upper Shadow Switch + Lower Pressure Plate
+            AncientDoor exitDoor9 = CreateAncientDoor(
+                new Vector2(15.5f, -1.5f),
+                new List<PuzzleNode> { crystal9, upperShadowSw, lowerPlate9 },
+                requireAll: true
+            );
+
+            CreateExitPortal(new Vector2(18.8f, -1.75f), exitDoor9, requireShadowNear: false);
+        }
+
+        // =========================================================================
+        // LEVEL 10: THE FIRST DAWN (World 1 Grand Finale — 6-Phase Ceremonial Chamber)
+        // Phase 1: Activate first seal via MovableBlock (-4.2) onto PressurePlate (-1.5).
+        // Phase 2: Carry Torch up stepped ledges to Elevated Pedestal (5.2, -0.25) & Solar Crystal (6.8, -0.25).
+        // Phase 3: Double Jump with Shadow to High Balcony (x=8..15, y=2) and activate ShadowSwitch (13.5, 3.22).
+        // Phase 4: Solve final Light & Shadow combination in eastern wing (Pedestal 14.5, Crystal 16.8, ShadowSwitch 20.5).
+        // Phase 5: Open the Great Ceremonial Door (23.0, -1.5).
+        // Phase 6: Both Protagonist and Shadow reunite at the Dawn Portal (26.2, -1.75) to complete World 1.
+        // =========================================================================
+        private void BuildLevel10_TheFirstDawn()
+        {
+            CreateProp("Environment/ceremonial_banner", new Vector2(-5.5f, 1.2f), 1);
+            CreateProp("Environment/ceremonial_banner", new Vector2(5.5f, 2.2f), 1);
+            CreateProp("Environment/ceremonial_banner", new Vector2(16.5f, 1.2f), 1);
+            CreateProp("Environment/ceremonial_banner", new Vector2(21.5f, 1.2f), 1);
+            CreateProp("Environment/echo_shrine_pillar", new Vector2(-2.8f, -1.8f), 1);
+            CreateProp("Environment/echo_shrine_pillar", new Vector2(12.0f, 3.2f), 1);
+            CreateProp("Environment/ancient_column", new Vector2(3.5f, -1.5f), 1);
+            CreateProp("Environment/ancient_column", new Vector2(14.0f, -1.5f), 1);
+            CreateProp("Environment/ancient_column", new Vector2(21.8f, -1.5f), 1);
+            CreateProp("Environment/ruined_arch", new Vector2(9.0f, -1.0f), 0);
+
+            SpawnCharactersAndTorch(
+                playerPos: new Vector2(-7.0f, -2.2f),
+                shadowPos: new Vector2(-7.8f, -2.2f),
+                torchPos: new Vector2(-5.8f, -2.4f),
+                startWithTorch: true
+            );
+
+            // PHASE 1: First seal via MovableBlock & Latching PressurePlate
+            CreateMovableBlock(new Vector2(-4.2f, -2.1f));
+            PressurePlate phase1Plate = CreatePressurePlate(new Vector2(-1.5f, -2.85f), true);
+
+            // PHASE 2: Transport Torch to Elevated Sanctuary Pedestal & Solar Crystal
+            CreatePlatformRow(0, 1, -2, true);
+            CreatePlatformRow(3, 8, -1, true);
+            TorchPedestal phase2Pedestal = CreateTorchPedestal(new Vector2(5.2f, -0.25f));
+            LightSwitch phase2Crystal = CreateLightSwitch(new Vector2(6.8f, -0.25f), latch: true);
+            _ = phase2Pedestal;
+
+            // Darkness barrier above the altar dissolves when Torch is placed in phase2Pedestal
+            CreateDarknessBarrier(new Vector2(7.5f, 2.2f), dissolvesWhenLit: true);
+
+            // PHASE 3: High Shadow Balcony (x=8..15, y=2 -> 3.00u above Elevated Altar, requiring Shadow Double Jump)
+            CreatePlatformRow(8, 15, 2, true);
+            CreateShadowPassage(new Vector2(10.5f, 3.4f));
+            ShadowSwitch phase3ShadowSw = CreateShadowSwitch(new Vector2(13.5f, 3.22f));
+
+            // Lower passage at x=11.5 unlocks once phase3ShadowSw is activated on the high balcony
+            ShadowPassage lowerPassage10 = CreateShadowPassage(new Vector2(11.5f, -2.0f));
+            lowerPassage10.ConfigureUnlockNodes(new List<PuzzleNode> { phase3ShadowSw }, requireAll: true, latchOpen: true);
+
+            // PHASE 4: Final Light & Shadow Combination in Eastern Ceremonial Wing
+            TorchPedestal phase4Pedestal = CreateTorchPedestal(new Vector2(14.5f, -2.25f));
+            CreateDarknessBarrier(new Vector2(15.6f, -2.0f), dissolvesWhenLit: true);
+            LightSwitch phase4Crystal = CreateLightSwitch(new Vector2(16.8f, -2.25f), latch: true);
+            _ = phase4Pedestal;
+
+            ShadowPassage finalShadowGate = CreateShadowPassage(new Vector2(18.5f, -2.0f));
+            ShadowSwitch phase4ShadowSw = CreateShadowSwitch(new Vector2(20.5f, -2.25f));
+            finalShadowGate.ConfigureUnlockNodes(new List<PuzzleNode> { phase4ShadowSw }, requireAll: true, latchOpen: true);
+
+            // PHASE 5: Great Ceremonial Door guarding the threshold to World 2
+            AncientDoor ceremonialDoor = CreateAncientDoor(
+                new Vector2(23.0f, -1.5f),
+                new List<PuzzleNode> { phase1Plate, phase2Crystal, phase3ShadowSw, phase4Crystal, phase4ShadowSw },
+                requireAll: true
+            );
+            ceremonialDoor.ConfigureCustomSprites("Environment/ceremonial_door_closed", "Environment/ceremonial_door_open");
+
+            // PHASE 6: Dawn Portal Archway where both Protagonist & Shadow reunite to complete World 1
+            CreateProp("Environment/dawn_portal_arch", new Vector2(26.2f, -1.55f), 1);
+            CreateExitPortal(new Vector2(26.2f, -1.75f), ceremonialDoor, requireShadowNear: true);
         }
 
         // =========================================================================

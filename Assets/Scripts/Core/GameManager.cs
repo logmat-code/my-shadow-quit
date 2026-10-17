@@ -9,9 +9,10 @@ namespace MyShadowQuit.Core
     /// <summary>
     /// Central orchestrator for MY SHADOW QUIT: THE LAST FLAME.
     /// Auto-bootstraps when any scene loads so the game is immediately playable in Editor or WebGL build.
-    /// Manages Main Menu, Level 1 ("Awakening") through Level 8 ("My Shadow Quit"),
+    /// Manages Main Menu, World Select, World 1 ("The Ruins of the Last Flame", Levels 1–10),
     /// TutorialDirector contextual progression, character switching (TAB), level restart (R),
-    /// pause menu (ESC), camera target tracking, and the narrative Game Ending sequence.
+    /// pause menu (ESC), camera target tracking, the World 1 Complete transition,
+    /// and the preserved reusable Final Game Ending sequence for future worlds.
     /// </summary>
     public class GameManager : MonoBehaviour
     {
@@ -30,6 +31,7 @@ namespace MyShadowQuit.Core
         private bool _isPaused;
         private bool _isInMainMenu;
         private bool _isEndingSequenceActive;
+        private bool _isWorld1Completed;
         private bool _isGameCompleted;
         private Coroutine _endingCoroutine;
 
@@ -37,10 +39,14 @@ namespace MyShadowQuit.Core
         public bool IsControllingShadow => _isControllingShadow;
         public bool IsPaused => _isPaused;
         public bool IsEndingSequenceActive => _isEndingSequenceActive;
+        public bool IsWorld1Completed => _isWorld1Completed;
         public bool IsGameCompleted => _isGameCompleted;
         public LevelManager Levels => _levelManager;
         public TutorialDirector Tutorial => _tutorialDirector;
         public UIManager UI => _uiManager;
+        public string ActiveWorldId => _levelManager != null && _levelManager.ActiveWorld != null
+            ? _levelManager.ActiveWorld.WorldId
+            : "world_1";
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         private static void ResetStaticState()
@@ -134,6 +140,12 @@ namespace MyShadowQuit.Core
 
             _uiManager.OnPlayRequested -= StartNewGame;
             _uiManager.OnPlayRequested += StartNewGame;
+            _uiManager.OnWorldSelectRequested -= OpenWorldSelect;
+            _uiManager.OnWorldSelectRequested += OpenWorldSelect;
+            _uiManager.OnStartWorldRequested -= SelectWorldAndStart;
+            _uiManager.OnStartWorldRequested += SelectWorldAndStart;
+            _uiManager.OnWorldCompleteContinueRequested -= OpenWorld2ComingSoon;
+            _uiManager.OnWorldCompleteContinueRequested += OpenWorld2ComingSoon;
             _uiManager.OnResumeRequested -= TogglePause;
             _uiManager.OnResumeRequested += TogglePause;
             _uiManager.OnRestartRequested -= RestartCurrentLevel;
@@ -194,6 +206,10 @@ namespace MyShadowQuit.Core
                 _endingCoroutine = null;
             }
             _isEndingSequenceActive = false;
+            if (_cameraController != null)
+            {
+                _cameraController.ResetZoom();
+            }
             if (_audioManager != null)
             {
                 _audioManager.RestoreNormalMix();
@@ -205,6 +221,7 @@ namespace MyShadowQuit.Core
             StopEndingSequenceIfNeeded();
             _isInMainMenu = true;
             _isPaused = false;
+            _isWorld1Completed = false;
             _isGameCompleted = false;
             Time.timeScale = 1f;
             LoadLevel(0);
@@ -213,14 +230,63 @@ namespace MyShadowQuit.Core
             _uiManager.ShowMainMenu();
         }
 
-        public void StartNewGame()
+        public void OpenWorldSelect()
         {
             StopEndingSequenceIfNeeded();
+            _isInMainMenu = true;
+            _isPaused = false;
+            Time.timeScale = 1f;
+            if (_levelManager.Player != null) _levelManager.Player.SetControlActive(false);
+            if (_levelManager.Shadow != null) _levelManager.Shadow.SetControlActive(false);
+            if (_uiManager != null)
+            {
+                _uiManager.ShowWorldSelectScreen();
+            }
+        }
+
+        public void OpenWorld2ComingSoon()
+        {
+            StopEndingSequenceIfNeeded();
+            _isInMainMenu = true;
+            _isPaused = false;
+            Time.timeScale = 1f;
+            if (_levelManager.Player != null) _levelManager.Player.SetControlActive(false);
+            if (_levelManager.Shadow != null) _levelManager.Shadow.SetControlActive(false);
+            if (_uiManager != null)
+            {
+                _uiManager.ShowWorld2ComingSoonScreen();
+            }
+        }
+
+        public void SelectWorldAndStart(int worldIndex, bool continueSavedProgress)
+        {
+            WorldDefinition world = WorldCatalog.GetWorld(worldIndex);
+            if (world == null || !world.IsImplemented || !world.IsUnlocked)
+            {
+                OpenWorld2ComingSoon();
+                return;
+            }
+
+            StopEndingSequenceIfNeeded();
+            _levelManager.SetActiveWorld(world);
             _isInMainMenu = false;
             _isPaused = false;
+            _isWorld1Completed = false;
             _isGameCompleted = false;
             Time.timeScale = 1f;
-            LoadLevel(0);
+
+            int startLevel = 0;
+            if (continueSavedProgress && WorldProgressSave.HasSavedProgress(world.WorldId))
+            {
+                startLevel = WorldProgressSave.GetLastPlayedLevel(world.WorldId, world.LevelCount);
+            }
+
+            LoadLevel(startLevel);
+        }
+
+        public void StartNewGame()
+        {
+            SelectWorldAndStart(0, false);
         }
 
         public void LoadLevel(int index)
@@ -231,7 +297,16 @@ namespace MyShadowQuit.Core
             _isPaused = false;
             Time.timeScale = 1f;
 
+            if (!_isInMainMenu)
+            {
+                WorldProgressSave.SaveLevelProgress(ActiveWorldId, _currentLevelIndex, _levelManager.TotalLevels);
+            }
+
             _levelManager.BuildLevel(_currentLevelIndex, _cameraController);
+            if (_cameraController != null)
+            {
+                _cameraController.ResetZoom();
+            }
             if (_levelManager.Torch != null)
             {
                 _levelManager.Torch.ResetEndingGlow();
@@ -242,8 +317,8 @@ namespace MyShadowQuit.Core
             {
                 _uiManager.TriggerFlashFade();
                 _uiManager.ShowGameplayHUD(
-                    LevelManager.LevelTitles[_currentLevelIndex],
-                    LevelManager.LevelHints[_currentLevelIndex],
+                    _levelManager.GetLevelTitle(_currentLevelIndex),
+                    _levelManager.GetLevelHint(_currentLevelIndex),
                     _isControllingShadow
                 );
             }
@@ -285,8 +360,8 @@ namespace MyShadowQuit.Core
             else if (_uiManager != null)
             {
                 _uiManager.UpdateHUDText(
-                    LevelManager.LevelTitles[_currentLevelIndex],
-                    LevelManager.LevelHints[_currentLevelIndex],
+                    _levelManager.GetLevelTitle(_currentLevelIndex),
+                    _levelManager.GetLevelHint(_currentLevelIndex),
                     _isControllingShadow
                 );
             }
@@ -331,10 +406,188 @@ namespace MyShadowQuit.Core
             }
             else
             {
-                BeginGameEndingSequence();
+                BeginWorld1CompleteSequence();
             }
         }
 
+        /// <summary>
+        /// Triggers the World 1 Complete narrative sequence at the end of Level 10 ("The First Dawn").
+        /// Camera zooms in smoothly, Torch illuminates the Dawn Portal, ruin mechanisms resonate,
+        /// an unknown light expands beyond the Ceremonial Gate, both characters step toward the light,
+        /// and the World 1 Complete screen opens.
+        /// </summary>
+        public void BeginWorld1CompleteSequence()
+        {
+            if (_isEndingSequenceActive || _isWorld1Completed) return;
+
+            _isEndingSequenceActive = true;
+            _isWorld1Completed = true;
+            _isControllingShadow = false;
+
+            WorldProgressSave.MarkWorldCompleted(ActiveWorldId, _levelManager.TotalLevels);
+
+            if (_levelManager.Player != null) _levelManager.Player.SetControlActive(false);
+            if (_levelManager.Shadow != null) _levelManager.Shadow.SetControlActive(false);
+
+            LevelExitPortal exitPortal = FindFirstObjectByType<LevelExitPortal>();
+            if (_cameraController != null)
+            {
+                Transform focus = exitPortal != null
+                    ? exitPortal.transform
+                    : (_levelManager.Player != null ? _levelManager.Player.transform : null);
+                _cameraController.SetTarget(focus);
+                _cameraController.SetTargetZoom(3.35f, 0.95f);
+                _cameraController.TriggerShake(0.35f, 0.07f);
+            }
+
+            if (_audioManager != null)
+            {
+                _audioManager.PlaySFX("stone_door", 0.72f, 0.88f);
+            }
+
+            if (_levelManager.Torch != null && _levelManager.Player != null)
+            {
+                if (!_levelManager.Player.HasTorch)
+                {
+                    _levelManager.Player.ForceEquipTorch(_levelManager.Torch);
+                }
+                _levelManager.Torch.SetEndingGlow(1.45f, 1.35f);
+            }
+
+            if (_uiManager != null)
+            {
+                _uiManager.SetEndingQuoteText(UIManager.World1CompleteQuote);
+                _uiManager.UpdateHUDText(
+                    _levelManager.GetLevelTitle(_currentLevelIndex),
+                    UIManager.World1CompleteQuote,
+                    false
+                );
+            }
+
+            if (Application.isPlaying)
+            {
+                _endingCoroutine = StartCoroutine(PlayWorld1CompleteSequenceCoroutine(exitPortal));
+            }
+            else
+            {
+                CompleteWorld1SequenceImmediate();
+            }
+        }
+
+        public void CompleteWorld1SequenceImmediate()
+        {
+            if (_levelManager.Shadow != null)
+            {
+                _levelManager.Shadow.ReconnectToProtagonist();
+            }
+            if (_levelManager.Torch != null)
+            {
+                _levelManager.Torch.SetEndingGlow(1.35f, 1.25f);
+            }
+            if (_audioManager != null)
+            {
+                _audioManager.SetEndingMixDucking(0.72f, 0f);
+            }
+            if (_uiManager != null)
+            {
+                _uiManager.SetEndingQuoteText(UIManager.World1CompleteQuote);
+                _uiManager.SetEndingFade(0.90f, 2.5f);
+                _uiManager.ShowWorld1CompleteScreen();
+            }
+            _isInMainMenu = true;
+            _isEndingSequenceActive = false;
+        }
+
+        private IEnumerator PlayWorld1CompleteSequenceCoroutine(LevelExitPortal exitPortal)
+        {
+            PlayerController player = _levelManager.Player;
+            ShadowController shadow = _levelManager.Shadow;
+            TorchController torch = _levelManager.Torch;
+
+            Transform dawnHalo = exitPortal != null ? exitPortal.transform.Find("DawnThresholdLight") : null;
+            SpriteRenderer dawnSr = dawnHalo != null ? dawnHalo.GetComponent<SpriteRenderer>() : null;
+
+            Vector2 portalPos = exitPortal != null
+                ? (Vector2)exitPortal.transform.position
+                : (player != null ? (Vector2)player.transform.position : Vector2.zero);
+
+            // Phase 1: Ruin mechanisms resonate, unknown dawn light expands at the threshold,
+            // and both Protagonist and Shadow walk forward toward the new light (~1.3s)
+            float stepDuration = 1.3f;
+            float elapsed = 0f;
+            while (elapsed < stepDuration)
+            {
+                elapsed += Time.deltaTime;
+                float t = Mathf.Clamp01(elapsed / stepDuration);
+                float smoothT = Mathf.SmoothStep(0f, 1f, t);
+
+                if (player != null)
+                {
+                    Vector2 targetPlayerPos = new Vector2(portalPos.x + 0.15f, player.transform.position.y);
+                    player.transform.position = Vector2.MoveTowards(player.transform.position, targetPlayerPos, 2.2f * Time.deltaTime);
+                }
+                if (shadow != null)
+                {
+                    Vector2 targetShadowPos = new Vector2(portalPos.x - 0.32f, shadow.transform.position.y);
+                    shadow.StepEndingApproach(targetShadowPos, 2.6f);
+                }
+                if (torch != null)
+                {
+                    torch.SetEndingGlow(Mathf.Lerp(1.25f, 1.60f, smoothT), Mathf.Lerp(1.15f, 1.45f, smoothT));
+                }
+                if (dawnHalo != null)
+                {
+                    float scale = Mathf.Lerp(1.85f, 3.60f, smoothT);
+                    dawnHalo.localScale = new Vector3(scale, scale, 1f);
+                }
+                if (dawnSr != null)
+                {
+                    dawnSr.color = new Color(1f, 0.94f, 0.72f, Mathf.Lerp(0.32f, 0.78f, smoothT));
+                }
+                yield return null;
+            }
+
+            if (shadow != null)
+            {
+                shadow.ReconnectToProtagonist();
+            }
+
+            // Phase 2: Screen transitions smoothly with "Beyond the darkness, another light awaits." (~1.8s)
+            if (_uiManager != null)
+            {
+                _uiManager.SetEndingQuoteText(UIManager.World1CompleteQuote);
+                _uiManager.SetEndingFade(0.90f, 0.65f);
+            }
+
+            float fadeDuration = 1.8f;
+            elapsed = 0f;
+            while (elapsed < fadeDuration)
+            {
+                elapsed += Time.deltaTime;
+                float t = Mathf.Clamp01(elapsed / fadeDuration);
+                float smoothT = Mathf.SmoothStep(0f, 1f, t);
+
+                if (_audioManager != null)
+                {
+                    _audioManager.SetEndingMixDucking(Mathf.Lerp(1.0f, 0.72f, smoothT), Mathf.Lerp(0.85f, 0.0f, smoothT));
+                }
+                if (_uiManager != null)
+                {
+                    _uiManager.SetEndingQuoteAlpha(smoothT);
+                }
+                yield return null;
+            }
+
+            yield return new WaitForSeconds(1.15f);
+
+            CompleteWorld1SequenceImmediate();
+            _endingCoroutine = null;
+        }
+
+        /// <summary>
+        /// Reusable Final Game Ending Sequence preserved for the future final world of the game.
+        /// Not called upon completing World 1 (which calls BeginWorld1CompleteSequence instead).
+        /// </summary>
         public void BeginGameEndingSequence()
         {
             if (_isEndingSequenceActive || _isGameCompleted) return;
@@ -363,8 +616,9 @@ namespace MyShadowQuit.Core
 
             if (_uiManager != null)
             {
+                _uiManager.SetEndingQuoteText(UIManager.FinalNarrativeQuote);
                 _uiManager.UpdateHUDText(
-                    LevelManager.LevelTitles[_currentLevelIndex],
+                    _levelManager.GetLevelTitle(_currentLevelIndex),
                     UIManager.FinalNarrativeQuote,
                     false
                 );
@@ -396,6 +650,7 @@ namespace MyShadowQuit.Core
             }
             if (_uiManager != null)
             {
+                _uiManager.SetEndingQuoteText(UIManager.FinalNarrativeQuote);
                 _uiManager.SetEndingFade(0.88f, 2.5f);
                 _uiManager.ShowVictoryScreen();
             }

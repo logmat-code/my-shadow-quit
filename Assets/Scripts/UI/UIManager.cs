@@ -16,16 +16,22 @@ namespace MyShadowQuit.UI
     public class UIManager : MonoBehaviour
     {
         public event Action OnPlayRequested;
+        public event Action OnWorldSelectRequested;
+        public event Action<int, bool> OnStartWorldRequested;
+        public event Action OnWorldCompleteContinueRequested;
         public event Action OnResumeRequested;
         public event Action OnRestartRequested;
         public event Action OnMainMenuRequested;
 
         private Canvas _canvas;
         private GameObject _mainMenuPanel;
+        private GameObject _worldSelectPanel;
         private GameObject _pauseMenuPanel;
         private GameObject _settingsPanel;
         private GameObject _creditsPanel;
         private GameObject _hudPanel;
+        private GameObject _worldCompletePanel;
+        private GameObject _world2ComingSoonPanel;
         private GameObject _victoryPanel;
 
         private Text _levelTitleText;
@@ -34,6 +40,9 @@ namespace MyShadowQuit.UI
         private Text _musicVolumeText;
         private Text _sfxVolumeText;
         private Text _endingQuoteText;
+        private Text _world1ProgressText;
+        private Button _continueWorld1Button;
+        private Text _continueWorld1ButtonLabel;
         private Image _fadeOverlay;
 
         private Font _uiFont;
@@ -44,9 +53,17 @@ namespace MyShadowQuit.UI
         private float _targetFadeAlpha;
         private float _fadeSpeed = 2.5f;
 
+        public const string World1CompleteQuote = "\"Beyond the darkness, another light awaits.\"";
         public const string FinalNarrativeQuote = "\"Even shadows need a light to return to.\"";
 
+        public bool IsWorld1CompleteScreenVisible => _worldCompletePanel != null && _worldCompletePanel.activeSelf;
+        public bool IsWorld2ComingSoonScreenVisible => _world2ComingSoonPanel != null && _world2ComingSoonPanel.activeSelf;
+        public bool IsWorldSelectScreenVisible => _worldSelectPanel != null && _worldSelectPanel.activeSelf;
         public bool IsVictoryScreenVisible => _victoryPanel != null && _victoryPanel.activeSelf;
+
+        public GameObject WorldCompletePanel => _worldCompletePanel;
+        public GameObject World2ComingSoonPanel => _world2ComingSoonPanel;
+        public GameObject WorldSelectPanel => _worldSelectPanel;
         public GameObject VictoryPanel => _victoryPanel;
 
         private void Awake()
@@ -109,9 +126,12 @@ namespace MyShadowQuit.UI
             BuildHUD(canvasObj.transform);
             BuildFadeOverlay(canvasObj.transform);
             BuildMainMenu(canvasObj.transform);
+            BuildWorldSelectMenu(canvasObj.transform);
             BuildPauseMenu(canvasObj.transform);
             BuildSettingsMenu(canvasObj.transform);
             BuildCreditsMenu(canvasObj.transform);
+            BuildWorld1CompleteScreen(canvasObj.transform);
+            BuildWorld2ComingSoonScreen(canvasObj.transform);
             BuildVictoryScreen(canvasObj.transform);
         }
 
@@ -141,24 +161,29 @@ namespace MyShadowQuit.UI
 
         private void BuildMainMenu(Transform parent)
         {
-            _mainMenuPanel = CreateImagePanel(parent, "MainMenuPanel", Vector2.zero, new Vector2(780f, 640f));
+            _mainMenuPanel = CreateImagePanel(parent, "MainMenuPanel", Vector2.zero, new Vector2(780f, 680f));
 
             // Decorative torch icon on Main Menu
             GameObject torchDeco = new GameObject("MenuTorchIcon", typeof(RectTransform), typeof(Image));
             torchDeco.transform.SetParent(_mainMenuPanel.transform, false);
             RectTransform trt = torchDeco.GetComponent<RectTransform>();
-            trt.anchoredPosition = new Vector2(0f, 235f);
+            trt.anchoredPosition = new Vector2(0f, 255f);
             trt.sizeDelta = new Vector2(72f, 96f);
             Image tImg = torchDeco.GetComponent<Image>();
             tImg.sprite = AssetRegistry.GetSprite("Torch/torch_item_0", 32f);
 
-            CreateText(_mainMenuPanel.transform, "TitleMain", "MY SHADOW QUIT", 48, new Vector2(0f, 155f), new Vector2(700f, 64f), new Color(1f, 0.84f, 0.35f, 1f), TextAnchor.MiddleCenter);
-            CreateText(_mainMenuPanel.transform, "TitleSub", "THE LAST FLAME", 28, new Vector2(0f, 102f), new Vector2(640f, 44f), new Color(0.75f, 0.58f, 0.96f, 1f), TextAnchor.MiddleCenter);
+            CreateText(_mainMenuPanel.transform, "TitleMain", "MY SHADOW QUIT", 48, new Vector2(0f, 178f), new Vector2(700f, 64f), new Color(1f, 0.84f, 0.35f, 1f), TextAnchor.MiddleCenter);
+            CreateText(_mainMenuPanel.transform, "TitleSub", "THE LAST FLAME", 28, new Vector2(0f, 126f), new Vector2(640f, 44f), new Color(0.75f, 0.58f, 0.96f, 1f), TextAnchor.MiddleCenter);
 
-            CreateMenuButton(_mainMenuPanel.transform, "PLAY", new Vector2(0f, 15f), () => OnPlayRequested?.Invoke());
-            CreateMenuButton(_mainMenuPanel.transform, "SETTINGS", new Vector2(0f, -62f), () => ShowSubPanel(_settingsPanel));
-            CreateMenuButton(_mainMenuPanel.transform, "CREDITS", new Vector2(0f, -139f), () => ShowSubPanel(_creditsPanel));
-            CreateMenuButton(_mainMenuPanel.transform, "QUIT / RETURN", new Vector2(0f, -216f), () =>
+            CreateMenuButton(_mainMenuPanel.transform, "PLAY", new Vector2(0f, 48f), () => OnPlayRequested?.Invoke());
+            CreateMenuButton(_mainMenuPanel.transform, "WORLD SELECT", new Vector2(0f, -24f), () =>
+            {
+                OnWorldSelectRequested?.Invoke();
+                ShowWorldSelectScreen();
+            });
+            CreateMenuButton(_mainMenuPanel.transform, "SETTINGS", new Vector2(0f, -96f), () => ShowSubPanel(_settingsPanel));
+            CreateMenuButton(_mainMenuPanel.transform, "CREDITS", new Vector2(0f, -168f), () => ShowSubPanel(_creditsPanel));
+            CreateMenuButton(_mainMenuPanel.transform, "QUIT / RETURN", new Vector2(0f, -240f), () =>
             {
 #if UNITY_EDITOR
                 UnityEditor.EditorApplication.isPlaying = false;
@@ -166,6 +191,86 @@ namespace MyShadowQuit.UI
                 Application.Quit();
 #endif
             });
+        }
+
+        private void BuildWorldSelectMenu(Transform parent)
+        {
+            _worldSelectPanel = CreateImagePanel(parent, "WorldSelectPanel", Vector2.zero, new Vector2(1080f, 680f));
+
+            CreateText(_worldSelectPanel.transform, "WorldSelectHeader", "WORLD SELECT", 42, new Vector2(0f, 265f), new Vector2(760f, 58f), new Color(1f, 0.84f, 0.35f, 1f), TextAnchor.MiddleCenter);
+            CreateText(_worldSelectPanel.transform, "WorldSelectSub", "CHOOSE YOUR SANCTUARY", 22, new Vector2(0f, 220f), new Vector2(720f, 36f), new Color(0.80f, 0.72f, 0.98f, 1f), TextAnchor.MiddleCenter);
+
+            // World 1 Card (Available)
+            GameObject w1Card = CreateImagePanel(_worldSelectPanel.transform, "World1Card", new Vector2(-245f, 10f), new Vector2(450f, 340f));
+            w1Card.GetComponent<Image>().color = new Color(0.08f, 0.09f, 0.17f, 0.96f);
+
+            CreateText(w1Card.transform, "W1Badge", "WORLD 1 — AVAILABLE", 20, new Vector2(0f, 130f), new Vector2(400f, 32f), new Color(1f, 0.82f, 0.35f, 1f), TextAnchor.MiddleCenter);
+            CreateText(w1Card.transform, "W1Title", "THE RUINS OF THE LAST FLAME", 24, new Vector2(0f, 88f), new Vector2(410f, 44f), new Color(1f, 0.95f, 0.84f, 1f), TextAnchor.MiddleCenter);
+            _world1ProgressText = CreateText(w1Card.transform, "W1Progress", "10 LEVELS | STATUS: READY", 19, new Vector2(0f, 38f), new Vector2(400f, 40f), new Color(0.82f, 0.76f, 0.98f, 1f), TextAnchor.MiddleCenter);
+
+            CreateMenuButton(w1Card.transform, "START FROM BEGINNING", new Vector2(0f, -32f), () =>
+            {
+                OnStartWorldRequested?.Invoke(0, false);
+            }, new Vector2(370f, 56f));
+
+            _continueWorld1Button = CreateMenuButton(w1Card.transform, "CONTINUE SAVED PROGRESS", new Vector2(0f, -102f), () =>
+            {
+                OnStartWorldRequested?.Invoke(0, true);
+            }, new Vector2(370f, 56f));
+            _continueWorld1ButtonLabel = _continueWorld1Button.GetComponentInChildren<Text>();
+
+            // World 2 Card (Locked — Coming Soon)
+            GameObject w2Card = CreateImagePanel(_worldSelectPanel.transform, "World2Card", new Vector2(245f, 10f), new Vector2(450f, 340f));
+            w2Card.GetComponent<Image>().color = new Color(0.05f, 0.05f, 0.10f, 0.92f);
+
+            CreateText(w2Card.transform, "W2Badge", "WORLD 2 — LOCKED", 20, new Vector2(0f, 130f), new Vector2(400f, 32f), new Color(0.68f, 0.56f, 0.88f, 1f), TextAnchor.MiddleCenter);
+            CreateText(w2Card.transform, "W2Title", "COMING SOON", 26, new Vector2(0f, 82f), new Vector2(410f, 44f), new Color(0.78f, 0.76f, 0.86f, 1f), TextAnchor.MiddleCenter);
+            CreateText(w2Card.transform, "W2Desc", "\"Beyond the darkness,\nanother light awaits.\"", 20, new Vector2(0f, 16f), new Vector2(390f, 68f), new Color(0.66f, 0.64f, 0.78f, 1f), TextAnchor.MiddleCenter);
+
+            CreateMenuButton(w2Card.transform, "WORLD 2 — COMING SOON", new Vector2(0f, -80f), () =>
+            {
+                ShowWorld2ComingSoonScreen();
+            }, new Vector2(370f, 56f));
+
+            CreateMenuButton(_worldSelectPanel.transform, "MAIN MENU", new Vector2(0f, -240f), () =>
+            {
+                OnMainMenuRequested?.Invoke();
+            });
+
+            _worldSelectPanel.SetActive(false);
+        }
+
+        public void RefreshWorldSelectState()
+        {
+            WorldDefinition w1 = WorldCatalog.GetWorld(0);
+            int total = w1 != null ? w1.LevelCount : 10;
+            bool completed = WorldProgressSave.IsWorldCompleted("world_1");
+            bool hasSaved = WorldProgressSave.HasSavedProgress("world_1");
+            int savedIdx = WorldProgressSave.GetLastPlayedLevel("world_1", total);
+            int highestIdx = WorldProgressSave.GetHighestUnlockedLevel("world_1", total);
+
+            if (_world1ProgressText != null)
+            {
+                if (completed)
+                {
+                    _world1ProgressText.text = $"COMPLETED ({total}/{total} LEVELS) | SAVED: LEVEL {savedIdx + 1}";
+                }
+                else if (hasSaved)
+                {
+                    _world1ProgressText.text = $"SAVED AT LEVEL {savedIdx + 1} / {total} (UNLOCKED: {highestIdx + 1}/{total})";
+                }
+                else
+                {
+                    _world1ProgressText.text = $"10 LEVELS | I. AWAKENING TO X. THE FIRST DAWN";
+                }
+            }
+
+            if (_continueWorld1ButtonLabel != null)
+            {
+                _continueWorld1ButtonLabel.text = hasSaved
+                    ? $"CONTINUE (LEVEL {savedIdx + 1})"
+                    : "CONTINUE (LEVEL 1)";
+            }
         }
 
         private void BuildPauseMenu(Transform parent)
@@ -266,6 +371,86 @@ namespace MyShadowQuit.UI
             _creditsPanel.SetActive(false);
         }
 
+        private void BuildWorld1CompleteScreen(Transform parent)
+        {
+            _worldCompletePanel = CreateImagePanel(parent, "World1CompletePanel", Vector2.zero, new Vector2(860f, 660f));
+
+            // Decorative Dawn Portal / Torch emblem
+            GameObject torchDeco = new GameObject("WorldCompleteTorchIcon", typeof(RectTransform), typeof(Image));
+            torchDeco.transform.SetParent(_worldCompletePanel.transform, false);
+            RectTransform trt = torchDeco.GetComponent<RectTransform>();
+            trt.anchoredPosition = new Vector2(0f, 250f);
+            trt.sizeDelta = new Vector2(64f, 84f);
+            Image tImg = torchDeco.GetComponent<Image>();
+            tImg.sprite = AssetRegistry.GetSprite("Torch/torch_item_0", 32f);
+
+            CreateText(_worldCompletePanel.transform, "WorldCompleteTitle", "WORLD 1 COMPLETE", 46, new Vector2(0f, 176f), new Vector2(760f, 60f), new Color(1f, 0.86f, 0.38f, 1f), TextAnchor.MiddleCenter);
+            CreateText(_worldCompletePanel.transform, "WorldCompleteSub", "THE RUINS OF THE LAST FLAME", 28, new Vector2(0f, 122f), new Vector2(740f, 44f), new Color(0.78f, 0.62f, 0.98f, 1f), TextAnchor.MiddleCenter);
+
+            CreateText(
+                _worldCompletePanel.transform,
+                "WorldCompleteQuote",
+                World1CompleteQuote,
+                26,
+                new Vector2(0f, 52f),
+                new Vector2(760f, 64f),
+                new Color(1f, 0.94f, 0.80f, 1f),
+                TextAnchor.MiddleCenter
+            );
+
+            CreateMenuButton(_worldCompletePanel.transform, "CONTINUE", new Vector2(0f, -38f), () =>
+            {
+                OnWorldCompleteContinueRequested?.Invoke();
+                ShowWorld2ComingSoonScreen();
+            });
+            CreateMenuButton(_worldCompletePanel.transform, "WORLD SELECT", new Vector2(0f, -116f), () =>
+            {
+                OnWorldSelectRequested?.Invoke();
+                ShowWorldSelectScreen();
+            });
+            CreateMenuButton(_worldCompletePanel.transform, "MAIN MENU", new Vector2(0f, -194f), () =>
+            {
+                OnMainMenuRequested?.Invoke();
+            });
+
+            _worldCompletePanel.SetActive(false);
+        }
+
+        private void BuildWorld2ComingSoonScreen(Transform parent)
+        {
+            _world2ComingSoonPanel = CreateImagePanel(parent, "World2ComingSoonPanel", Vector2.zero, new Vector2(860f, 600f));
+
+            CreateText(_world2ComingSoonPanel.transform, "W2ComingSoonHeader", "WORLD 2 — COMING SOON", 42, new Vector2(0f, 185f), new Vector2(760f, 58f), new Color(1f, 0.86f, 0.38f, 1f), TextAnchor.MiddleCenter);
+            CreateText(_world2ComingSoonPanel.transform, "W2ComingSoonSub", "BEYOND THE FIRST DAWN", 26, new Vector2(0f, 128f), new Vector2(700f, 42f), new Color(0.78f, 0.62f, 0.98f, 1f), TextAnchor.MiddleCenter);
+
+            CreateText(
+                _world2ComingSoonPanel.transform,
+                "W2ComingSoonBody",
+                "\"Beyond the darkness, another light awaits.\"\n\nYou have conquered all 10 chambers of World 1:\nThe Ruins of the Last Flame.\n\nYour progress has been saved. World 2 will expand the journey\nbeyond the Ceremonial Gate in the next chapter.",
+                22,
+                new Vector2(0f, 5f),
+                new Vector2(740f, 180f),
+                new Color(0.90f, 0.90f, 0.98f, 1f),
+                TextAnchor.MiddleCenter
+            );
+
+            CreateMenuButton(_world2ComingSoonPanel.transform, "WORLD SELECT", new Vector2(0f, -135f), () =>
+            {
+                OnWorldSelectRequested?.Invoke();
+                ShowWorldSelectScreen();
+            });
+            CreateMenuButton(_world2ComingSoonPanel.transform, "MAIN MENU", new Vector2(0f, -212f), () =>
+            {
+                OnMainMenuRequested?.Invoke();
+            });
+
+            _world2ComingSoonPanel.SetActive(false);
+        }
+
+        /// <summary>
+        /// Reusable Final Game Victory Screen preserved for the future completion of the entire game.
+        /// Not shown at the end of World 1 (which uses ShowWorld1CompleteScreen instead).
+        /// </summary>
         private void BuildVictoryScreen(Transform parent)
         {
             _victoryPanel = CreateImagePanel(parent, "VictoryPanel", Vector2.zero, new Vector2(820f, 620f));
@@ -326,7 +511,7 @@ namespace MyShadowQuit.UI
             _endingQuoteText = CreateText(
                 fadeObj.transform,
                 "EndingNarrativeQuote",
-                FinalNarrativeQuote,
+                World1CompleteQuote,
                 32,
                 new Vector2(0f, 24f),
                 new Vector2(1280f, 120f),
@@ -363,6 +548,14 @@ namespace MyShadowQuit.UI
             _fadeSpeed = Mathf.Max(0.1f, fadeSpeed);
         }
 
+        public void SetEndingQuoteText(string quote)
+        {
+            if (_endingQuoteText != null)
+            {
+                _endingQuoteText.text = quote;
+            }
+        }
+
         public void SetEndingQuoteAlpha(float alpha)
         {
             if (_endingQuoteText == null) return;
@@ -371,26 +564,54 @@ namespace MyShadowQuit.UI
             _endingQuoteText.color = new Color(1f, 0.92f, 0.76f, clamped);
         }
 
+        private void HideAllMenuPanels()
+        {
+            if (_mainMenuPanel != null) _mainMenuPanel.SetActive(false);
+            if (_worldSelectPanel != null) _worldSelectPanel.SetActive(false);
+            if (_pauseMenuPanel != null) _pauseMenuPanel.SetActive(false);
+            if (_settingsPanel != null) _settingsPanel.SetActive(false);
+            if (_creditsPanel != null) _creditsPanel.SetActive(false);
+            if (_worldCompletePanel != null) _worldCompletePanel.SetActive(false);
+            if (_world2ComingSoonPanel != null) _world2ComingSoonPanel.SetActive(false);
+            if (_victoryPanel != null) _victoryPanel.SetActive(false);
+            if (_hudPanel != null) _hudPanel.SetActive(false);
+        }
+
         public void ShowMainMenu()
         {
             _targetFadeAlpha = 0f;
             SetEndingQuoteAlpha(0f);
+            HideAllMenuPanels();
             _mainMenuPanel.SetActive(true);
-            _pauseMenuPanel.SetActive(false);
-            _settingsPanel.SetActive(false);
-            _creditsPanel.SetActive(false);
-            _victoryPanel.SetActive(false);
-            _hudPanel.SetActive(false);
+        }
+
+        public void ShowWorldSelectScreen()
+        {
+            RefreshWorldSelectState();
+            SetEndingQuoteAlpha(0f);
+            HideAllMenuPanels();
+            _worldSelectPanel.SetActive(true);
+        }
+
+        public void ShowWorld1CompleteScreen()
+        {
+            RefreshWorldSelectState();
+            SetEndingQuoteAlpha(0f);
+            HideAllMenuPanels();
+            _worldCompletePanel.SetActive(true);
+        }
+
+        public void ShowWorld2ComingSoonScreen()
+        {
+            SetEndingQuoteAlpha(0f);
+            HideAllMenuPanels();
+            _world2ComingSoonPanel.SetActive(true);
         }
 
         public void ShowGameplayHUD(string levelTitle, string hint, bool isControllingShadow)
         {
             SetEndingQuoteAlpha(0f);
-            _mainMenuPanel.SetActive(false);
-            _pauseMenuPanel.SetActive(false);
-            _settingsPanel.SetActive(false);
-            _creditsPanel.SetActive(false);
-            _victoryPanel.SetActive(false);
+            HideAllMenuPanels();
             _hudPanel.SetActive(true);
 
             UpdateHUDText(levelTitle, hint, isControllingShadow);
@@ -423,11 +644,7 @@ namespace MyShadowQuit.UI
         public void ShowVictoryScreen()
         {
             SetEndingQuoteAlpha(0f);
-            _hudPanel.SetActive(false);
-            _pauseMenuPanel.SetActive(false);
-            _settingsPanel.SetActive(false);
-            _creditsPanel.SetActive(false);
-            _mainMenuPanel.SetActive(false);
+            HideAllMenuPanels();
             _victoryPanel.SetActive(true);
         }
 
@@ -481,7 +698,8 @@ namespace MyShadowQuit.UI
             go.transform.SetParent(parent, false);
             RectTransform rt = go.GetComponent<RectTransform>();
             rt.anchoredPosition = pos;
-            rt.sizeDelta = customSize ?? new Vector2(340f, 62f);
+            Vector2 btnSize = customSize ?? new Vector2(340f, 60f);
+            rt.sizeDelta = btnSize;
 
             Image img = go.GetComponent<Image>();
             img.sprite = _btnNormal;
@@ -496,7 +714,7 @@ namespace MyShadowQuit.UI
             btn.transition = Selectable.Transition.SpriteSwap;
             btn.spriteState = st;
 
-            CreateText(go.transform, "Label", label, 24, Vector2.zero, new Vector2(310f, 54f), new Color(1f, 0.94f, 0.80f, 1f), TextAnchor.MiddleCenter);
+            CreateText(go.transform, "Label", label, 23, Vector2.zero, new Vector2(btnSize.x - 24f, btnSize.y - 8f), new Color(1f, 0.94f, 0.80f, 1f), TextAnchor.MiddleCenter);
 
             btn.onClick.AddListener(() =>
             {

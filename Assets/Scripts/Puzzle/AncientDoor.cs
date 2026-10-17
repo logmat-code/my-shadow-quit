@@ -52,6 +52,19 @@ namespace MyShadowQuit.Puzzle
             }
         }
 
+        public void ConfigureCustomSprites(string closedSpritePath, string openSpritePath)
+        {
+            EnsureInitialized();
+            Sprite customClosed = AssetRegistry.GetSprite(closedSpritePath);
+            Sprite customOpen = AssetRegistry.GetSprite(openSpritePath);
+            if (customClosed != null) _closedSprite = customClosed;
+            if (customOpen != null) _openSprite = customOpen;
+            if (_sr != null)
+            {
+                _sr.sprite = _isOpen ? _openSprite : _closedSprite;
+            }
+        }
+
         public void Configure(List<PuzzleNode> nodes, bool requireAll = true, bool latchOpen = true)
         {
             EnsureInitialized();

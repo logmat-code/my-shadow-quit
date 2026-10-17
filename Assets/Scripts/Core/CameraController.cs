@@ -13,6 +13,7 @@ namespace MyShadowQuit.Core
     public class CameraController : MonoBehaviour
     {
         public const float TargetAspectRatio = 16f / 9f;
+        public const float DefaultOrthoSize = 4.5f;
 
         [Header("Follow Settings")]
         [SerializeField] private float smoothTime = 0.16f;
@@ -29,6 +30,8 @@ namespace MyShadowQuit.Core
         private Vector3 _velocity;
         private float _shakeTimer;
         private float _shakeIntensity;
+        private float _targetOrthoSize = DefaultOrthoSize;
+        private float _zoomSpeed = 1.5f;
 
         private readonly List<Transform> _farLayer = new List<Transform>();
         private readonly List<Transform> _midLayer = new List<Transform>();
@@ -46,6 +49,20 @@ namespace MyShadowQuit.Core
             maxBounds = max;
         }
 
+        public void SetTargetZoom(float targetOrthoSize, float zoomSpeed = 1.2f)
+        {
+            _targetOrthoSize = Mathf.Clamp(targetOrthoSize, 2.5f, 6.0f);
+            _zoomSpeed = Mathf.Max(0.1f, zoomSpeed);
+        }
+
+        public void ResetZoom()
+        {
+            _targetOrthoSize = DefaultOrthoSize;
+            _zoomSpeed = 2.5f;
+            if (_cam == null) _cam = GetComponent<Camera>();
+            if (_cam != null) _cam.orthographicSize = DefaultOrthoSize;
+        }
+
         public void TriggerShake(float duration = 0.25f, float intensity = 0.12f)
         {
             _shakeTimer = duration;
@@ -56,7 +73,8 @@ namespace MyShadowQuit.Core
         {
             _cam = GetComponent<Camera>();
             _cam.orthographic = true;
-            _cam.orthographicSize = 4.5f; // 9 world units tall x 16 world units wide at 16:9
+            _cam.orthographicSize = DefaultOrthoSize; // 9 world units tall x 16 world units wide at 16:9
+            _targetOrthoSize = DefaultOrthoSize;
             _cam.backgroundColor = new Color(0.031f, 0.039f, 0.071f, 1f);
             _lastCamPos = transform.position;
 
@@ -149,7 +167,7 @@ namespace MyShadowQuit.Core
             Sprite midSp = AssetRegistry.GetSprite("Environment/parallax_mid", 16f);
             Sprite nearSp = AssetRegistry.GetSprite("Environment/parallax_near", 16f);
 
-            for (int i = -1; i <= 2; i++)
+            for (int i = -1; i <= 3; i++)
             {
                 float xPos = i * 16f;
                 _farLayer.Add(CreateLayerTile("ParallaxFar_" + i, farSp, new Vector3(xPos, 1.5f, 10f), -30, new Color(0.85f, 0.85f, 0.95f, 1f)));
@@ -239,6 +257,11 @@ namespace MyShadowQuit.Core
         private void LateUpdate()
         {
             EnsureLandscapeResolutionAndViewport(force: false);
+
+            if (_cam != null && Mathf.Abs(_cam.orthographicSize - _targetOrthoSize) > 0.005f)
+            {
+                _cam.orthographicSize = Mathf.MoveTowards(_cam.orthographicSize, _targetOrthoSize, Time.deltaTime * _zoomSpeed);
+            }
 
             if (_target != null)
             {
