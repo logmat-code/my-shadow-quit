@@ -53,6 +53,20 @@ namespace MyShadowQuit.Puzzle
             }
 
             _initialScale = transform.localScale;
+            EnsureShadowCollisionIgnored();
+        }
+
+        public void EnsureShadowCollisionIgnored()
+        {
+            if (!_shadowIgnored && _col != null)
+            {
+                ShadowController shadow = FindFirstObjectByType<ShadowController>();
+                if (shadow != null && shadow.Collider != null)
+                {
+                    Physics2D.IgnoreCollision(_col, shadow.Collider, true);
+                    _shadowIgnored = true;
+                }
+            }
         }
 
         public void ConfigureUnlockNodes(List<PuzzleNode> nodes, bool requireAll = true, bool latchOpen = true)

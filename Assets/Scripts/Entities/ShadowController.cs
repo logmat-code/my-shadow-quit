@@ -358,11 +358,30 @@ namespace MyShadowQuit.Entities
             _rb.linearVelocity = new Vector2(newVelX, Mathf.Max(newVelY, -11.5f));
         }
 
-        public bool TryPerformJumpForTest(bool isNewPress)
+        public void SetGroundedStateForTest(bool grounded)
         {
             if (_rb == null) _rb = GetComponent<Rigidbody2D>();
             if (_col == null) _col = GetComponent<BoxCollider2D>();
-            CheckGrounded();
+            _isGrounded = grounded;
+            if (grounded)
+            {
+                _coyoteTimer = coyoteTimeDuration;
+                _jumpsRemaining = MaxJumps;
+                if (_rb != null)
+                {
+                    _rb.linearVelocity = new Vector2(_rb.linearVelocity.x, 0f);
+                }
+            }
+            else
+            {
+                _coyoteTimer = 0f;
+            }
+        }
+
+        public bool TryPerformJumpForTest(bool isNewPress = true)
+        {
+            if (_rb == null) _rb = GetComponent<Rigidbody2D>();
+            if (_col == null) _col = GetComponent<BoxCollider2D>();
 
             float velY = _rb.linearVelocity.y;
             if (_isGrounded)
