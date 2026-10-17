@@ -3,6 +3,8 @@ using UnityEngine;
 using MyShadowQuit.Entities;
 using MyShadowQuit.Puzzle;
 using MyShadowQuit.UI;
+using MyShadowQuit.Cosmetics;
+using MyShadowQuit.Economy;
 
 namespace MyShadowQuit.Core
 {
@@ -33,6 +35,7 @@ namespace MyShadowQuit.Core
         private bool _isEndingSequenceActive;
         private bool _isWorld1Completed;
         private bool _isGameCompleted;
+        private bool _hasRestartedCurrentLevel;
         private Coroutine _endingCoroutine;
 
         public int CurrentLevelIndex => _currentLevelIndex;
@@ -163,6 +166,14 @@ namespace MyShadowQuit.Core
             _uiManager.OnRestartRequested += RestartCurrentLevel;
             _uiManager.OnMainMenuRequested -= OpenMainMenu;
             _uiManager.OnMainMenuRequested += OpenMainMenu;
+            _uiManager.OnShopRequested -= OpenShop;
+            _uiManager.OnShopRequested += OpenShop;
+
+            if (GetComponent<WalletService>() == null) gameObject.AddComponent<WalletService>();
+            if (GetComponent<InventoryService>() == null) gameObject.AddComponent<InventoryService>();
+            if (GetComponent<RewardService>() == null) gameObject.AddComponent<RewardService>();
+            if (GetComponent<SkinEquipmentService>() == null) gameObject.AddComponent<SkinEquipmentService>();
+            if (GetComponent<ShopTransactionService>() == null) gameObject.AddComponent<ShopTransactionService>();
 
             LevelExitPortal.OnLevelExitReached -= HandleLevelCompleted;
             LevelExitPortal.OnLevelExitReached += HandleLevelCompleted;
@@ -183,6 +194,10 @@ namespace MyShadowQuit.Core
         private void OnDestroy()
         {
             LevelExitPortal.OnLevelExitReached -= HandleLevelCompleted;
+            if (_uiManager != null)
+            {
+                _uiManager.OnShopRequested -= OpenShop;
+            }
         }
 
         private void Update()
@@ -289,6 +304,22 @@ namespace MyShadowQuit.Core
             }
         }
 
+        public void OpenShop()
+        {
+            StopEndingSequenceIfNeeded();
+            _isInMainMenu = true;
+            _isPaused = false;
+            Time.timeScale = 1f;
+            if (_audioManager != null) _audioManager.SetPauseDucking(false);
+            if (_uiManager != null) _uiManager.SetPauseMenuVisible(false);
+            if (_levelManager.Player != null) _levelManager.Player.SetControlActive(false);
+            if (_levelManager.Shadow != null) _levelManager.Shadow.SetControlActive(false);
+            if (_uiManager != null)
+            {
+                _uiManager.ShowShopScreen();
+            }
+        }
+
         public void ContinueSavedGame()
         {
             SelectWorldAndStart(0, continueSavedProgress: true);
@@ -351,13 +382,18 @@ namespace MyShadowQuit.Core
             SelectWorldAndStart(0, false);
         }
 
-        public void LoadLevel(int index)
+        public void LoadLevel(int index, bool isRestart = false)
         {
             StopEndingSequenceIfNeeded();
             _currentLevelIndex = Mathf.Clamp(index, 0, _levelManager.TotalLevels - 1);
             _isControllingShadow = false;
             _isPaused = false;
             Time.timeScale = 1f;
+
+            if (!isRestart)
+            {
+                _hasRestartedCurrentLevel = false;
+            }
 
             if (!_isInMainMenu)
             {
@@ -393,11 +429,12 @@ namespace MyShadowQuit.Core
 
         public void RestartCurrentLevel()
         {
+            _hasRestartedCurrentLevel = true;
             _isPaused = false;
             Time.timeScale = 1f;
             if (_audioManager != null) _audioManager.SetPauseDucking(false);
             if (_uiManager != null) _uiManager.SetPauseMenuVisible(false);
-            LoadLevel(_currentLevelIndex);
+            LoadLevel(_currentLevelIndex, isRestart: true);
         }
 
         public void SwitchActiveCharacter()
@@ -489,6 +526,21 @@ namespace MyShadowQuit.Core
         {
             WorldProgressSave.MarkLevelCompleted(ActiveWorldId, _currentLevelIndex, _levelManager.TotalLevels);
 
+            if (RewardService.Instance != null)
+            {
+                int earned = RewardService.Instance.EvaluateAndClaimLevelRewards(
+                    ActiveWorldId,
+                    _currentLevelIndex,
+                    !_hasRestartedCurrentLevel,
+                    out string summary
+                );
+
+                if (earned > 0 && _uiManager != null)
+                {
+                    _uiManager.ShowTemporaryRewardNotification(summary);
+                }
+            }
+
             if (_currentLevelIndex + 1 < _levelManager.TotalLevels)
             {
                 LoadLevel(_currentLevelIndex + 1);
@@ -514,6 +566,15 @@ namespace MyShadowQuit.Core
             _isControllingShadow = false;
 
             WorldProgressSave.MarkWorldCompleted(ActiveWorldId, _levelManager.TotalLevels);
+
+            if (RewardService.Instance != null)
+            {
+                int worldEarned = RewardService.Instance.EvaluateAndClaimWorldClearReward(ActiveWorldId, out string worldSummary);
+                if (worldEarned > 0 && _uiManager != null)
+                {
+                    _uiManager.ShowTemporaryRewardNotification(worldSummary);
+                }
+            }
 
             if (_levelManager.Player != null) _levelManager.Player.SetControlActive(false);
             if (_levelManager.Shadow != null) _levelManager.Shadow.SetControlActive(false);

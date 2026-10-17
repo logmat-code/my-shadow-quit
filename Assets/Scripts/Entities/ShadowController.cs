@@ -1,6 +1,7 @@
 using UnityEngine;
 using MyShadowQuit.Core;
 using MyShadowQuit.Puzzle;
+using MyShadowQuit.Cosmetics;
 
 namespace MyShadowQuit.Entities
 {
@@ -112,7 +113,10 @@ namespace MyShadowQuit.Entities
 
             if (_idleSprites == null || _idleSprites.Length == 0)
             {
-                LoadSprites();
+                string equipped = SkinEquipmentService.Instance != null
+                    ? SkinEquipmentService.Instance.EquippedShadowSkinId
+                    : PlayerPrefs.GetString(SkinEquipmentService.KeyEquippedShadow, "shadow_original");
+                ApplySkin(equipped);
             }
 
             if (_doubleJumpPulseRenderer == null || _doubleJumpParticles == null)
@@ -121,18 +125,35 @@ namespace MyShadowQuit.Entities
             }
         }
 
-        private void LoadSprites()
+        private string _activeSkinId = "shadow_original";
+        public string ActiveSkinId => _activeSkinId;
+
+        public void ApplySkin(string skinId)
         {
-            _idleSprites = AssetRegistry.GetAnimationFrames("Characters/shadow_idle", 4);
-            _moveSprites = AssetRegistry.GetAnimationFrames("Characters/shadow_move", 6);
-            _jumpSprites = AssetRegistry.GetAnimationFrames("Characters/shadow_jump", 2);
-            _separateSprites = AssetRegistry.GetAnimationFrames("Characters/shadow_separate", 4);
-            _reconnectSprites = AssetRegistry.GetAnimationFrames("Characters/shadow_reconnect", 4);
-            _interactSprites = AssetRegistry.GetAnimationFrames("Characters/shadow_interact", 2);
+            if (string.IsNullOrEmpty(skinId)) skinId = "shadow_original";
+            _activeSkinId = skinId;
+
+            bool isOriginal = (skinId == "shadow_original");
+            string prefix = isOriginal ? "Characters/shadow" : $"Skins/Shadow/{skinId}";
+            string sep = isOriginal ? "_" : "/";
+
+            _idleSprites = AssetRegistry.GetAnimationFrames(prefix + sep + "idle", 4);
+            _moveSprites = AssetRegistry.GetAnimationFrames(prefix + sep + "move", 6);
+            _jumpSprites = AssetRegistry.GetAnimationFrames(prefix + sep + "jump", 2);
+            _separateSprites = AssetRegistry.GetAnimationFrames(prefix + sep + "separate", 4);
+            _reconnectSprites = AssetRegistry.GetAnimationFrames(prefix + sep + "reconnect", 4);
+            _interactSprites = AssetRegistry.GetAnimationFrames(prefix + sep + "interact", 2);
 
             if (_idleSprites != null && _idleSprites.Length > 0 && _sr != null)
             {
                 _sr.sprite = _idleSprites[0];
+            }
+
+            // Tint double-jump pulse effect to match the shadow's skin palette
+            SkinDefinition skinDef = SkinCatalog.GetSkin(skinId);
+            if (skinDef != null && _doubleJumpPulseRenderer != null)
+            {
+                _doubleJumpPulseRenderer.color = new Color(skinDef.ThemeColor.r, skinDef.ThemeColor.g, skinDef.ThemeColor.b, 0.72f);
             }
         }
 

@@ -11,6 +11,9 @@ using MyShadowQuit.Core;
 using MyShadowQuit.Entities;
 using MyShadowQuit.Puzzle;
 using MyShadowQuit.UI;
+using MyShadowQuit.Cosmetics;
+using MyShadowQuit.Economy;
+using MyShadowQuit.Monetization.IAP;
 
 namespace MyShadowQuit.EditorTools
 {
@@ -1010,7 +1013,186 @@ namespace MyShadowQuit.EditorTools
                 {
                     throw new Exception($"[Verification Failed] AudioManager pause ducking restore invalid: Music={audioTest.PauseMusicScale}, SFX/Fire={audioTest.PauseSfxScale}");
                 }
-                UnityEngine.Object.DestroyImmediate(audioTest);
+                // =====================================================================
+                // 11. Verify SHOP, 15 SKINS CATALOG, WALLET, INVENTORY, REWARDS & MONETIZATION
+                // =====================================================================
+                string[] shopRequiredSprites =
+                {
+                    "Assets/Resources/Sprites/UI/coin_soul_icon.png",
+                    "Assets/Resources/Sprites/UI/shop_pedestal.png",
+                    "Assets/Resources/Sprites/UI/shop_card_frame_normal.png",
+                    "Assets/Resources/Sprites/UI/shop_card_frame_selected.png",
+                    "Assets/Resources/Sprites/UI/shop_card_frame_equipped.png"
+                };
+                foreach (string sPath in shopRequiredSprites)
+                {
+                    if (!File.Exists(sPath))
+                    {
+                        throw new Exception($"[Verification Failed] Missing Shop UI sprite asset: {sPath}");
+                    }
+                }
+
+                // Verify 15 skin preview icon sprites exist on disk
+                string[] skinIconNames =
+                {
+                    "player_original", "player_ashen_knight", "player_forgotten_guardian", "player_ember_wanderer", "player_void_traveler",
+                    "shadow_original", "shadow_violet_phantom", "shadow_crimson_wraith", "shadow_spectral_echo", "shadow_abyssal_shade",
+                    "torch_original_flame", "torch_blue_soul", "torch_violet_fire", "torch_emerald_ember", "torch_crimson_inferno"
+                };
+                foreach (string skinId in skinIconNames)
+                {
+                    string iconPath = $"Assets/Resources/Sprites/Skins/Icons/{skinId}_icon.png";
+                    if (!File.Exists(iconPath))
+                    {
+                        throw new Exception($"[Verification Failed] Missing skin preview icon: {iconPath}");
+                    }
+                }
+
+                // Verify SkinCatalog has exactly 15 skins (5 per category)
+                if (SkinCatalog.GetAllSkins().Count != 15)
+                {
+                    throw new Exception($"[Verification Failed] Expected 15 skins in SkinCatalog, got {SkinCatalog.GetAllSkins().Count}!");
+                }
+                if (SkinCatalog.GetSkins(SkinType.Player).Count != 5 ||
+                    SkinCatalog.GetSkins(SkinType.Shadow).Count != 5 ||
+                    SkinCatalog.GetSkins(SkinType.Torch).Count != 5)
+                {
+                    throw new Exception("[Verification Failed] SkinCatalog must have exactly 5 Player, 5 Shadow, and 5 Torch skins!");
+                }
+
+                // Verify default skins are free and flagged as default
+                SkinDefinition defPlayer = SkinCatalog.GetSkin("player_original");
+                SkinDefinition defShadow = SkinCatalog.GetSkin("shadow_original");
+                SkinDefinition defTorch = SkinCatalog.GetSkin("torch_original_flame");
+                if (defPlayer == null || defPlayer.Price != 0 || !defPlayer.IsDefault ||
+                    defShadow == null || defShadow.Price != 0 || !defShadow.IsDefault ||
+                    defTorch == null || defTorch.Price != 0 || !defTorch.IsDefault)
+                {
+                    throw new Exception("[Verification Failed] Default original skins must be free (Price 0) and flagged IsDefault = true!");
+                }
+
+                // Verify WalletService economy logic
+                WalletService walletTest = testObj.AddComponent<WalletService>();
+                PlayerPrefs.DeleteKey(WalletService.KeySoulCoinsBalance);
+                walletTest.LoadBalance();
+                if (walletTest.Balance != 0)
+                {
+                    throw new Exception("[Verification Failed] Initial wallet balance must be 0!");
+                }
+                walletTest.AddCoins(500, "Test Coins");
+                if (walletTest.Balance != 500 || !walletTest.CanAfford(300) || walletTest.CanAfford(600))
+                {
+                    throw new Exception($"[Verification Failed] Wallet balance calculation error: balance={walletTest.Balance}!");
+                }
+                if (!walletTest.SpendCoins(300, "Test Spend") || walletTest.Balance != 200)
+                {
+                    throw new Exception($"[Verification Failed] Wallet spend error: balance={walletTest.Balance}!");
+                }
+                if (walletTest.SpendCoins(500, "Should Fail") || walletTest.Balance != 200)
+                {
+                    throw new Exception("[Verification Failed] Wallet allowed overspending! Non-negative balance guarantee violated.");
+                }
+
+                // Verify InventoryService ownership and auto-unlocked defaults
+                InventoryService invTest = testObj.AddComponent<InventoryService>();
+                PlayerPrefs.DeleteKey(InventoryService.KeyOwnedSkins);
+                invTest.LoadInventory();
+                if (!invTest.IsSkinOwned("player_original") || !invTest.IsSkinOwned("shadow_original") || !invTest.IsSkinOwned("torch_original_flame"))
+                {
+                    throw new Exception("[Verification Failed] Default original skins must always be owned in Inventory!");
+                }
+                if (invTest.IsSkinOwned("player_ashen_knight"))
+                {
+                    throw new Exception("[Verification Failed] Non-default skin should not be owned initially!");
+                }
+                invTest.UnlockSkin("player_ashen_knight");
+                if (!invTest.IsSkinOwned("player_ashen_knight"))
+                {
+                    throw new Exception("[Verification Failed] UnlockSkin failed to register ownership!");
+                }
+
+                // Verify RewardService non-repeatable rewards & exploit protection
+                RewardService rewTest = testObj.AddComponent<RewardService>();
+                rewTest.ResetClaimedRewards();
+                int r1 = rewTest.EvaluateAndClaimLevelRewards("world_1", 0, noRestartUsed: true, out string rMsg1);
+                if (r1 != 125 || walletTest.Balance != 325) // 200 + 100 + 25
+                {
+                    throw new Exception($"[Verification Failed] Level 1 first-clear reward mismatch: expected 125, got {r1}!");
+                }
+                // Duplicate replay must give 0
+                int r2 = rewTest.EvaluateAndClaimLevelRewards("world_1", 0, noRestartUsed: true, out string rMsg2);
+                if (r2 != 0)
+                {
+                    throw new Exception("[Verification Failed] Replaying completed level awarded duplicate coins! Anti-farming exploit protection failed.");
+                }
+                // World clear reward
+                int rW = rewTest.EvaluateAndClaimWorldClearReward("world_1", out string rwMsg);
+                if (rW != 300)
+                {
+                    throw new Exception($"[Verification Failed] World clear reward mismatch: expected 300, got {rW}!");
+                }
+                int rW2 = rewTest.EvaluateAndClaimWorldClearReward("world_1", out string rwMsg2);
+                if (rW2 != 0)
+                {
+                    throw new Exception("[Verification Failed] Re-triggering world clear awarded duplicate coins!");
+                }
+
+                // Verify SkinEquipmentService persistence & entity update
+                SkinEquipmentService equipTest = testObj.AddComponent<SkinEquipmentService>();
+                equipTest.LoadEquippedSkins();
+                if (equipTest.EquippedPlayerSkinId != "player_original")
+                {
+                    throw new Exception($"[Verification Failed] Default equipped player skin should be player_original, got {equipTest.EquippedPlayerSkinId}!");
+                }
+                equipTest.EquipSkin("player_ashen_knight");
+                if (equipTest.EquippedPlayerSkinId != "player_ashen_knight")
+                {
+                    throw new Exception("[Verification Failed] EquipSkin failed to update equipped player skin!");
+                }
+
+                // Verify Shop UI screen, tabs, and skin cards
+                uiTest.ShowShopScreen();
+                if (!uiTest.IsShopScreenVisible)
+                {
+                    throw new Exception("[Verification Failed] ShowShopScreen failed to display Shop screen!");
+                }
+                if (uiTest.ShopCardCount != 5)
+                {
+                    throw new Exception($"[Verification Failed] Expected 5 skin cards in Shop, got {uiTest.ShopCardCount}!");
+                }
+                uiTest.SwitchShopCategory(1); // Shadow
+                if (uiTest.ShopSelectedTab != 1)
+                {
+                    throw new Exception("[Verification Failed] SwitchShopCategory failed to switch to Shadow tab!");
+                }
+                uiTest.SwitchShopCategory(2); // Torch
+                if (uiTest.ShopSelectedTab != 2)
+                {
+                    throw new Exception("[Verification Failed] SwitchShopCategory failed to switch to Torch tab!");
+                }
+                uiTest.SelectShopSkin(3);
+                if (uiTest.ShopSelectedSkinIndex != 3)
+                {
+                    throw new Exception("[Verification Failed] SelectShopSkin failed to select skin card 3!");
+                }
+
+                // Verify Monetization Adapters
+                WebGLMonetizationAdapter webglAdapter = new WebGLMonetizationAdapter();
+                if (webglAdapter.IsPlatformPurchasingSupported)
+                {
+                    throw new Exception("[Verification Failed] WebGLMonetizationAdapter must report IsPlatformPurchasingSupported == false!");
+                }
+                GooglePlayBillingAdapter playAdapter = new GooglePlayBillingAdapter();
+                if (!playAdapter.IsPlatformPurchasingSupported)
+                {
+                    throw new Exception("[Verification Failed] GooglePlayBillingAdapter must report IsPlatformPurchasingSupported == true!");
+                }
+
+                // Clean up test services
+                UnityEngine.Object.DestroyImmediate(walletTest);
+                UnityEngine.Object.DestroyImmediate(invTest);
+                UnityEngine.Object.DestroyImmediate(rewTest);
+                UnityEngine.Object.DestroyImmediate(equipTest);
 
                 WorldProgressSave.ClearWorldProgress("world_1");
             }

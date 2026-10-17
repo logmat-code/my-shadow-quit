@@ -1,6 +1,7 @@
 using UnityEngine;
 using MyShadowQuit.Core;
 using MyShadowQuit.Puzzle;
+using MyShadowQuit.Cosmetics;
 
 namespace MyShadowQuit.Entities
 {
@@ -91,22 +92,35 @@ namespace MyShadowQuit.Entities
 
             if (_idleSprites == null || _idleSprites.Length == 0)
             {
-                LoadSprites();
+                string equipped = SkinEquipmentService.Instance != null
+                    ? SkinEquipmentService.Instance.EquippedPlayerSkinId
+                    : PlayerPrefs.GetString(SkinEquipmentService.KeyEquippedPlayer, "player_original");
+                ApplySkin(equipped);
             }
         }
 
-        private void LoadSprites()
-        {
-            _idleSprites = AssetRegistry.GetAnimationFrames("Characters/protagonist_idle", 4);
-            _runSprites = AssetRegistry.GetAnimationFrames("Characters/protagonist_run", 6);
-            _torchIdleSprites = AssetRegistry.GetAnimationFrames("Characters/protagonist_torch_idle", 4);
-            _torchRunSprites = AssetRegistry.GetAnimationFrames("Characters/protagonist_torch_run", 6);
-            _jumpSprites = AssetRegistry.GetAnimationFrames("Characters/protagonist_jump", 2);
-            _fallSprites = AssetRegistry.GetAnimationFrames("Characters/protagonist_fall", 2);
-            _landSprites = AssetRegistry.GetAnimationFrames("Characters/protagonist_land", 2);
-            _interactSprites = AssetRegistry.GetAnimationFrames("Characters/protagonist_interact", 2);
+        private string _activeSkinId = "player_original";
+        public string ActiveSkinId => _activeSkinId;
 
-            if (_idleSprites != null && _idleSprites.Length > 0)
+        public void ApplySkin(string skinId)
+        {
+            if (string.IsNullOrEmpty(skinId)) skinId = "player_original";
+            _activeSkinId = skinId;
+
+            bool isOriginal = (skinId == "player_original");
+            string prefix = isOriginal ? "Characters/protagonist" : $"Skins/Player/{skinId}";
+            string sep = isOriginal ? "_" : "/";
+
+            _idleSprites = AssetRegistry.GetAnimationFrames(prefix + sep + "idle", 4);
+            _runSprites = AssetRegistry.GetAnimationFrames(prefix + sep + "run", 6);
+            _torchIdleSprites = AssetRegistry.GetAnimationFrames(prefix + sep + "torch_idle", 4);
+            _torchRunSprites = AssetRegistry.GetAnimationFrames(prefix + sep + "torch_run", 6);
+            _jumpSprites = AssetRegistry.GetAnimationFrames(prefix + sep + "jump", 2);
+            _fallSprites = AssetRegistry.GetAnimationFrames(prefix + sep + "fall", 2);
+            _landSprites = AssetRegistry.GetAnimationFrames(prefix + sep + "land", 2);
+            _interactSprites = AssetRegistry.GetAnimationFrames(prefix + sep + "interact", 2);
+
+            if (_idleSprites != null && _idleSprites.Length > 0 && _sr != null)
             {
                 _sr.sprite = _idleSprites[0];
             }

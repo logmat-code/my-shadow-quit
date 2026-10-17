@@ -2,6 +2,7 @@ using System;
 using UnityEngine;
 using MyShadowQuit.Core;
 using MyShadowQuit.Puzzle;
+using MyShadowQuit.Cosmetics;
 
 namespace MyShadowQuit.Entities
 {
@@ -53,14 +54,45 @@ namespace MyShadowQuit.Entities
             }
             _torchRenderer.sortingOrder = 15;
 
-            _flameFrames = AssetRegistry.GetAnimationFrames("Torch/torch_item", 4);
-            if (_flameFrames != null && _flameFrames.Length > 0)
+            CreateLightHalo();
+            CreateEmberParticles();
+
+            string equipped = SkinEquipmentService.Instance != null
+                ? SkinEquipmentService.Instance.EquippedTorchSkinId
+                : PlayerPrefs.GetString(SkinEquipmentService.KeyEquippedTorch, "torch_original_flame");
+            ApplySkin(equipped);
+        }
+
+        private string _activeSkinId = "torch_original_flame";
+        public string ActiveSkinId => _activeSkinId;
+
+        public void ApplySkin(string skinId)
+        {
+            if (string.IsNullOrEmpty(skinId)) skinId = "torch_original_flame";
+            _activeSkinId = skinId;
+
+            bool isOriginal = (skinId == "torch_original_flame");
+            string prefix = isOriginal ? "Torch/torch_item" : $"Skins/Torch/{skinId}/flame";
+
+            _flameFrames = AssetRegistry.GetAnimationFrames(prefix, 4);
+            if (_flameFrames != null && _flameFrames.Length > 0 && _torchRenderer != null)
             {
                 _torchRenderer.sprite = _flameFrames[0];
             }
 
-            CreateLightHalo();
-            CreateEmberParticles();
+            SkinDefinition def = SkinCatalog.GetSkin(skinId);
+            if (def != null)
+            {
+                if (_haloRenderer != null)
+                {
+                    _haloRenderer.color = def.HaloColor;
+                }
+                if (_emberParticles != null)
+                {
+                    var main = _emberParticles.main;
+                    main.startColor = def.EmberColor;
+                }
+            }
         }
 
         private void CreateLightHalo()

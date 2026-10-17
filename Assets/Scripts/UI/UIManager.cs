@@ -5,6 +5,8 @@ using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.EventSystems;
 using MyShadowQuit.Core;
+using MyShadowQuit.Cosmetics;
+using MyShadowQuit.Economy;
 
 namespace MyShadowQuit.UI
 {
@@ -20,6 +22,8 @@ namespace MyShadowQuit.UI
     /// 3. LEVEL SELECT: Full-screen 16:9 interactive pixel-art Map of the Ruins of World 1 with 10 bespoke
     ///    architectural nodes (01 Awakening through 10 The First Dawn), connected runic pathways,
     ///    Completed/Available/Locked/Selected visual states, mouse & keyboard navigation, and Level Inspector panel.
+    /// 4. SHOP / RELICS CHAMBER: Full cosmetic skin store with 15 skins, animated live preview stage,
+    ///    Soul Coins balance, tabbed categories (Player, Shadow, Torch), and debounced transactions.
     /// </summary>
     public class UIManager : MonoBehaviour
     {
@@ -35,6 +39,7 @@ namespace MyShadowQuit.UI
         public event Action OnRestartRequested;
         public event Action OnMainMenuRequested;
         public event Action OnPauseRequested;
+        public event Action OnShopRequested;
 
         public enum ActiveMenuScreen
         {
@@ -48,7 +53,8 @@ namespace MyShadowQuit.UI
             World1Complete,
             World2ComingSoon,
             Victory,
-            NewGameConfirm
+            NewGameConfirm,
+            Shop
         }
 
         private Canvas _canvas;
@@ -64,6 +70,7 @@ namespace MyShadowQuit.UI
         private GameObject _worldCompletePanel;
         private GameObject _world2ComingSoonPanel;
         private GameObject _victoryPanel;
+        private GameObject _shopPanel;
 
         private ActiveMenuScreen _currentScreen = ActiveMenuScreen.None;
         private ActiveMenuScreen _screenBeforeSubPanel = ActiveMenuScreen.Home;
@@ -147,6 +154,46 @@ namespace MyShadowQuit.UI
         private Text _inspectorPlayButtonLabel;
         private int _selectedMapLevelIndex;
 
+        // Shop UI elements
+        private Text _shopCoinBalanceText;
+        private readonly Button[] _shopCategoryTabButtons = new Button[3];
+        private readonly Image[] _shopCategoryTabImages = new Image[3];
+        private readonly Text[] _shopCategoryTabTexts = new Text[3];
+        private int _shopSelectedTab = 0; // 0 = Player, 1 = Shadow, 2 = Torch
+
+        private class ShopSkinCardUI
+        {
+            public Button CardButton;
+            public Image CardBgImage;
+            public Image CardIconImage;
+            public Text CardTitleText;
+            public Text CardRarityText;
+            public Text CardStatusText;
+            public Image CardCoinIcon;
+        }
+        private readonly List<ShopSkinCardUI> _shopCards = new List<ShopSkinCardUI>();
+        private int _shopSelectedSkinIndex = 0; // 0..4
+
+        // Shop Preview Stage
+        private Image _shopPreviewImage;
+        private Image _shopPreviewHaloImage;
+        private Text _shopPreviewTitleText;
+        private Text _shopPreviewRarityText;
+        private Text _shopPreviewLoreText;
+        private Button _shopActionButton;
+        private Image _shopActionBtnImage;
+        private Text _shopActionBtnText;
+        private int _shopPreviewMode = 0; // 0 = Idle, 1 = Move/Run, 2 = Jump
+        private readonly Button[] _shopPreviewModeButtons = new Button[3];
+        private readonly Text[] _shopPreviewModeTexts = new Text[3];
+        private Text _shopToastText;
+        private Coroutine _shopToastCoroutine;
+
+        // Gameplay Reward Toast Banner
+        private GameObject _rewardToastBanner;
+        private Text _rewardToastText;
+        private Coroutine _rewardToastCoroutine;
+
         // Sprites & Fonts
         private Font _uiFont;
         private Sprite _btnNormal;
@@ -178,9 +225,16 @@ namespace MyShadowQuit.UI
         private Sprite _btnPauseHudHover;
         private Sprite _btnPauseHudPressed;
 
+        private Sprite _coinSoulIconSprite;
+        private Sprite _shopPedestalSprite;
+        private Sprite _shopCardFrameNormal;
+        private Sprite _shopCardFrameSelected;
+        private Sprite _shopCardFrameEquipped;
+
         private Sprite[] _protagonistIdleFrames;
         private Sprite[] _shadowIdleFrames;
         private Sprite[] _torchFlameFrames;
+        private Sprite[] _shopCachedPreviewFrames;
 
         private float _targetFadeAlpha;
         private float _fadeSpeed = 2.5f;
@@ -227,10 +281,12 @@ namespace MyShadowQuit.UI
         public bool IsWorld2ComingSoonScreenVisible => _world2ComingSoonPanel != null && _world2ComingSoonPanel.activeSelf;
         public bool IsVictoryScreenVisible => _victoryPanel != null && _victoryPanel.activeSelf;
         public bool IsNewGameConfirmVisible => _newGameConfirmModal != null && _newGameConfirmModal.activeSelf;
+        public bool IsShopScreenVisible => _shopPanel != null && _shopPanel.activeSelf;
 
         public GameObject MainMenuPanel => _mainMenuPanel;
         public GameObject WorldSelectPanel => _worldSelectPanel;
         public GameObject LevelSelectPanel => _levelSelectPanel;
+        public GameObject ShopPanel => _shopPanel;
         public GameObject PauseMenuPanel => _pauseMenuPanel;
         public GameObject PauseMenuContainer => _pauseMenuContainer;
         public Button InGamePauseButton => _inGamePauseButton;
@@ -240,6 +296,9 @@ namespace MyShadowQuit.UI
         public int SelectedMapLevelIndex => _selectedMapLevelIndex;
         public int MapNodeCount => _mapNodes.Count;
         public int PauseButtonCount => _pauseMenuButtons.Count;
+        public int ShopSelectedTab => _shopSelectedTab;
+        public int ShopSelectedSkinIndex => _shopSelectedSkinIndex;
+        public int ShopCardCount => _shopCards.Count;
 
         private void Awake()
         {
@@ -248,7 +307,7 @@ namespace MyShadowQuit.UI
 
         public void EnsureInitialized()
         {
-            if (_canvas != null && _mainMenuPanel != null && _worldSelectPanel != null && _levelSelectPanel != null)
+            if (_canvas != null && _mainMenuPanel != null && _worldSelectPanel != null && _levelSelectPanel != null && _shopPanel != null)
             {
                 return;
             }
@@ -298,6 +357,12 @@ namespace MyShadowQuit.UI
             _btnPauseHudNormal = AssetRegistry.GetSprite("UI/btn_pause_hud_normal", 32f);
             _btnPauseHudHover = AssetRegistry.GetSprite("UI/btn_pause_hud_hover", 32f) ?? _btnPauseHudNormal;
             _btnPauseHudPressed = AssetRegistry.GetSprite("UI/btn_pause_hud_pressed", 32f) ?? _btnPauseHudNormal;
+
+            _coinSoulIconSprite = AssetRegistry.GetSprite("UI/coin_soul_icon", 32f);
+            _shopPedestalSprite = AssetRegistry.GetSprite("UI/shop_pedestal", 32f);
+            _shopCardFrameNormal = AssetRegistry.GetSprite("UI/shop_card_frame_normal", 32f) ?? _panelSprite;
+            _shopCardFrameSelected = AssetRegistry.GetSprite("UI/shop_card_frame_selected", 32f) ?? _btnSelected;
+            _shopCardFrameEquipped = AssetRegistry.GetSprite("UI/shop_card_frame_equipped", 32f) ?? _btnSelected;
 
             _protagonistIdleFrames = AssetRegistry.GetAnimationFrames("Characters/protagonist_idle", 4);
             _shadowIdleFrames = AssetRegistry.GetAnimationFrames("Characters/shadow_idle", 4);
@@ -356,6 +421,7 @@ namespace MyShadowQuit.UI
             BuildMainMenu(canvasObj.transform);
             BuildWorldSelectMenu(canvasObj.transform);
             BuildLevelSelectMapMenu(canvasObj.transform);
+            BuildShopMenu(canvasObj.transform);
             BuildPauseMenu(canvasObj.transform);
             BuildSettingsMenu(canvasObj.transform);
             BuildCreditsMenu(canvasObj.transform);
@@ -394,6 +460,16 @@ namespace MyShadowQuit.UI
             bottomBar.GetComponent<Image>().color = new Color(0.04f, 0.05f, 0.10f, 0.88f);
 
             _hintText = CreateText(bottomBar.transform, "HintText", "", 25, Vector2.zero, new Vector2(1420f, 54f), new Color(1f, 0.92f, 0.72f, 1f), TextAnchor.MiddleCenter);
+
+            // Center-top floating reward toast notification for Soul Coins
+            _rewardToastBanner = CreateImagePanel(_hudPanel.transform, "RewardToastBanner", new Vector2(0f, 380f), new Vector2(560f, 68f), _modalFrameSprite);
+            _rewardToastBanner.GetComponent<Image>().color = new Color(0.08f, 0.07f, 0.16f, 0.95f);
+            if (_coinSoulIconSprite != null)
+            {
+                CreateSpriteElement(_rewardToastBanner.transform, "RewardToastCoinIcon", _coinSoulIconSprite, new Vector2(-230f, 0f), new Vector2(36f, 36f));
+            }
+            _rewardToastText = CreateText(_rewardToastBanner.transform, "RewardToastText", "+100 SOUL COINS", 22, new Vector2(20f, 0f), new Vector2(460f, 50f), new Color(1f, 0.86f, 0.35f, 1f), TextAnchor.MiddleCenter);
+            _rewardToastBanner.SetActive(false);
         }
 
         // ====================================================================
@@ -479,16 +555,16 @@ namespace MyShadowQuit.UI
             CreateText(menuColumn.transform, "MenuColumnHeader", "SANCTUARY GATE", 24, new Vector2(0f, 310f), new Vector2(420f, 38f), new Color(1f, 0.82f, 0.36f, 1f), TextAnchor.MiddleCenter);
             CreateSpriteElement(menuColumn.transform, "MenuColumnDivider", _stoneDividerSprite, new Vector2(0f, 276f), new Vector2(380f, 24f));
 
-            _homeContinueButton = CreateMenuButton(menuColumn.transform, "CONTINUE", new Vector2(0f, 200f), () =>
+            _homeContinueButton = CreateMenuButton(menuColumn.transform, "CONTINUE", new Vector2(0f, 215f), () =>
             {
                 if (!WorldProgressSave.HasSavedProgress("world_1")) return;
                 TransitionToAction(() => OnContinueRequested?.Invoke());
-            }, new Vector2(380f, 64f));
+            }, new Vector2(380f, 56f));
             _homeContinueBtnImage = _homeContinueButton.GetComponent<Image>();
             _homeContinueBtnLabel = _homeContinueButton.GetComponentInChildren<Text>();
             _homeMenuButtons.Add(_homeContinueButton);
 
-            Button newGameBtn = CreateMenuButton(menuColumn.transform, "NEW GAME", new Vector2(0f, 118f), () =>
+            Button newGameBtn = CreateMenuButton(menuColumn.transform, "NEW GAME", new Vector2(0f, 145f), () =>
             {
                 if (WorldProgressSave.HasSavedProgress("world_1"))
                 {
@@ -498,45 +574,55 @@ namespace MyShadowQuit.UI
                 {
                     TransitionToAction(() => OnNewGameRequested?.Invoke());
                 }
-            }, new Vector2(380f, 64f));
+            }, new Vector2(380f, 56f));
             _homeMenuButtons.Add(newGameBtn);
 
-            Button worldSelectBtn = CreateMenuButton(menuColumn.transform, "WORLD SELECT", new Vector2(0f, 36f), () =>
+            Button worldSelectBtn = CreateMenuButton(menuColumn.transform, "WORLD SELECT", new Vector2(0f, 75f), () =>
             {
                 TransitionToAction(() =>
                 {
                     OnWorldSelectRequested?.Invoke();
                     ShowWorldSelectScreen();
                 });
-            }, new Vector2(380f, 64f));
+            }, new Vector2(380f, 56f));
             _homeMenuButtons.Add(worldSelectBtn);
 
-            Button settingsBtn = CreateMenuButton(menuColumn.transform, "SETTINGS", new Vector2(0f, -46f), () =>
+            Button shopBtn = CreateMenuButton(menuColumn.transform, "SHOP", new Vector2(0f, 5f), () =>
+            {
+                TransitionToAction(() =>
+                {
+                    OnShopRequested?.Invoke();
+                    ShowShopScreen();
+                });
+            }, new Vector2(380f, 56f));
+            _homeMenuButtons.Add(shopBtn);
+
+            Button settingsBtn = CreateMenuButton(menuColumn.transform, "SETTINGS", new Vector2(0f, -65f), () =>
             {
                 _screenBeforeSubPanel = ActiveMenuScreen.Home;
                 ShowSubPanel(_settingsPanel);
-            }, new Vector2(380f, 64f));
+            }, new Vector2(380f, 56f));
             _homeMenuButtons.Add(settingsBtn);
 
-            Button creditsBtn = CreateMenuButton(menuColumn.transform, "CREDITS", new Vector2(0f, -128f), () =>
+            Button creditsBtn = CreateMenuButton(menuColumn.transform, "CREDITS", new Vector2(0f, -135f), () =>
             {
                 _screenBeforeSubPanel = ActiveMenuScreen.Home;
                 ShowSubPanel(_creditsPanel);
-            }, new Vector2(380f, 64f));
+            }, new Vector2(380f, 56f));
             _homeMenuButtons.Add(creditsBtn);
 
             // Platform-aware QUIT button: hidden in WebGL browser builds so it never attempts to close the browser tab
             bool isWebGL = Application.platform == RuntimePlatform.WebGLPlayer;
             if (!isWebGL)
             {
-                Button quitBtn = CreateMenuButton(menuColumn.transform, "QUIT", new Vector2(0f, -210f), () =>
+                Button quitBtn = CreateMenuButton(menuColumn.transform, "QUIT", new Vector2(0f, -205f), () =>
                 {
 #if UNITY_EDITOR
                     UnityEditor.EditorApplication.isPlaying = false;
 #else
                     Application.Quit();
 #endif
-                }, new Vector2(380f, 64f));
+                }, new Vector2(380f, 56f));
                 _homeMenuButtons.Add(quitBtn);
             }
         }
@@ -1161,7 +1247,503 @@ namespace MyShadowQuit.UI
         }
 
         // ====================================================================
-        // 5. PAUSE, SETTINGS, CREDITS, WORLD 1 COMPLETE & WORLD 2 COMING SOON
+        // 5. SHOP — CHAMBER OF RELICS (1920x1080 Landscape)
+        // ====================================================================
+        private void BuildShopMenu(Transform parent)
+        {
+            _shopPanel = CreateFullScreenContainer(parent, "ShopPanel");
+
+            // Background
+            GameObject bgObj = CreateSpriteElement(_shopPanel.transform, "ShopRuinsBackground", _homeRuinsBgSprite, Vector2.zero, new Vector2(1980f, 1114f));
+            bgObj.GetComponent<Image>().color = new Color(0.42f, 0.42f, 0.52f, 1f);
+
+            // Floating decorative embers
+            BuildFloatingEmbers(_shopPanel.transform, 14);
+
+            // Main frame container
+            GameObject mainBox = CreateImagePanel(_shopPanel.transform, "ShopMainBox", Vector2.zero, new Vector2(1740f, 960f), _modalFrameSprite);
+            mainBox.GetComponent<Image>().color = new Color(0.08f, 0.08f, 0.14f, 0.96f);
+
+            // Header Section
+            CreateStyledTitleText(mainBox.transform, "ShopTitle", "CHAMBER OF RELICS", 44, new Vector2(0f, 415f), new Vector2(900f, 54f), new Color(1f, 0.85f, 0.35f, 1f));
+            CreateStyledTitleText(mainBox.transform, "ShopSubtitle", "SANCTUARY FORGE & ANCIENT EMBERS", 22, new Vector2(0f, 375f), new Vector2(900f, 32f), new Color(0.78f, 0.65f, 0.98f, 1f));
+            CreateSpriteElement(mainBox.transform, "ShopHeaderDivider", _stoneDividerSprite, new Vector2(0f, 350f), new Vector2(1200f, 20f));
+
+            // Return / Back Button (Top Left)
+            CreateMenuButton(mainBox.transform, "RETURN", new Vector2(-700f, 415f), () =>
+            {
+                PlayMenuBackSound();
+                TransitionToPanel(ShowMainMenu);
+            }, new Vector2(220f, 50f));
+
+            // Soul Coins Balance Widget (Top Right)
+            GameObject coinWidget = CreateImagePanel(mainBox.transform, "CoinBalanceWidget", new Vector2(660f, 415f), new Vector2(300f, 52f), _btnNormal);
+            coinWidget.GetComponent<Image>().color = new Color(0.12f, 0.11f, 0.22f, 0.95f);
+            if (_coinSoulIconSprite != null)
+            {
+                CreateSpriteElement(coinWidget.transform, "SoulCoinIcon", _coinSoulIconSprite, new Vector2(-115f, 0f), new Vector2(32f, 32f));
+            }
+            _shopCoinBalanceText = CreateText(coinWidget.transform, "SoulCoinAmount", "0 COINS", 22, new Vector2(20f, 0f), new Vector2(230f, 40f), new Color(1f, 0.86f, 0.35f, 1f), TextAnchor.MiddleCenter);
+
+            // Category Tabs: [ PROTAGONIST ] (0), [ SHADOW ] (1), [ TORCH ] (2)
+            string[] tabNames = { "PROTAGONIST", "SHADOW", "TORCH" };
+            float[] tabX = { -360f, 0f, 360f };
+            for (int i = 0; i < 3; i++)
+            {
+                int tabIdx = i;
+                Button tabBtn = CreateMenuButton(mainBox.transform, tabNames[i], new Vector2(tabX[i], 305f), () =>
+                {
+                    SwitchShopCategory(tabIdx);
+                }, new Vector2(300f, 46f));
+
+                _shopCategoryTabButtons[i] = tabBtn;
+                _shopCategoryTabImages[i] = tabBtn.GetComponent<Image>();
+                _shopCategoryTabTexts[i] = tabBtn.GetComponentInChildren<Text>();
+            }
+
+            // Left Column: 5 Skin Cards List Container
+            GameObject cardsContainer = new GameObject("SkinCardsContainer", typeof(RectTransform));
+            cardsContainer.transform.SetParent(mainBox.transform, false);
+            RectTransform cardsRt = cardsContainer.GetComponent<RectTransform>();
+            cardsRt.anchoredPosition = new Vector2(-410f, -65f);
+            cardsRt.sizeDelta = new Vector2(780f, 600f);
+
+            _shopCards.Clear();
+            float cardSpacingY = 114f;
+            for (int i = 0; i < 5; i++)
+            {
+                int skinIdx = i;
+                float cardY = 228f - (i * cardSpacingY);
+
+                GameObject cardObj = CreateImagePanel(cardsContainer.transform, $"SkinCard_{i}", new Vector2(0f, cardY), new Vector2(740f, 102f), _shopCardFrameNormal);
+                Image cardBg = cardObj.GetComponent<Image>();
+                Button cardBtn = cardObj.AddComponent<Button>();
+
+                // Icon preview (64x64) on the left
+                GameObject iconObj = CreateSpriteElement(cardObj.transform, "SkinIcon", null, new Vector2(-295f, 0f), new Vector2(64f, 64f));
+                Image iconImg = iconObj.GetComponent<Image>();
+
+                // Skin Title
+                Text titleTxt = CreateText(cardObj.transform, "SkinTitle", "SKIN NAME", 22, new Vector2(-110f, 16f), new Vector2(320f, 32f), Color.white, TextAnchor.MiddleLeft);
+                titleTxt.fontStyle = FontStyle.Bold;
+
+                // Rarity Badge Text
+                Text rarityTxt = CreateText(cardObj.transform, "SkinRarity", "COMMON", 16, new Vector2(-110f, -16f), new Vector2(320f, 26f), new Color(0.8f, 0.85f, 0.9f), TextAnchor.MiddleLeft);
+
+                // Coin icon for price (if locked)
+                GameObject cardCoinObj = CreateSpriteElement(cardObj.transform, "CardCoinIcon", _coinSoulIconSprite, new Vector2(175f, 0f), new Vector2(24f, 24f));
+                Image cardCoinImg = cardCoinObj.GetComponent<Image>();
+
+                // Status / Price Text on the right
+                Text statusTxt = CreateText(cardObj.transform, "SkinStatus", "EQUIPPED", 20, new Vector2(255f, 0f), new Vector2(180f, 36f), new Color(1f, 0.85f, 0.35f), TextAnchor.MiddleRight);
+                statusTxt.fontStyle = FontStyle.Bold;
+
+                cardBtn.onClick.AddListener(() =>
+                {
+                    SelectShopSkin(skinIdx);
+                });
+
+                ShopSkinCardUI cardUI = new ShopSkinCardUI
+                {
+                    CardButton = cardBtn,
+                    CardBgImage = cardBg,
+                    CardIconImage = iconImg,
+                    CardTitleText = titleTxt,
+                    CardRarityText = rarityTxt,
+                    CardStatusText = statusTxt,
+                    CardCoinIcon = cardCoinImg
+                };
+                _shopCards.Add(cardUI);
+            }
+
+            // Right Column: Preview Stage & Inspector
+            GameObject stagePanel = CreateImagePanel(mainBox.transform, "PreviewStagePanel", new Vector2(440f, -65f), new Vector2(740f, 600f), _panelSprite);
+            stagePanel.GetComponent<Image>().color = new Color(0.05f, 0.05f, 0.10f, 0.90f);
+
+            // Halo glow on the stage
+            GameObject stageHalo = CreateSpriteElement(stagePanel.transform, "StageHalo", _lightHaloSprite, new Vector2(0f, 60f), new Vector2(420f, 420f));
+            _shopPreviewHaloImage = stageHalo.GetComponent<Image>();
+            _shopPreviewHaloImage.color = new Color(1f, 0.7f, 0.25f, 0.35f);
+            _shopPreviewHaloImage.raycastTarget = false;
+
+            // Pedestal on the stage
+            CreateSpriteElement(stagePanel.transform, "StagePedestal", _shopPedestalSprite, new Vector2(0f, -30f), new Vector2(200f, 80f));
+
+            // Animated character / flame preview sprite
+            GameObject previewSpr = CreateSpriteElement(stagePanel.transform, "StagePreviewSprite", null, new Vector2(0f, 65f), new Vector2(160f, 160f));
+            _shopPreviewImage = previewSpr.GetComponent<Image>();
+            _shopPreviewImage.preserveAspect = true;
+
+            // Preview Animation Mode Buttons: [ IDLE ] [ MOVE ] [ JUMP ]
+            string[] modeLabels = { "IDLE", "MOVE", "JUMP" };
+            float[] modeX = { -150f, 0f, 150f };
+            for (int m = 0; m < 3; m++)
+            {
+                int modeIdx = m;
+                Button mBtn = CreateMenuButton(stagePanel.transform, modeLabels[m], new Vector2(modeX[m], -95f), () =>
+                {
+                    SetShopPreviewMode(modeIdx);
+                }, new Vector2(130f, 38f));
+
+                _shopPreviewModeButtons[m] = mBtn;
+                _shopPreviewModeTexts[m] = mBtn.GetComponentInChildren<Text>();
+                if (_shopPreviewModeTexts[m] != null) _shopPreviewModeTexts[m].fontSize = 16;
+            }
+
+            // Skin Details below stage
+            _shopPreviewTitleText = CreateStyledTitleText(stagePanel.transform, "PreviewTitle", "ASHEN KNIGHT", 28, new Vector2(0f, -145f), new Vector2(680f, 36f), new Color(1f, 0.88f, 0.40f));
+            _shopPreviewRarityText = CreateText(stagePanel.transform, "PreviewRarity", "RARE RELIC", 18, new Vector2(0f, -178f), new Vector2(680f, 26f), new Color(0.35f, 0.75f, 1f), TextAnchor.MiddleCenter);
+            _shopPreviewLoreText = CreateText(stagePanel.transform, "PreviewLore", "Forged in the embers of the sanctuary.", 17, new Vector2(0f, -220f), new Vector2(660f, 54f), new Color(0.85f, 0.85f, 0.95f), TextAnchor.MiddleCenter);
+
+            // Big Action Button: BUY / EQUIP / EQUIPPED
+            _shopActionButton = CreateMenuButton(stagePanel.transform, "EQUIP", new Vector2(0f, -265f), () =>
+            {
+                ExecuteShopActionButton();
+            }, new Vector2(360f, 54f));
+            _shopActionBtnImage = _shopActionButton.GetComponent<Image>();
+            _shopActionBtnText = _shopActionButton.GetComponentInChildren<Text>();
+            if (_shopActionBtnText != null) _shopActionBtnText.fontSize = 22;
+
+            // Toast feedback message
+            _shopToastText = CreateText(stagePanel.transform, "ShopToastText", "", 18, new Vector2(0f, -270f), new Vector2(600f, 30f), new Color(0.4f, 1f, 0.5f), TextAnchor.MiddleCenter);
+            _shopToastText.gameObject.SetActive(false);
+
+            _shopPanel.SetActive(false);
+        }
+
+        public void SwitchShopCategory(int tabIndex)
+        {
+            _shopSelectedTab = Mathf.Clamp(tabIndex, 0, 2);
+            _shopSelectedSkinIndex = 0;
+            _shopPreviewMode = 0;
+
+            RefreshShopTabSelection();
+            RefreshShopSkinList();
+            UpdateShopSelectedPreview();
+            PlayMenuHoverSound();
+        }
+
+        private void RefreshShopTabSelection()
+        {
+            for (int i = 0; i < 3; i++)
+            {
+                if (_shopCategoryTabImages[i] != null)
+                {
+                    _shopCategoryTabImages[i].sprite = (i == _shopSelectedTab) ? _btnSelected : _btnNormal;
+                }
+                if (_shopCategoryTabTexts[i] != null)
+                {
+                    _shopCategoryTabTexts[i].color = (i == _shopSelectedTab)
+                        ? new Color(1f, 0.88f, 0.40f, 1f)
+                        : new Color(0.80f, 0.80f, 0.90f, 0.85f);
+                }
+            }
+        }
+
+        private void RefreshShopSkinList()
+        {
+            SkinType currentType = (_shopSelectedTab == 0) ? SkinType.Player :
+                                   (_shopSelectedTab == 1) ? SkinType.Shadow : SkinType.Torch;
+
+            List<SkinDefinition> skins = SkinCatalog.GetSkinsByType(currentType);
+
+            string equippedId = "";
+            if (SkinEquipmentService.Instance != null)
+            {
+                equippedId = (_shopSelectedTab == 0) ? SkinEquipmentService.Instance.EquippedPlayerSkinId :
+                             (_shopSelectedTab == 1) ? SkinEquipmentService.Instance.EquippedShadowSkinId :
+                             SkinEquipmentService.Instance.EquippedTorchSkinId;
+            }
+
+            for (int i = 0; i < _shopCards.Count; i++)
+            {
+                if (i >= skins.Count)
+                {
+                    _shopCards[i].CardButton.gameObject.SetActive(false);
+                    continue;
+                }
+
+                _shopCards[i].CardButton.gameObject.SetActive(true);
+                SkinDefinition def = skins[i];
+
+                bool isEquipped = (def.Id == equippedId);
+                bool isOwned = InventoryService.Instance != null && InventoryService.Instance.IsSkinOwned(def.Id);
+                bool isSelected = (i == _shopSelectedSkinIndex);
+
+                _shopCards[i].CardBgImage.sprite = isEquipped ? _shopCardFrameEquipped :
+                                                   isSelected ? _shopCardFrameSelected : _shopCardFrameNormal;
+
+                _shopCards[i].CardIconImage.sprite = AssetRegistry.GetSprite("Skins/Icons/" + def.Id + "_icon", 32f);
+
+                _shopCards[i].CardTitleText.text = def.DisplayName.ToUpperInvariant();
+                _shopCards[i].CardRarityText.text = def.Rarity.ToString().ToUpperInvariant();
+                _shopCards[i].CardRarityText.color = GetRarityColor(def.Rarity);
+
+                if (isEquipped)
+                {
+                    _shopCards[i].CardStatusText.text = "EQUIPPED";
+                    _shopCards[i].CardStatusText.color = new Color(0.4f, 1f, 0.5f);
+                    _shopCards[i].CardCoinIcon.gameObject.SetActive(false);
+                }
+                else if (isOwned)
+                {
+                    _shopCards[i].CardStatusText.text = "OWNED";
+                    _shopCards[i].CardStatusText.color = new Color(0.7f, 0.85f, 1f);
+                    _shopCards[i].CardCoinIcon.gameObject.SetActive(false);
+                }
+                else
+                {
+                    _shopCards[i].CardStatusText.text = $"{def.Price}";
+                    _shopCards[i].CardStatusText.color = new Color(1f, 0.85f, 0.35f);
+                    _shopCards[i].CardCoinIcon.gameObject.SetActive(true);
+                }
+            }
+        }
+
+        private Color GetRarityColor(SkinRarity rarity)
+        {
+            switch (rarity)
+            {
+                case SkinRarity.Rare: return new Color(0.35f, 0.75f, 1f);
+                case SkinRarity.Epic: return new Color(0.80f, 0.45f, 1f);
+                case SkinRarity.Legendary: return new Color(1f, 0.85f, 0.30f);
+                default: return new Color(0.80f, 0.85f, 0.90f);
+            }
+        }
+
+        public void SelectShopSkin(int index)
+        {
+            _shopSelectedSkinIndex = Mathf.Clamp(index, 0, 4);
+            RefreshShopSkinList();
+            UpdateShopSelectedPreview();
+            PlayMenuHoverSound();
+        }
+
+        public void SetShopPreviewMode(int mode)
+        {
+            _shopPreviewMode = Mathf.Clamp(mode, 0, 2);
+            UpdateShopPreviewModeButtons();
+            LoadCachedPreviewFrames();
+        }
+
+        private void UpdateShopPreviewModeButtons()
+        {
+            bool isTorch = (_shopSelectedTab == 2);
+            for (int i = 0; i < 3; i++)
+            {
+                if (isTorch)
+                {
+                    _shopPreviewModeButtons[i].gameObject.SetActive(i == 0);
+                    if (i == 0 && _shopPreviewModeTexts[0] != null)
+                    {
+                        _shopPreviewModeTexts[0].text = "BURNING FLAME";
+                    }
+                }
+                else
+                {
+                    _shopPreviewModeButtons[i].gameObject.SetActive(true);
+                    if (_shopPreviewModeTexts[i] != null)
+                    {
+                        _shopPreviewModeTexts[i].text = (i == 0) ? "IDLE" : (i == 1) ? "MOVE" : "JUMP";
+                    }
+                }
+
+                if (_shopPreviewModeButtons[i] != null)
+                {
+                    _shopPreviewModeButtons[i].GetComponent<Image>().sprite = (i == _shopPreviewMode) ? _btnSelected : _btnNormal;
+                }
+            }
+        }
+
+        private void LoadCachedPreviewFrames()
+        {
+            SkinType currentType = (_shopSelectedTab == 0) ? SkinType.Player :
+                                   (_shopSelectedTab == 1) ? SkinType.Shadow : SkinType.Torch;
+            List<SkinDefinition> skins = SkinCatalog.GetSkinsByType(currentType);
+            if (_shopSelectedSkinIndex < 0 || _shopSelectedSkinIndex >= skins.Count) return;
+
+            SkinDefinition def = skins[_shopSelectedSkinIndex];
+            string prefix = def.SpritePathPrefix;
+
+            if (currentType == SkinType.Player)
+            {
+                if (_shopPreviewMode == 0)
+                    _shopCachedPreviewFrames = AssetRegistry.GetAnimationFrames(prefix + "/idle", 4);
+                else if (_shopPreviewMode == 1)
+                    _shopCachedPreviewFrames = AssetRegistry.GetAnimationFrames(prefix + "/run", 6);
+                else
+                    _shopCachedPreviewFrames = AssetRegistry.GetAnimationFrames(prefix + "/jump", 2);
+            }
+            else if (currentType == SkinType.Shadow)
+            {
+                if (_shopPreviewMode == 0)
+                    _shopCachedPreviewFrames = AssetRegistry.GetAnimationFrames(prefix + "/idle", 4);
+                else if (_shopPreviewMode == 1)
+                    _shopCachedPreviewFrames = AssetRegistry.GetAnimationFrames(prefix + "/move", 6);
+                else
+                    _shopCachedPreviewFrames = AssetRegistry.GetAnimationFrames(prefix + "/jump", 2);
+            }
+            else
+            {
+                _shopCachedPreviewFrames = AssetRegistry.GetAnimationFrames(prefix + "/flame", 4);
+            }
+
+            if (_shopCachedPreviewFrames != null && _shopCachedPreviewFrames.Length > 0 && _shopPreviewImage != null)
+            {
+                _shopPreviewImage.sprite = _shopCachedPreviewFrames[0];
+            }
+        }
+
+        private void UpdateShopSelectedPreview()
+        {
+            SkinType currentType = (_shopSelectedTab == 0) ? SkinType.Player :
+                                   (_shopSelectedTab == 1) ? SkinType.Shadow : SkinType.Torch;
+            List<SkinDefinition> skins = SkinCatalog.GetSkinsByType(currentType);
+            if (_shopSelectedSkinIndex < 0 || _shopSelectedSkinIndex >= skins.Count) return;
+
+            SkinDefinition def = skins[_shopSelectedSkinIndex];
+
+            string equippedId = "";
+            if (SkinEquipmentService.Instance != null)
+            {
+                equippedId = (_shopSelectedTab == 0) ? SkinEquipmentService.Instance.EquippedPlayerSkinId :
+                             (_shopSelectedTab == 1) ? SkinEquipmentService.Instance.EquippedShadowSkinId :
+                             SkinEquipmentService.Instance.EquippedTorchSkinId;
+            }
+
+            bool isEquipped = (def.Id == equippedId);
+            bool isOwned = InventoryService.Instance != null && InventoryService.Instance.IsSkinOwned(def.Id);
+            int balance = WalletService.Instance != null ? WalletService.Instance.Balance : 0;
+
+            if (_shopPreviewTitleText != null) _shopPreviewTitleText.text = def.DisplayName.ToUpperInvariant();
+            if (_shopPreviewRarityText != null)
+            {
+                _shopPreviewRarityText.text = $"{def.Rarity.ToString().ToUpperInvariant()} RELIC";
+                _shopPreviewRarityText.color = GetRarityColor(def.Rarity);
+            }
+            if (_shopPreviewLoreText != null) _shopPreviewLoreText.text = def.LoreDescription;
+
+            if (_shopPreviewHaloImage != null)
+            {
+                _shopPreviewHaloImage.color = new Color(def.HaloColor.r, def.HaloColor.g, def.HaloColor.b, 0.40f);
+            }
+
+            UpdateShopPreviewModeButtons();
+            LoadCachedPreviewFrames();
+
+            if (_shopActionButton != null)
+            {
+                if (isEquipped)
+                {
+                    SetButtonVisualDisabled(_shopActionButton, true);
+                    if (_shopActionBtnText != null) _shopActionBtnText.text = "EQUIPPED";
+                }
+                else if (isOwned)
+                {
+                    SetButtonVisualDisabled(_shopActionButton, false);
+                    if (_shopActionBtnText != null) _shopActionBtnText.text = "EQUIP";
+                }
+                else
+                {
+                    bool canAfford = balance >= def.Price;
+                    SetButtonVisualDisabled(_shopActionButton, false);
+                    if (_shopActionBtnText != null)
+                    {
+                        _shopActionBtnText.text = canAfford ? $"UNLOCK ({def.Price} COINS)" : $"NEED {def.Price} COINS";
+                        if (!canAfford)
+                        {
+                            _shopActionBtnText.color = new Color(1f, 0.45f, 0.45f);
+                        }
+                    }
+                }
+            }
+        }
+
+        public void ExecuteShopActionButton()
+        {
+            SkinType currentType = (_shopSelectedTab == 0) ? SkinType.Player :
+                                   (_shopSelectedTab == 1) ? SkinType.Shadow : SkinType.Torch;
+            List<SkinDefinition> skins = SkinCatalog.GetSkinsByType(currentType);
+            if (_shopSelectedSkinIndex < 0 || _shopSelectedSkinIndex >= skins.Count) return;
+
+            SkinDefinition def = skins[_shopSelectedSkinIndex];
+
+            string equippedId = "";
+            if (SkinEquipmentService.Instance != null)
+            {
+                equippedId = (_shopSelectedTab == 0) ? SkinEquipmentService.Instance.EquippedPlayerSkinId :
+                             (_shopSelectedTab == 1) ? SkinEquipmentService.Instance.EquippedShadowSkinId :
+                             SkinEquipmentService.Instance.EquippedTorchSkinId;
+            }
+
+            if (def.Id == equippedId)
+            {
+                ShowShopToast("ALREADY EQUIPPED", new Color(1f, 0.85f, 0.35f));
+                return;
+            }
+
+            bool isOwned = InventoryService.Instance != null && InventoryService.Instance.IsSkinOwned(def.Id);
+            if (isOwned)
+            {
+                bool success = SkinEquipmentService.Instance != null && SkinEquipmentService.Instance.EquipSkin(def.Id);
+                if (success)
+                {
+                    ShowShopToast($"EQUIPPED {def.DisplayName.ToUpperInvariant()}!", new Color(0.4f, 1f, 0.5f));
+                    if (AudioManager.Instance != null)
+                    {
+                        AudioManager.Instance.PlaySFX("switch_activate", 0.7f, 1.25f);
+                    }
+                }
+            }
+            else
+            {
+                if (ShopTransactionService.Instance != null)
+                {
+                    bool purchased = ShopTransactionService.Instance.PurchaseSkin(def.Id);
+                    if (purchased)
+                    {
+                        ShowShopToast($"UNLOCKED {def.DisplayName.ToUpperInvariant()}!", new Color(0.4f, 1f, 0.5f));
+                    }
+                    else
+                    {
+                        ShowShopToast("NOT ENOUGH SOUL COINS", new Color(1f, 0.4f, 0.4f));
+                    }
+                }
+            }
+
+            RefreshShopCoinBalance();
+            RefreshShopSkinList();
+            UpdateShopSelectedPreview();
+        }
+
+        public void RefreshShopCoinBalance()
+        {
+            if (_shopCoinBalanceText != null)
+            {
+                int balance = WalletService.Instance != null ? WalletService.Instance.Balance : 0;
+                _shopCoinBalanceText.text = $"{balance:N0} COINS";
+            }
+        }
+
+        private void ShowShopToast(string message, Color color)
+        {
+            if (_shopToastText == null) return;
+            if (_shopToastCoroutine != null) StopCoroutine(_shopToastCoroutine);
+            _shopToastCoroutine = StartCoroutine(ShopToastCoroutine(message, color));
+        }
+
+        private IEnumerator ShopToastCoroutine(string message, Color color)
+        {
+            _shopToastText.text = message;
+            _shopToastText.color = color;
+            _shopToastText.gameObject.SetActive(true);
+            yield return new WaitForSecondsRealtime(2.0f);
+            _shopToastText.gameObject.SetActive(false);
+            _shopToastCoroutine = null;
+        }
+
+        // ====================================================================
+        // 6. PAUSE, SETTINGS, CREDITS, WORLD 1 COMPLETE & WORLD 2 COMING SOON
         // ====================================================================
         private void BuildPauseMenu(Transform parent)
         {
@@ -1519,6 +2101,11 @@ namespace MyShadowQuit.UI
                 UpdateLevelSelectMapAnimations(t);
             }
 
+            if (IsShopScreenVisible)
+            {
+                UpdateShopPreviewAnimations(t);
+            }
+
             if (!_isTransitioning)
             {
                 HandleMenuKeyboardNavigation();
@@ -1606,6 +2193,25 @@ namespace MyShadowQuit.UI
                 {
                     node.NodeRect.localScale = Vector3.one;
                 }
+            }
+        }
+
+        private void UpdateShopPreviewAnimations(float t)
+        {
+            if (_shopCachedPreviewFrames != null && _shopCachedPreviewFrames.Length > 0 && _shopPreviewImage != null)
+            {
+                float fps = (_shopSelectedTab == 2) ? 10f : (_shopPreviewMode == 1) ? 8f : 5.5f;
+                int frame = Mathf.FloorToInt(t * fps) % _shopCachedPreviewFrames.Length;
+                if (_shopCachedPreviewFrames[frame] != null)
+                {
+                    _shopPreviewImage.sprite = _shopCachedPreviewFrames[frame];
+                }
+            }
+
+            if (_shopPreviewHaloImage != null)
+            {
+                float haloFlicker = 1f + 0.08f * Mathf.Sin(t * 6.8f);
+                _shopPreviewHaloImage.rectTransform.localScale = new Vector3(haloFlicker, haloFlicker, 1f);
             }
         }
 
@@ -1734,6 +2340,44 @@ namespace MyShadowQuit.UI
                 else if (GameInput.GetCancelDown())
                 {
                     OnResumeRequested?.Invoke();
+                }
+            }
+            else if (_currentScreen == ActiveMenuScreen.Shop)
+            {
+                if (GameInput.GetMenuLeftDown())
+                {
+                    int prevTab = (_shopSelectedTab - 1 + 3) % 3;
+                    SwitchShopCategory(prevTab);
+                }
+                else if (GameInput.GetMenuRightDown())
+                {
+                    int nextTab = (_shopSelectedTab + 1) % 3;
+                    SwitchShopCategory(nextTab);
+                }
+                else if (GameInput.GetMenuUpDown())
+                {
+                    int prevSkin = Mathf.Max(0, _shopSelectedSkinIndex - 1);
+                    if (prevSkin != _shopSelectedSkinIndex)
+                    {
+                        SelectShopSkin(prevSkin);
+                    }
+                }
+                else if (GameInput.GetMenuDownDown())
+                {
+                    int nextSkin = Mathf.Min(4, _shopSelectedSkinIndex + 1);
+                    if (nextSkin != _shopSelectedSkinIndex)
+                    {
+                        SelectShopSkin(nextSkin);
+                    }
+                }
+                else if (GameInput.GetConfirmDown())
+                {
+                    ExecuteShopActionButton();
+                }
+                else if (GameInput.GetCancelDown())
+                {
+                    PlayMenuBackSound();
+                    TransitionToPanel(ShowMainMenu);
                 }
             }
         }
@@ -1890,6 +2534,7 @@ namespace MyShadowQuit.UI
             if (_world2ComingSoonPanel != null) _world2ComingSoonPanel.SetActive(false);
             if (_victoryPanel != null) _victoryPanel.SetActive(false);
             if (_hudPanel != null) _hudPanel.SetActive(false);
+            if (_shopPanel != null) _shopPanel.SetActive(false);
         }
 
         public void ShowMainMenu()
@@ -1938,6 +2583,39 @@ namespace MyShadowQuit.UI
             HideAllMenuPanels();
             _world2ComingSoonPanel.SetActive(true);
             _currentScreen = ActiveMenuScreen.World2ComingSoon;
+        }
+
+        public void ShowShopScreen()
+        {
+            SetEndingQuoteAlpha(0f);
+            HideAllMenuPanels();
+            _shopPanel.SetActive(true);
+            _currentScreen = ActiveMenuScreen.Shop;
+
+            RefreshShopCoinBalance();
+            SwitchShopCategory(_shopSelectedTab);
+        }
+
+        public void ShowTemporaryRewardNotification(string message)
+        {
+            if (_rewardToastBanner == null || _rewardToastText == null) return;
+            if (_rewardToastCoroutine != null) StopCoroutine(_rewardToastCoroutine);
+            _rewardToastCoroutine = StartCoroutine(RewardToastCoroutine(message));
+        }
+
+        private IEnumerator RewardToastCoroutine(string message)
+        {
+            _rewardToastText.text = message;
+            _rewardToastBanner.SetActive(true);
+            if (AudioManager.Instance != null)
+            {
+                AudioManager.Instance.PlaySFX("switch_activate", 0.8f, 1.4f);
+            }
+
+            yield return new WaitForSecondsRealtime(2.8f);
+
+            _rewardToastBanner.SetActive(false);
+            _rewardToastCoroutine = null;
         }
 
         public void ShowGameplayHUD(string levelTitle, string hint, bool isControllingShadow)
