@@ -61,11 +61,13 @@ namespace MyShadowQuit.Core
             if (cam != null)
             {
                 cam.BuildParallaxLayers();
-                cam.SetBounds(new Vector2(-4f, -1.5f), new Vector2(18f, 4.5f));
+                // 16:9 orthographic size 4.5 = 16 units wide x 9 units tall.
+                // Clamp camera so outer walls (-9..23) and floor/ceiling (-4..8) fill the 16:9 frame cleanly.
+                cam.SetBounds(new Vector2(-1.2f, 0.2f), new Vector2(14.8f, 2.8f));
             }
 
             // Base outer chamber walls & floor common framing
-            BuildChamberFrame(-9, 24, -4, 9);
+            BuildChamberFrame(-9, 23, -4, 8);
 
             switch (levelIndex)
             {
@@ -114,43 +116,45 @@ namespace MyShadowQuit.Core
         // =========================================================================
         private void BuildLevel1_Awakening()
         {
-            // Elevated ledges teaching jump
+            // Accessible stepped stone ledges teaching jump & elevation without blocking the Shadow on the main floor
             CreatePlatformRow(-2, 1, -2, true);
             CreatePlatformRow(3, 7, -1, true);
 
-            // Decorative ancient architecture
+            // Decorative ancient architecture framed for 16:9 landscape
             CreateProp("Environment/ancient_column", new Vector2(-5.5f, -1.5f), 1);
             CreateProp("Environment/ancient_column", new Vector2(0.5f, -1.5f), 1);
             CreateProp("Environment/ruined_arch", new Vector2(-2.5f, -1.0f), 0);
-            CreateProp("Environment/hanging_chain", new Vector2(-3.5f, 4.2f), 2);
-            CreateProp("Environment/hanging_chain", new Vector2(4.5f, 4.2f), 2);
+            CreateProp("Environment/hanging_chain", new Vector2(-3.5f, 4.0f), 2);
+            CreateProp("Environment/hanging_chain", new Vector2(4.5f, 4.0f), 2);
+            CreateProp("Environment/hanging_chain", new Vector2(12.5f, 4.0f), 2);
 
             // Spawn Protagonist & Shadow & Nearby Burning Torch
             SpawnCharactersAndTorch(
-                playerPos: new Vector2(-6.5f, -2.2f),
-                shadowPos: new Vector2(-7.2f, -2.2f),
-                torchPos: new Vector2(-4.2f, -2.4f),
+                playerPos: new Vector2(-6.2f, -2.2f),
+                shadowPos: new Vector2(-7.1f, -2.2f),
+                torchPos: new Vector2(-3.8f, -2.4f),
                 startWithTorch: false
             );
 
-            // Torch Pedestal before the Shadow Passage
+            // Torch Pedestal perched on the central altar platform right before the Shadow Passage
             TorchPedestal pedestal = CreateTorchPedestal(new Vector2(5.5f, -0.25f));
 
-            // Shadow Passage dividing the upper sanctuary alcove
-            CreateWallColumn(9, 0, 5);
-            CreateShadowPassage(new Vector2(9f, -2.0f));
+            // Shadow Passage dividing the upper & lower chamber at x = 9.0
+            CreateWallColumn(9, 0, 7);
+            CreateShadowPassage(new Vector2(9.0f, -2.0f));
 
-            // Shadow-only Obelisk Switch inside the shadow chamber (x = 12.5)
-            ShadowSwitch shadowSwitch = CreateShadowSwitch(new Vector2(12.5f, -2.25f));
+            // Shadow-only Obelisk Switch inside the shadow alcove (x = 12.2)
+            ShadowSwitch shadowSwitch = CreateShadowSwitch(new Vector2(12.2f, -2.25f));
 
             // Ancient Stone Door guarding the Exit Sanctuary (requires Pedestal Lit + Shadow Switch Active)
+            // Automatically draws rune conduit lines to both pedestal and shadowSwitch!
             AncientDoor exitDoor = CreateAncientDoor(
-                new Vector2(16.0f, -1.5f),
+                new Vector2(15.5f, -1.5f),
                 new List<PuzzleNode> { pedestal, shadowSwitch },
                 requireAll: true
             );
 
-            CreateExitPortal(new Vector2(19.5f, -1.75f), exitDoor, false);
+            CreateExitPortal(new Vector2(18.8f, -1.75f), exitDoor, false);
         }
 
         // =========================================================================

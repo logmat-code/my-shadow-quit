@@ -5,16 +5,25 @@ namespace MyShadowQuit.Core
 {
     /// <summary>
     /// Smooth side-scrolling 2D camera controller with level boundaries,
-    /// subtle screen shake, and multi-layer pixel-art parallax background scrolling.
+    /// subtle screen shake, multi-layer pixel-art parallax background scrolling,
+    /// and strict 16:9 landscape viewport enforcement (automatic letterbox/pillarbox
+    /// so non-16:9 or portrait containers never crop horizontal gameplay or distort sprites).
     /// </summary>
     [RequireComponent(typeof(Camera))]
     public class CameraController : MonoBehaviour
     {
+        public const float TargetAspectRatio = 16f / 9f;
+
         [Header("Follow Settings")]
         [SerializeField] private float smoothTime = 0.16f;
         [SerializeField] private Vector2 followOffset = new Vector2(0f, 0.65f);
-        [SerializeField] private Vector2 minBounds = new Vector2(-8f, -3f);
-        [SerializeField] private Vector2 maxBounds = new Vector2(18f, 6f);
+        [SerializeField] private Vector2 minBounds = new Vector2(-2.5f, -1.0f);
+        [SerializeField] private Vector2 maxBounds = new Vector2(14.5f, 3.5f);
+
+        private Camera _cam;
+        private Camera _backgroundClearCam;
+        private int _lastScreenWidth;
+        private int _lastScreenHeight;
 
         private Transform _target;
         private Vector3 _velocity;
@@ -45,11 +54,82 @@ namespace MyShadowQuit.Core
 
         private void Awake()
         {
-            Camera cam = GetComponent<Camera>();
-            cam.orthographic = true;
-            cam.orthographicSize = 4.5f;
-            cam.backgroundColor = new Color(0.031f, 0.039f, 0.071f, 1f);
+            _cam = GetComponent<Camera>();
+            _cam.orthographic = true;
+            _cam.orthographicSize = 4.5f; // 9 world units tall x 16 world units wide at 16:9
+            _cam.backgroundColor = new Color(0.031f, 0.039f, 0.071f, 1f);
             _lastCamPos = transform.position;
+
+            EnsureLandscapeResolutionAndViewport(force: true);
+        }
+
+        public void EnsureLandscapeResolutionAndViewport(bool force = false)
+        {
+            if (_cam == null) _cam = GetComponent<Camera>();
+
+#if !UNITY_EDITOR && !UNITY_WEBGL
+            if (Screen.height > Screen.width)
+            {
+                Screen.SetResolution(1920, 1080, Screen.fullScreenMode);
+            }
+#endif
+            Screen.orientation = ScreenOrientation.LandscapeLeft;
+
+            if (!force && Screen.width == _lastScreenWidth && Screen.height == _lastScreenHeight)
+            {
+                return;
+            }
+
+            _lastScreenWidth = Screen.width;
+            _lastScreenHeight = Screen.height;
+
+            if (_lastScreenWidth <= 0 || _lastScreenHeight <= 0) return;
+
+            float windowAspect = (float)_lastScreenWidth / _lastScreenHeight;
+            float scaleHeight = windowAspect / TargetAspectRatio;
+
+            if (Mathf.Abs(scaleHeight - 1f) < 0.01f)
+            {
+                _cam.rect = new Rect(0f, 0f, 1f, 1f);
+            }
+            else if (scaleHeight < 1.0f)
+            {
+                // Window is narrower/taller than 16:9 (e.g., 4:3, 16:10, or portrait window):
+                // Apply top/bottom letterbox bars so the full 16:9 horizontal width is preserved without cropping!
+                Rect rect = _cam.rect;
+                rect.width = 1.0f;
+                rect.height = scaleHeight;
+                rect.x = 0f;
+                rect.y = (1.0f - scaleHeight) * 0.5f;
+                _cam.rect = rect;
+                EnsureLetterboxClearCamera();
+            }
+            else
+            {
+                // Window is wider than 16:9 (e.g., 21:9 ultrawide): apply pillarbox bars
+                float scaleWidth = 1.0f / scaleHeight;
+                Rect rect = _cam.rect;
+                rect.width = scaleWidth;
+                rect.height = 1.0f;
+                rect.x = (1.0f - scaleWidth) * 0.5f;
+                rect.y = 0f;
+                _cam.rect = rect;
+                EnsureLetterboxClearCamera();
+            }
+        }
+
+        private void EnsureLetterboxClearCamera()
+        {
+            if (!Application.isPlaying) return;
+            if (_backgroundClearCam != null) return;
+
+            GameObject bgCamObj = new GameObject("LetterboxClearCamera");
+            DontDestroyOnLoad(bgCamObj);
+            _backgroundClearCam = bgCamObj.AddComponent<Camera>();
+            _backgroundClearCam.depth = -100;
+            _backgroundClearCam.cullingMask = 0;
+            _backgroundClearCam.clearFlags = CameraClearFlags.SolidColor;
+            _backgroundClearCam.backgroundColor = new Color(0.02f, 0.025f, 0.045f, 1f);
         }
 
         public void BuildParallaxLayers()
@@ -97,6 +177,8 @@ namespace MyShadowQuit.Core
 
         private void LateUpdate()
         {
+            EnsureLandscapeResolutionAndViewport(force: false);
+
             if (_target != null)
             {
                 Vector3 desired = new Vector3(

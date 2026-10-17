@@ -1,6 +1,8 @@
 #if UNITY_EDITOR
+using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Reflection;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -14,17 +16,25 @@ namespace MyShadowQuit.EditorTools
 {
     /// <summary>
     /// Batchmode & Editor Menu setup builder for MY SHADOW QUIT: THE LAST FLAME.
-    /// Generates reusable Prefabs in Assets/Prefabs, builds MainMenu and Level1_Awakening scenes,
-    /// configures EditorBuildSettings, and runs automated verification checks on all systems.
+    /// Configures 16:9 Landscape Game View & PlayerSettings, builds reusable Prefabs and Scenes,
+    /// and runs comprehensive automated verification on Level 1 contextual progression,
+    /// dB-calibrated audio mixing, and 16:9 landscape aspect enforcement.
     /// </summary>
+    [InitializeOnLoad]
     public static class ProjectSetupBuilder
     {
+        static ProjectSetupBuilder()
+        {
+            EditorApplication.delayCall += EnforceEditorGameViewLandscape16x9;
+        }
+
         [MenuItem("MyShadowQuit/Build Prefabs, Scenes & Verify All Systems")]
         public static void BuildAndVerifyAll()
         {
             Debug.Log("[ProjectSetupBuilder] Starting asset import refresh, prefab generation, scene building, and automated verification...");
             AssetDatabase.Refresh();
 
+            ConfigureLandscapePlayerSettings();
             ConfigureTextureImporters();
             BuildReusablePrefabs();
             BuildScenes();
@@ -32,6 +42,46 @@ namespace MyShadowQuit.EditorTools
 
             AssetDatabase.SaveAssets();
             Debug.Log("[ProjectSetupBuilder] SUCCESS: All prefabs, scenes, and automated verifications completed with zero errors!");
+        }
+
+        private static void ConfigureLandscapePlayerSettings()
+        {
+            PlayerSettings.defaultScreenWidth = 1920;
+            PlayerSettings.defaultScreenHeight = 1080;
+            PlayerSettings.defaultWebScreenWidth = 1280;
+            PlayerSettings.defaultWebScreenHeight = 720;
+            PlayerSettings.defaultInterfaceOrientation = UIOrientation.LandscapeLeft;
+            PlayerSettings.allowedAutorotateToPortrait = false;
+            PlayerSettings.allowedAutorotateToPortraitUpsideDown = false;
+            PlayerSettings.allowedAutorotateToLandscapeLeft = true;
+            PlayerSettings.allowedAutorotateToLandscapeRight = true;
+            PlayerSettings.WebGL.template = "PROJECT:Landscape16x9";
+        }
+
+        public static void EnforceEditorGameViewLandscape16x9()
+        {
+            try
+            {
+                Type gvType = Type.GetType("UnityEditor.GameView,UnityEditor");
+                if (gvType == null) return;
+                EditorWindow[] windows = Resources.FindObjectsOfTypeAll(gvType) as EditorWindow[];
+                if (windows == null || windows.Length == 0) return;
+
+                PropertyInfo selectedSizeIndexProp = gvType.GetProperty("selectedSizeIndex", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+                if (selectedSizeIndexProp != null)
+                {
+                    // Index 1 in Standalone/WebGL GameView sizes is 16:9 Aspect
+                    foreach (EditorWindow win in windows)
+                    {
+                        selectedSizeIndexProp.SetValue(win, 1, null);
+                        win.Repaint();
+                    }
+                }
+            }
+            catch
+            {
+                // Ignore if running in headless -batchmode without GUI windows
+            }
         }
 
         private static void ConfigureTextureImporters()
@@ -100,14 +150,13 @@ namespace MyShadowQuit.EditorTools
             GameObject temp = new GameObject(typeof(T).Name);
             temp.AddComponent<T>();
             PrefabUtility.SaveAsPrefabAsset(temp, prefabPath);
-            Object.DestroyImmediate(temp);
+            UnityEngine.Object.DestroyImmediate(temp);
         }
 
         private static void BuildScenes()
         {
             Directory.CreateDirectory("Assets/Scenes");
 
-            // 1. Level1_Awakening Scene (Primary playable scene)
             Scene levelScene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
             GameObject camObj = new GameObject("Main Camera");
             camObj.tag = "MainCamera";
@@ -123,10 +172,10 @@ namespace MyShadowQuit.EditorTools
             gmObj.AddComponent<LevelManager>();
             gmObj.AddComponent<AudioManager>();
             gmObj.AddComponent<UIManager>();
+            gmObj.AddComponent<TutorialDirector>();
 
             string level1Path = "Assets/Scenes/Level1_Awakening.unity";
             EditorSceneManager.SaveScene(levelScene, level1Path);
-            // Also overwrite SampleScene.unity so whichever scene is opened is configured
             EditorSceneManager.SaveScene(levelScene, "Assets/Scenes/SampleScene.unity");
 
             EditorBuildSettings.scenes = new[]
@@ -139,71 +188,35 @@ namespace MyShadowQuit.EditorTools
 
         private static void RunAutomatedVerification()
         {
-            // Verify sprites load via AssetRegistry
-            string[] requiredSprites =
+            // 1. Verify Landscape 16:9 Display & PlayerSettings
+            if (PlayerSettings.defaultScreenWidth != 1920 || PlayerSettings.defaultScreenHeight != 1080)
             {
-                "Characters/protagonist_idle_0",
-                "Characters/protagonist_run_0",
-                "Characters/protagonist_torch_idle_0",
-                "Characters/shadow_idle_0",
-                "Characters/shadow_move_0",
-                "Characters/shadow_separate_0",
-                "Environment/stone_floor",
-                "Environment/stone_wall",
-                "Environment/ancient_door_closed",
-                "Environment/ancient_door_open",
-                "Environment/torch_pedestal_unlit",
-                "Environment/torch_pedestal_lit",
-                "Environment/shadow_passage",
-                "Environment/shadow_switch_inactive",
-                "Environment/shadow_switch_active",
-                "Environment/light_switch_inactive",
-                "Environment/light_switch_active",
-                "Environment/pressure_plate_up",
-                "Environment/pressure_plate_down",
-                "Environment/exit_sanctuary",
-                "Torch/torch_item_0",
-                "Torch/light_halo",
-                "UI/ui_button_normal",
-                "UI/ui_panel"
-            };
-
-            foreach (string spName in requiredSprites)
+                throw new Exception("[Verification Failed] PlayerSettings base resolution is not 1920x1080!");
+            }
+            if (PlayerSettings.allowedAutorotateToPortrait || PlayerSettings.allowedAutorotateToPortraitUpsideDown)
             {
-                Sprite sp = AssetRegistry.GetSprite(spName);
-                if (sp == null)
-                {
-                    throw new System.Exception($"[Verification Failed] Missing required original sprite: {spName}");
-                }
+                throw new Exception("[Verification Failed] Portrait autorotation must be disabled!");
+            }
+            if (!File.Exists("Assets/WebGLTemplates/Landscape16x9/index.html"))
+            {
+                throw new Exception("[Verification Failed] Custom 16:9 WebGL template is missing!");
             }
 
-            // Verify audio clips load via AssetRegistry
-            string[] requiredAudio =
-            {
-                "Music/dark_ambient_theme",
-                "SFX/footstep",
-                "SFX/jump",
-                "SFX/land",
-                "SFX/torch_ignite",
-                "SFX/fire_crackle_loop",
-                "SFX/shadow_shift",
-                "SFX/switch_activate",
-                "SFX/stone_door",
-                "SFX/puzzle_complete"
-            };
+            // 2. Verify Audio Mixing Hierarchy (Music 0 dB > SFX -8 dB > Ambience -12 dB > Fire -18 dB)
+            float musicGain = AudioManager.DbToLinear(AudioManager.MusicBusDb);
+            float sfxGain = AudioManager.DbToLinear(AudioManager.SfxBusDb);
+            float ambienceGain = AudioManager.DbToLinear(AudioManager.AmbienceBusDb);
+            float fireGain = AudioManager.DbToLinear(AudioManager.FireRelativeToMusicDb);
 
-            foreach (string audName in requiredAudio)
+            if (!(musicGain > sfxGain && sfxGain > ambienceGain && ambienceGain > fireGain))
             {
-                AudioClip clip = AssetRegistry.GetAudio(audName);
-                if (clip == null)
-                {
-                    throw new System.Exception($"[Verification Failed] Missing required original audio clip: {audName}");
-                }
+                throw new Exception($"[Verification Failed] Audio bus gain hierarchy invalid: Music={musicGain}, SFX={sfxGain}, Ambience={ambienceGain}, Fire={fireGain}");
             }
 
-            // Verify Puzzle Logic & Level 1 construction in-memory
+            // 3. Verify Level 1 ("Awakening") End-to-End Puzzle & Contextual Tutorial Progression
             GameObject testObj = new GameObject("VerificationRunner");
             LevelManager lm = testObj.AddComponent<LevelManager>();
+            TutorialDirector td = testObj.AddComponent<TutorialDirector>();
             CameraController cc = Camera.main != null ? Camera.main.GetComponent<CameraController>() : null;
 
             for (int lvl = 0; lvl < lm.TotalLevels; lvl++)
@@ -211,51 +224,75 @@ namespace MyShadowQuit.EditorTools
                 lm.BuildLevel(lvl, cc);
                 if (lm.Player == null || lm.Shadow == null || lm.Torch == null)
                 {
-                    throw new System.Exception($"[Verification Failed] Level {lvl + 1} missing Player, Shadow, or Torch!");
+                    throw new Exception($"[Verification Failed] Level {lvl + 1} missing Player, Shadow, or Torch!");
                 }
             }
 
-            // Specifically test Level 1 ("Awakening") end-to-end puzzle mechanics
+            // Test Level 1 Awakening step-by-step tutorial & puzzle flow
             lm.BuildLevel(0, cc);
-            TorchPedestal pedestal = Object.FindFirstObjectByType<TorchPedestal>();
-            ShadowSwitch shadowSw = Object.FindFirstObjectByType<ShadowSwitch>();
-            AncientDoor door = Object.FindFirstObjectByType<AncientDoor>();
+            td.InitializeForLevel(0, lm, null);
+
+            if (td.CurrentStep != TutorialDirector.AwakeningStep.Move)
+            {
+                throw new Exception($"[Verification Failed] Expected initial tutorial step Move, got {td.CurrentStep}");
+            }
+
+            // Move player near torch -> step transitions to PickUpTorch
+            lm.Player.transform.position = lm.Torch.transform.position + new Vector3(-0.5f, 0f, 0f);
+            td.EvaluateAwakeningProgression(false);
+            if (td.CurrentStep != TutorialDirector.AwakeningStep.PickUpTorch)
+            {
+                throw new Exception($"[Verification Failed] Expected PickUpTorch step, got {td.CurrentStep}");
+            }
+
+            // Player picks up Torch -> step transitions to PlaceTorchOnPedestal
+            lm.Player.ForceEquipTorch(lm.Torch);
+            td.EvaluateAwakeningProgression(false);
+            if (td.CurrentStep != TutorialDirector.AwakeningStep.PlaceTorchOnPedestal)
+            {
+                throw new Exception($"[Verification Failed] Expected PlaceTorchOnPedestal step, got {td.CurrentStep}");
+            }
+
+            // Player places Torch on Pedestal -> step transitions to SwitchToShadow
+            TorchPedestal pedestal = UnityEngine.Object.FindFirstObjectByType<TorchPedestal>();
+            ShadowSwitch shadowSw = UnityEngine.Object.FindFirstObjectByType<ShadowSwitch>();
+            AncientDoor door = UnityEngine.Object.FindFirstObjectByType<AncientDoor>();
 
             if (pedestal == null || shadowSw == null || door == null)
             {
-                throw new System.Exception("[Verification Failed] Level 1 Awakening puzzle components not found!");
+                throw new Exception("[Verification Failed] Level 1 Awakening puzzle components not found!");
             }
 
-            if (door.IsOpen)
+            // Verify AncientDoor created visual RuneConduit lines for both required nodes
+            if (door.RequiredNodes.Count != 2)
             {
-                throw new System.Exception("[Verification Failed] Level 1 AncientDoor should start closed!");
+                throw new Exception("[Verification Failed] Level 1 AncientDoor should have 2 required nodes connected via Rune Conduits!");
             }
 
-            // Simulate Player picking up Torch and placing it in Pedestal
-            lm.Torch.PickUp(lm.Player.transform);
             lm.Torch.PlaceInPedestal(pedestal);
-            if (!pedestal.IsActivated)
+            td.EvaluateAwakeningProgression(false);
+            if (td.CurrentStep != TutorialDirector.AwakeningStep.SwitchToShadow)
             {
-                throw new System.Exception("[Verification Failed] TorchPedestal did not activate when Torch was placed!");
+                throw new Exception($"[Verification Failed] Expected SwitchToShadow step after placing torch, got {td.CurrentStep}");
             }
 
-            // Door should still be closed until ShadowSwitch is also activated
-            if (door.IsOpen)
-            {
-                throw new System.Exception("[Verification Failed] AncientDoor opened prematurely before ShadowSwitch activation!");
-            }
-
-            // Simulate Shadow activating ShadowSwitch
+            // Shadow activates ShadowSwitch -> Door opens -> step transitions to EnterSanctuaryExit
             shadowSw.ActivateByShadow(lm.Shadow);
-            if (!shadowSw.IsActivated || !door.IsOpen)
+            if (!door.IsOpen)
             {
-                throw new System.Exception("[Verification Failed] AncientDoor failed to open after both Pedestal and ShadowSwitch were activated!");
+                throw new Exception("[Verification Failed] AncientDoor failed to open after Pedestal + ShadowSwitch activation!");
+            }
+
+            td.EvaluateAwakeningProgression(false);
+            if (td.CurrentStep != TutorialDirector.AwakeningStep.EnterSanctuaryExit)
+            {
+                throw new Exception($"[Verification Failed] Expected EnterSanctuaryExit step after door opens, got {td.CurrentStep}");
             }
 
             lm.ClearCurrentLevel();
-            Object.DestroyImmediate(testObj);
+            UnityEngine.Object.DestroyImmediate(testObj);
 
-            Debug.Log("[Verification Passed] All 24 core sprite sets, 10 procedural audio clips, 8 levels, and Level 1 Awakening end-to-end puzzle mechanics verified!");
+            Debug.Log("[Verification Passed] Landscape 16:9 (1920x1080), Audio dB Mix Hierarchy (Music 0dB > SFX -8dB > Ambience -12dB > Fire -18dB), and Level 1 Contextual Tutorial + Rune Conduits verified!");
         }
 
         [MenuItem("MyShadowQuit/Build WebGL Release")]

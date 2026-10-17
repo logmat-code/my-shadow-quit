@@ -9,7 +9,8 @@ namespace MyShadowQuit.Core
     /// Central orchestrator for MY SHADOW QUIT: THE LAST FLAME.
     /// Auto-bootstraps when any scene loads so the game is immediately playable in Editor or WebGL build.
     /// Manages Main Menu, Level 1 ("Awakening") through Level 8 ("My Shadow Quit"),
-    /// character switching (TAB), level restart (R), pause menu (ESC), and camera target tracking.
+    /// TutorialDirector contextual progression, character switching (TAB), level restart (R),
+    /// pause menu (ESC), and camera target tracking.
     /// </summary>
     public class GameManager : MonoBehaviour
     {
@@ -21,6 +22,7 @@ namespace MyShadowQuit.Core
         private UIManager _uiManager;
         private CameraController _cameraController;
         private AudioManager _audioManager;
+        private TutorialDirector _tutorialDirector;
 
         private int _currentLevelIndex;
         private bool _isControllingShadow;
@@ -31,6 +33,7 @@ namespace MyShadowQuit.Core
         public bool IsControllingShadow => _isControllingShadow;
         public bool IsPaused => _isPaused;
         public LevelManager Levels => _levelManager;
+        public TutorialDirector Tutorial => _tutorialDirector;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void AutoBootstrap()
@@ -60,9 +63,7 @@ namespace MyShadowQuit.Core
             _audioManager = FindFirstObjectByType<AudioManager>();
             if (_audioManager == null)
             {
-                GameObject audioObj = new GameObject("AudioManager");
-                audioObj.transform.SetParent(transform, false);
-                _audioManager = audioObj.AddComponent<AudioManager>();
+                _audioManager = gameObject.AddComponent<AudioManager>();
             }
 
             Camera mainCam = Camera.main;
@@ -88,9 +89,13 @@ namespace MyShadowQuit.Core
             _uiManager = FindFirstObjectByType<UIManager>();
             if (_uiManager == null)
             {
-                GameObject uiObj = new GameObject("UIManager");
-                uiObj.transform.SetParent(transform, false);
-                _uiManager = uiObj.AddComponent<UIManager>();
+                _uiManager = gameObject.AddComponent<UIManager>();
+            }
+
+            _tutorialDirector = GetComponent<TutorialDirector>();
+            if (_tutorialDirector == null)
+            {
+                _tutorialDirector = gameObject.AddComponent<TutorialDirector>();
             }
 
             _uiManager.OnPlayRequested += StartNewGame;
@@ -181,6 +186,11 @@ namespace MyShadowQuit.Core
                     _isControllingShadow
                 );
             }
+
+            if (_tutorialDirector != null)
+            {
+                _tutorialDirector.InitializeForLevel(_currentLevelIndex, _levelManager, _uiManager);
+            }
         }
 
         public void RestartCurrentLevel()
@@ -207,7 +217,11 @@ namespace MyShadowQuit.Core
                 _audioManager.PlaySFX("shadow_shift", 0.8f, _isControllingShadow ? 0.95f : 1.12f);
             }
 
-            if (_uiManager != null)
+            if (_tutorialDirector != null && _currentLevelIndex == 0)
+            {
+                _tutorialDirector.EvaluateAwakeningProgression(forceUpdate: true);
+            }
+            else if (_uiManager != null)
             {
                 _uiManager.UpdateHUDText(
                     LevelManager.LevelTitles[_currentLevelIndex],
