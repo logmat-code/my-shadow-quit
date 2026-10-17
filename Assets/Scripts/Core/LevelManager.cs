@@ -23,6 +23,7 @@ namespace MyShadowQuit.Core
     {
         public static readonly string[] LevelTitles =
         {
+            // World 1: The Ruins of the Last Flame (Levels 1–10)
             "I. AWAKENING",
             "II. THE SEPARATION",
             "III. FOLLOW THE LIGHT",
@@ -32,11 +33,24 @@ namespace MyShadowQuit.Core
             "VII. THE LAST LIGHT",
             "VIII. MY SHADOW QUIT",
             "IX. ECHOES IN THE DARK",
-            "X. THE FIRST DAWN"
+            "X. THE FIRST DAWN",
+
+            // World 2: The Inverted Forest (Levels 11–20)
+            "XI. WHISPERS IN THE ROOTS",
+            "XII. THE RISING PATH",
+            "XIII. ROOTS OF LIGHT",
+            "XIV. FADING FOOTSTEPS",
+            "XV. THE HOLLOW CANOPY",
+            "XVI. A BRIDGE OF EMBERS",
+            "XVII. THE SILENT THORNS",
+            "XVIII. THE FRACTURED GROVE",
+            "XIX. TWO PATHS, ONE FLAME",
+            "XX. HEART OF THE INVERTED FOREST"
         };
 
         public static readonly string[] LevelHints =
         {
+            // World 1 Hints
             "A/D: Move   SPACE: Jump   E: Pick up / Place Torch   TAB: Control Shadow",
             "Stand on the lower stone plate, switch to Shadow [TAB], and Double Jump [SPACE x2 in mid-air] to the upper ledge.",
             "Darkness webs dissolve in Torchlight. Guide your Shadow across the illuminated path.",
@@ -46,7 +60,19 @@ namespace MyShadowQuit.Core
             "Transfer the Torch between pedestals to clear Darkness Webs and open the final seal.",
             "Unite the three ancient seals and reconnect Flame and Shadow at the Sanctuary Arch.",
             "Mount the Torch to awaken the upper path, Double Jump with your Shadow across the high vault, and weight the lower seal.",
-            "Awaken all five ceremonial seals of light and shadow to open the Great Gate toward the First Dawn."
+            "Awaken all five ceremonial seals of light and shadow to open the Great Gate toward the First Dawn.",
+
+            // World 2 Hints
+            "Moving platforms carry the Flame across deep abysses. Switch between characters [TAB] to guide each other.",
+            "The vertical elevator ascends through the ancient tree canopy. Step aboard and ride upward.",
+            "Dormant roots bloom into solid bridges under the Torch's golden warmth. Light the way for your Shadow.",
+            "Bioluminescent fungal platforms crumble shortly after being touched. Move swiftly with double jumps.",
+            "Dense shadow vines bar the Flame's passage, but your Shadow slips through freely to activate the lower mechanism.",
+            "Mount the Torch on the ancient pedestal to awaken the shimmering Light Bridge across the chasm.",
+            "Beware the toxic forest briars. Ride moving platforms carefully above the thorn beds.",
+            "Synchronize temporary platforms, light roots, and shadow passages to unlock the triad seals.",
+            "Two separate chambers: the Flame activates the light roots while the Shadow coordinates the dual switches.",
+            "Ascend to the core of the Great Tree. Overcome all forest mechanisms and reunite Flame and Shadow at the Ancient Arch."
         };
 
         private GameObject _levelRoot;
@@ -59,7 +85,7 @@ namespace MyShadowQuit.Core
         public ShadowController Shadow => _shadow;
         public TorchController Torch => _torch;
         public WorldDefinition ActiveWorld => _activeWorld != null ? _activeWorld : (_activeWorld = WorldCatalog.GetWorld(0));
-        public int TotalLevels => ActiveWorld != null && ActiveWorld.LevelCount > 0 ? ActiveWorld.LevelCount : LevelTitles.Length;
+        public int TotalLevels => ActiveWorld != null && ActiveWorld.LevelCount > 0 ? ActiveWorld.LevelCount : 10;
 
         public void SetActiveWorld(WorldDefinition world)
         {
@@ -68,72 +94,90 @@ namespace MyShadowQuit.Core
 
         public string GetLevelTitle(int levelIndex)
         {
-            LevelEntry entry = ActiveWorld != null ? ActiveWorld.GetLevel(levelIndex) : null;
+            int worldIdx = (ActiveWorld != null) ? ActiveWorld.WorldIndex : 0;
+            int globalIndex = (levelIndex >= 10) ? levelIndex : (worldIdx * 10) + levelIndex;
+            LevelEntry entry = ActiveWorld != null ? ActiveWorld.GetLevel(levelIndex % 10) : null;
             if (entry != null && !string.IsNullOrEmpty(entry.title)) return entry.title;
-            return LevelTitles[Mathf.Clamp(levelIndex, 0, LevelTitles.Length - 1)];
+            return LevelTitles[Mathf.Clamp(globalIndex, 0, LevelTitles.Length - 1)];
         }
 
         public string GetLevelHint(int levelIndex)
         {
-            LevelEntry entry = ActiveWorld != null ? ActiveWorld.GetLevel(levelIndex) : null;
+            int worldIdx = (ActiveWorld != null) ? ActiveWorld.WorldIndex : 0;
+            int globalIndex = (levelIndex >= 10) ? levelIndex : (worldIdx * 10) + levelIndex;
+            LevelEntry entry = ActiveWorld != null ? ActiveWorld.GetLevel(levelIndex % 10) : null;
             if (entry != null && !string.IsNullOrEmpty(entry.hint)) return entry.hint;
-            return LevelHints[Mathf.Clamp(levelIndex, 0, LevelHints.Length - 1)];
+            return LevelHints[Mathf.Clamp(globalIndex, 0, LevelHints.Length - 1)];
         }
 
         public void BuildLevel(int levelIndex, CameraController cam)
         {
             ClearCurrentLevel();
 
-            _levelRoot = new GameObject($"Level_{levelIndex + 1}");
+            int worldIdx = (ActiveWorld != null) ? ActiveWorld.WorldIndex : 0;
+            int localIndex = levelIndex;
 
-            bool isExtendedCeremonialChamber = (levelIndex == 9);
-            int maxChamberX = isExtendedCeremonialChamber ? 29 : 23;
+            if (levelIndex >= 10)
+            {
+                worldIdx = 1;
+                localIndex = levelIndex - 10;
+                if (_activeWorld == null || _activeWorld.WorldIndex != 1)
+                {
+                    _activeWorld = WorldCatalog.GetWorld(1);
+                }
+            }
+            else if (worldIdx == 1)
+            {
+                localIndex = levelIndex;
+            }
+
+            int displayLevelNumber = (worldIdx * 10) + localIndex + 1;
+            _levelRoot = new GameObject($"Level_{displayLevelNumber}");
+
+            bool isExtendedChamber = (worldIdx == 0 && localIndex == 9) || (worldIdx == 1 && localIndex == 9);
+            int maxChamberX = isExtendedChamber ? 29 : 23;
 
             if (cam != null)
             {
                 cam.ResetZoom();
                 cam.BuildParallaxLayers();
-                // 16:9 orthographic size 4.5 = 16 units wide x 9 units tall.
-                // Clamp camera so outer walls and floor/ceiling fill the 16:9 frame cleanly.
-                float maxCamX = isExtendedCeremonialChamber ? 20.8f : 14.8f;
+                float maxCamX = isExtendedChamber ? 20.8f : 14.8f;
                 cam.SetBounds(new Vector2(-1.2f, 0.2f), new Vector2(maxCamX, 2.8f));
             }
 
-            // Base outer chamber walls & floor common framing
             BuildChamberFrame(-9, maxChamberX, -4, 8);
 
-            switch (levelIndex)
+            if (worldIdx == 0)
             {
-                case 0:
-                    BuildLevel1_Awakening();
-                    break;
-                case 1:
-                    BuildLevel2_TheSeparation();
-                    break;
-                case 2:
-                    BuildLevel3_FollowTheLight();
-                    break;
-                case 3:
-                    BuildLevel4_TheForgottenFlame();
-                    break;
-                case 4:
-                    BuildLevel5_DarkPassage();
-                    break;
-                case 5:
-                    BuildLevel6_TwoSides();
-                    break;
-                case 6:
-                    BuildLevel7_TheLastLight();
-                    break;
-                case 7:
-                    BuildLevel8_MyShadowQuit();
-                    break;
-                case 8:
-                    BuildLevel9_EchoesInTheDark();
-                    break;
-                default:
-                    BuildLevel10_TheFirstDawn();
-                    break;
+                switch (localIndex)
+                {
+                    case 0: BuildLevel1_Awakening(); break;
+                    case 1: BuildLevel2_TheSeparation(); break;
+                    case 2: BuildLevel3_FollowTheLight(); break;
+                    case 3: BuildLevel4_TheForgottenFlame(); break;
+                    case 4: BuildLevel5_DarkPassage(); break;
+                    case 5: BuildLevel6_TwoSides(); break;
+                    case 6: BuildLevel7_TheLastLight(); break;
+                    case 7: BuildLevel8_MyShadowQuit(); break;
+                    case 8: BuildLevel9_EchoesInTheDark(); break;
+                    default: BuildLevel10_TheFirstDawn(); break;
+                }
+            }
+            else
+            {
+                switch (localIndex)
+                {
+                    case 0: BuildLevel11_WhispersInTheRoots(); break;
+                    case 1: BuildLevel12_TheRisingPath(); break;
+                    case 2: BuildLevel13_RootsOfLight(); break;
+                    case 3: BuildLevel14_FadingFootsteps(); break;
+                    case 4: BuildLevel15_TheHollowCanopy(); break;
+                    case 5: BuildLevel16_ABridgeOfEmbers(); break;
+                    case 6: BuildLevel17_TheSilentThorns(); break;
+                    case 7: BuildLevel18_TheFracturedGrove(); break;
+                    case 8: BuildLevel19_TwoPathsOneFlame(); break;
+                    default: BuildLevel20_HeartOfTheInvertedForest(); break;
+                }
             }
         }
 
@@ -863,6 +907,305 @@ namespace MyShadowQuit.Core
             LevelExitPortal portal = go.AddComponent<LevelExitPortal>();
             portal.Configure(door, requireShadowNear);
             return portal;
+        }
+
+        // =========================================================================
+        // WORLD 2: THE INVERTED FOREST (Levels 11–20)
+        // Dark petroleum green, deep cyan/jade, ancient roots, glowing flora
+        // =========================================================================
+
+        // Level 11: Whispers in the Roots (Horizontal Moving Platform)
+        private void BuildLevel11_WhispersInTheRoots()
+        {
+            CreatePlatformRow(-8, -2, -2, true);
+            CreatePlatformRow(5, 12, -2, true);
+            CreatePlatformRow(1, 4, 1.5f, true);
+
+            CreateProp("World2/forest_thorns", new Vector2(0.5f, -3.2f), 1);
+            CreateProp("World2/forest_thorns", new Vector2(3.5f, -3.2f), 1);
+
+            CreateMovingPlatform(new[] { new Vector2(-0.5f, -2.0f), new Vector2(4.5f, -2.0f) }, speed: 2.4f, wait: 0.6f);
+
+            PressurePlate plate = CreatePressurePlate(new Vector2(2.5f, 2.2f), latch: true);
+            AncientDoor door = CreateAncientDoor(new Vector2(8.5f, -1.0f), new List<PuzzleNode> { plate });
+            CreateExitPortal(new Vector2(10.5f, -1.0f), door, false);
+
+            SpawnCharactersAndTorch(new Vector2(-4.0f, -1.0f), new Vector2(-5.5f, -1.0f), new Vector2(-4.0f, -1.0f), true);
+        }
+
+        // Level 12: The Rising Path (Vertical Elevator Moving Platform)
+        private void BuildLevel12_TheRisingPath()
+        {
+            CreatePlatformRow(-8, -2, -2, true);
+            CreatePlatformRow(1, 12, -2, true);
+            CreatePlatformRow(1, 8, 3.2f, true);
+
+            CreateMovingPlatform(new[] { new Vector2(-0.5f, -2.0f), new Vector2(-0.5f, 3.2f) }, speed: 2.2f, wait: 0.8f);
+
+            LightSwitch ls = CreateLightSwitch(new Vector2(4.5f, 4.0f), latch: true);
+            AncientDoor door = CreateAncientDoor(new Vector2(8.5f, -1.0f), new List<PuzzleNode> { ls });
+            CreateExitPortal(new Vector2(10.5f, -1.0f), door, false);
+
+            SpawnCharactersAndTorch(new Vector2(-4.5f, -1.0f), new Vector2(-5.5f, -1.0f), new Vector2(-4.5f, -1.0f), true);
+        }
+
+        // Level 13: Roots of Light (Torch proximity blooms solid bridges)
+        private void BuildLevel13_RootsOfLight()
+        {
+            CreatePlatformRow(-8, -3, -2, true);
+            CreatePlatformRow(5, 12, -2, true);
+            CreatePlatformRow(6, 8, 1.5f, true);
+
+            CreateLightRoot(new Vector2(-1.0f, -2.0f), radius: 4.2f);
+            CreateLightRoot(new Vector2(2.5f, -2.0f), radius: 4.2f);
+
+            ShadowSwitch ss = CreateShadowSwitch(new Vector2(7.0f, 2.3f));
+            AncientDoor door = CreateAncientDoor(new Vector2(9.5f, -1.0f), new List<PuzzleNode> { ss });
+            CreateExitPortal(new Vector2(11.0f, -1.0f), door, false);
+
+            SpawnCharactersAndTorch(new Vector2(-5.0f, -1.0f), new Vector2(-6.0f, -1.0f), new Vector2(-5.0f, -1.0f), true);
+        }
+
+        // Level 14: Fading Footsteps (Temporary crumbling platforms)
+        private void BuildLevel14_FadingFootsteps()
+        {
+            CreatePlatformRow(-8, -4, -2, true);
+            CreatePlatformRow(6, 12, 1.5f, true);
+            CreatePlatformRow(6, 12, -2, true);
+
+            CreateForestHazard(new Vector2(1.0f, -3.2f), new Vector2(9.0f, 0.8f));
+
+            CreateTemporaryPlatform(new Vector2(-2.0f, -1.2f), collapseTime: 1.2f, respawnTime: 2.4f);
+            CreateTemporaryPlatform(new Vector2(0.8f, -0.2f), collapseTime: 1.2f, respawnTime: 2.4f);
+            CreateTemporaryPlatform(new Vector2(3.6f, 0.8f), collapseTime: 1.2f, respawnTime: 2.4f);
+
+            MovableBlock block = CreateMovableBlock(new Vector2(7.5f, 2.5f));
+            PressurePlate plate = CreatePressurePlate(new Vector2(8.0f, -1.2f), latch: true);
+            AncientDoor door = CreateAncientDoor(new Vector2(10.5f, 2.5f), new List<PuzzleNode> { plate });
+            CreateExitPortal(new Vector2(11.8f, 2.5f), door, false);
+
+            SpawnCharactersAndTorch(new Vector2(-6.0f, -1.0f), new Vector2(-7.0f, -1.0f), new Vector2(-6.0f, -1.0f), true);
+        }
+
+        // Level 15: The Hollow Canopy (Shadow Vine barrier + Lower Moving Platform)
+        private void BuildLevel15_TheHollowCanopy()
+        {
+            CreatePlatformRow(-8, -3, -2, true);
+            CreatePlatformRow(-2, 8, 2.8f, true);
+            CreatePlatformRow(6, 12, -2, true);
+
+            CreateWallColumn(0, -1, 2);
+            CreateShadowVine(new Vector2(0.0f, 3.8f));
+
+            ShadowSwitch ss = CreateShadowSwitch(new Vector2(5.5f, 3.6f));
+            CreateMovingPlatform(new[] { new Vector2(-1.0f, -2.0f), new Vector2(4.5f, -2.0f) }, speed: 2.3f);
+
+            AncientDoor door = CreateAncientDoor(new Vector2(9.0f, -1.0f), new List<PuzzleNode> { ss });
+            CreateExitPortal(new Vector2(11.0f, -1.0f), door, false);
+
+            SpawnCharactersAndTorch(new Vector2(-5.5f, -1.0f), new Vector2(-6.5f, -1.0f), new Vector2(-5.5f, -1.0f), true);
+        }
+
+        // Level 16: A Bridge of Embers (Torch Pedestal activates Light Bridge)
+        private void BuildLevel16_ABridgeOfEmbers()
+        {
+            CreatePlatformRow(-8, -2, -2, true);
+            CreatePlatformRow(7, 13, -2, true);
+
+            CreateForestHazard(new Vector2(2.5f, -3.2f), new Vector2(8.0f, 0.8f));
+
+            TorchPedestal ped1 = CreateTorchPedestal(new Vector2(-3.5f, -1.0f));
+            LightBridgeMechanism bridge = CreateLightBridge(new Vector2(2.5f, -2.0f), new List<PuzzleNode> { ped1 });
+
+            PressurePlate farPlate = CreatePressurePlate(new Vector2(9.0f, -1.2f), latch: true);
+            AncientDoor door = CreateAncientDoor(new Vector2(11.0f, -1.0f), new List<PuzzleNode> { farPlate });
+            CreateExitPortal(new Vector2(12.2f, -1.0f), door, false);
+
+            SpawnCharactersAndTorch(new Vector2(-5.5f, -1.0f), new Vector2(-6.5f, -1.0f), new Vector2(-5.5f, -1.0f), true);
+        }
+
+        // Level 17: The Silent Thorns (Thorn beds + synchronized moving platforms)
+        private void BuildLevel17_TheSilentThorns()
+        {
+            CreatePlatformRow(-8, -4, -1, true);
+            CreatePlatformRow(3, 4, -0.5f, true);
+            CreatePlatformRow(10, 13, 0.5f, true);
+
+            CreateForestHazard(new Vector2(3.0f, -3.2f), new Vector2(14.0f, 0.8f));
+
+            CreateMovingPlatform(new[] { new Vector2(-2.0f, -0.5f), new Vector2(1.5f, -0.5f) }, speed: 2.2f);
+            CreateMovingPlatform(new[] { new Vector2(5.5f, 0.0f), new Vector2(8.5f, 0.0f) }, speed: 2.2f);
+
+            LightSwitch ls = CreateLightSwitch(new Vector2(3.5f, 1.2f), latch: true);
+            AncientDoor door = CreateAncientDoor(new Vector2(11.0f, 1.5f), new List<PuzzleNode> { ls });
+            CreateExitPortal(new Vector2(12.2f, 1.5f), door, false);
+
+            SpawnCharactersAndTorch(new Vector2(-6.0f, 0.0f), new Vector2(-7.0f, 0.0f), new Vector2(-6.0f, 0.0f), true);
+        }
+
+        // Level 18: The Fractured Grove (Triad: Light Root, Temp Platform, Shadow Vine)
+        private void BuildLevel18_TheFracturedGrove()
+        {
+            CreatePlatformRow(-8, -4, -2, true);
+            CreatePlatformRow(-1, 2, 0.5f, true);
+            CreatePlatformRow(5, 8, 2.5f, true);
+            CreatePlatformRow(7, 13, -2, true);
+
+            // Triad 1: Light Root blooming under Torch
+            CreateLightRoot(new Vector2(-2.5f, -1.0f), radius: 3.8f);
+            LightSwitch s1 = CreateLightSwitch(new Vector2(0.5f, 1.3f), latch: true);
+
+            // Triad 2: Temporary Platform
+            CreateTemporaryPlatform(new Vector2(3.5f, 1.5f), collapseTime: 1.15f, respawnTime: 2.5f);
+
+            // Triad 3: Shadow Vine & Switch
+            CreateShadowVine(new Vector2(5.0f, 3.5f));
+            ShadowSwitch s2 = CreateShadowSwitch(new Vector2(7.0f, 3.3f));
+
+            PressurePlate s3 = CreatePressurePlate(new Vector2(9.0f, -1.2f), latch: true);
+
+            AncientDoor door = CreateAncientDoor(new Vector2(11.0f, -1.0f), new List<PuzzleNode> { s1, s2, s3 }, requireAll: true);
+            CreateExitPortal(new Vector2(12.2f, -1.0f), door, false);
+
+            SpawnCharactersAndTorch(new Vector2(-6.0f, -1.0f), new Vector2(-7.0f, -1.0f), new Vector2(-6.0f, -1.0f), true);
+        }
+
+        // Level 19: Two Paths, One Flame (Parallel paths + Cooperative Switch)
+        private void BuildLevel19_TwoPathsOneFlame()
+        {
+            // Upper path
+            CreatePlatformRow(-8, 9, 2.5f, true);
+            // Lower path
+            CreatePlatformRow(-8, 9, -2.5f, true);
+
+            // Dividing barrier
+            CreateWallColumn(0, -2, 2);
+
+            // Lower path has shadow vines
+            CreateShadowVine(new Vector2(-3.0f, -1.5f));
+
+            // Upper path has light root
+            CreateLightRoot(new Vector2(3.0f, 2.5f), radius: 4.0f);
+
+            // Cooperative Switches at the end of both paths
+            CooperativeSwitch upperCoop = CreateCooperativeSwitch(new Vector2(6.5f, 3.3f));
+            CooperativeSwitch lowerCoop = CreateCooperativeSwitch(new Vector2(6.5f, -1.7f));
+            upperCoop.Configure(lowerCoop, simultaneous: true);
+            lowerCoop.Configure(upperCoop, simultaneous: true);
+
+            CreatePlatformRow(10, 13, 0.0f, true);
+            AncientDoor door = CreateAncientDoor(new Vector2(10.5f, 1.0f), new List<PuzzleNode> { upperCoop });
+            CreateExitPortal(new Vector2(12.0f, 1.0f), door, false);
+
+            SpawnCharactersAndTorch(new Vector2(-6.0f, 3.5f), new Vector2(-6.0f, -1.5f), new Vector2(-6.0f, 3.5f), true);
+        }
+
+        // Level 20: Heart of the Inverted Forest (5-Phase Grand Climax)
+        private void BuildLevel20_HeartOfTheInvertedForest()
+        {
+            // Phase 1: Base Platform & Elevator
+            CreatePlatformRow(-8, -4, -2, true);
+            CreateMovingPlatform(new[] { new Vector2(-2.5f, -2.0f), new Vector2(-2.5f, 2.5f) }, speed: 2.4f);
+
+            // Phase 2: High Canopy with Light Roots
+            CreatePlatformRow(-1, 3, 2.5f, true);
+            CreateLightRoot(new Vector2(4.5f, 2.5f), radius: 4.2f);
+            CreatePlatformRow(6, 10, 2.5f, true);
+
+            // Phase 3: Shadow Vine high chamber & temporary bridge
+            CreateShadowVine(new Vector2(10.5f, 3.5f));
+            CreateTemporaryPlatform(new Vector2(12.5f, 3.5f), collapseTime: 1.2f, respawnTime: 2.5f);
+            CreatePlatformRow(14, 17, 3.5f, true);
+            ShadowSwitch highSwitch = CreateShadowSwitch(new Vector2(16.0f, 4.3f));
+
+            // Phase 4: Descent to Dual Cooperative Switches
+            CreatePlatformRow(14, 21, -1.5f, true);
+            CreatePlatformRow(14, 21, 1.0f, true);
+
+            CooperativeSwitch coopUpper = CreateCooperativeSwitch(new Vector2(19.0f, 1.8f));
+            CooperativeSwitch coopLower = CreateCooperativeSwitch(new Vector2(19.0f, -0.7f));
+            coopUpper.Configure(coopLower, simultaneous: true);
+            coopLower.Configure(coopUpper, simultaneous: true);
+
+            // Phase 5: Sacred Grove Arch (requires both Flame and Shadow united!)
+            CreatePlatformRow(22, 27, 0.5f, true);
+            AncientDoor finalDoor = CreateAncientDoor(new Vector2(23.0f, 1.5f), new List<PuzzleNode> { highSwitch, coopUpper }, requireAll: true);
+            CreateExitPortal(new Vector2(25.5f, 1.5f), finalDoor, requireShadowNear: true);
+
+            SpawnCharactersAndTorch(new Vector2(-6.0f, -1.0f), new Vector2(-7.0f, -1.0f), new Vector2(-6.0f, -1.0f), true);
+        }
+
+        // =========================================================================
+        // WORLD 2 FACTORY HELPERS
+        // =========================================================================
+
+        private MovingPlatform2D CreateMovingPlatform(Vector2[] waypoints, float speed = 2.2f, float wait = 0.6f, bool pingPong = true)
+        {
+            GameObject go = new GameObject("MovingPlatform");
+            go.transform.SetParent(_levelRoot.transform, false);
+            MovingPlatform2D mp = go.AddComponent<MovingPlatform2D>();
+            mp.Configure(waypoints, speed, wait, pingPong);
+            return mp;
+        }
+
+        private TemporaryPlatform2D CreateTemporaryPlatform(Vector2 pos, float collapseTime = 1.15f, float respawnTime = 2.5f)
+        {
+            GameObject go = new GameObject("TemporaryPlatform");
+            go.transform.SetParent(_levelRoot.transform, false);
+            go.transform.position = pos;
+            TemporaryPlatform2D tp = go.AddComponent<TemporaryPlatform2D>();
+            tp.Configure(collapseTime, respawnTime);
+            return tp;
+        }
+
+        private LightRootMechanism CreateLightRoot(Vector2 pos, float radius = 3.8f, bool stayBloomed = false)
+        {
+            GameObject go = new GameObject("LightRoot");
+            go.transform.SetParent(_levelRoot.transform, false);
+            go.transform.position = pos;
+            LightRootMechanism lr = go.AddComponent<LightRootMechanism>();
+            lr.Configure(radius, stayBloomed);
+            return lr;
+        }
+
+        private ShadowVinePassage CreateShadowVine(Vector2 pos, List<PuzzleNode> unlockNodes = null, bool stayOpen = true)
+        {
+            GameObject go = new GameObject("ShadowVine");
+            go.transform.SetParent(_levelRoot.transform, false);
+            go.transform.position = pos;
+            ShadowVinePassage sv = go.AddComponent<ShadowVinePassage>();
+            sv.Configure(unlockNodes, stayOpen);
+            return sv;
+        }
+
+        private LightBridgeMechanism CreateLightBridge(Vector2 pos, List<PuzzleNode> nodes, bool requireAll = true, bool stayActive = false)
+        {
+            GameObject go = new GameObject("LightBridge");
+            go.transform.SetParent(_levelRoot.transform, false);
+            go.transform.position = pos;
+            LightBridgeMechanism lb = go.AddComponent<LightBridgeMechanism>();
+            lb.Configure(nodes, requireAll, stayActive);
+            return lb;
+        }
+
+        private CooperativeSwitch CreateCooperativeSwitch(Vector2 pos, CooperativeSwitch partner = null, bool simultaneous = true)
+        {
+            GameObject go = new GameObject("CooperativeSwitch");
+            go.transform.SetParent(_levelRoot.transform, false);
+            go.transform.position = pos;
+            CooperativeSwitch cs = go.AddComponent<CooperativeSwitch>();
+            cs.Configure(partner, simultaneous);
+            return cs;
+        }
+
+        private ForestHazard CreateForestHazard(Vector2 pos, Vector2 size)
+        {
+            GameObject go = new GameObject("ForestHazard");
+            go.transform.SetParent(_levelRoot.transform, false);
+            go.transform.position = pos;
+            ForestHazard fh = go.AddComponent<ForestHazard>();
+            fh.Configure(size);
+            return fh;
         }
     }
 }

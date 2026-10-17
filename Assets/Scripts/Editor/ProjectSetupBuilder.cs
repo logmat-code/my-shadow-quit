@@ -71,7 +71,7 @@ namespace MyShadowQuit.EditorTools
             SaveOrUpdateWorldAsset(w1, "Assets/Resources/Worlds/World1_TheRuinsOfTheLastFlame.asset");
 
             WorldDefinition w2 = WorldCatalog.CreateDefaultWorld2();
-            SaveOrUpdateWorldAsset(w2, "Assets/Resources/Worlds/World2_ComingSoon.asset");
+            SaveOrUpdateWorldAsset(w2, "Assets/Resources/Worlds/World2_TheInvertedForest.asset");
 
             Debug.Log("[ProjectSetupBuilder] Created/Updated WorldDefinition ScriptableObjects in Assets/Resources/Worlds/.");
         }
@@ -154,6 +154,12 @@ namespace MyShadowQuit.EditorTools
         private static void ConfigureLandscapePlayerSettings()
         {
             EditorSettings.enterPlayModeOptionsEnabled = false;
+            PlayerSettings.productName = "MY SHADOW QUIT.";
+            PlayerSettings.companyName = "Logmat";
+            PlayerSettings.applicationIdentifier = "com.logmat.myshadowquit";
+            PlayerSettings.SetApplicationIdentifier(BuildTargetGroup.Android, "com.logmat.myshadowquit");
+            PlayerSettings.SetApplicationIdentifier(BuildTargetGroup.WebGL, "com.logmat.myshadowquit");
+            PlayerSettings.SetApplicationIdentifier(BuildTargetGroup.Standalone, "com.logmat.myshadowquit");
             PlayerSettings.defaultScreenWidth = 1920;
             PlayerSettings.defaultScreenHeight = 1080;
             PlayerSettings.defaultWebScreenWidth = 1280;
@@ -164,6 +170,15 @@ namespace MyShadowQuit.EditorTools
             PlayerSettings.allowedAutorotateToLandscapeLeft = true;
             PlayerSettings.allowedAutorotateToLandscapeRight = true;
             PlayerSettings.WebGL.template = "PROJECT:Landscape16x9";
+            PlayerSettings.Android.targetArchitectures = AndroidArchitecture.ARM64;
+            PlayerSettings.SetScriptingBackend(NamedBuildTarget.Android, ScriptingImplementation.IL2CPP);
+
+            Texture2D masterIcon = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Art/Branding/master_app_icon_1024.png");
+            if (masterIcon != null)
+            {
+                PlayerSettings.SetIcons(NamedBuildTarget.Unknown, new[] { masterIcon }, IconKind.Application);
+                PlayerSettings.SetIcons(NamedBuildTarget.Android, new[] { masterIcon }, IconKind.Application);
+            }
         }
 
         public static void EnforceEditorGameViewLandscape16x9()
@@ -674,9 +689,9 @@ namespace MyShadowQuit.EditorTools
                 {
                     throw new Exception("[Verification Failed] World 1 definition invalid or not 10 levels!");
                 }
-                if (world2Def == null || world2Def.IsUnlocked || world2Def.IsImplemented)
+                if (world2Def == null || !world2Def.IsImplemented || world2Def.LevelCount != 10)
                 {
-                    throw new Exception("[Verification Failed] World 2 definition should be present as Locked / Coming Soon!");
+                    throw new Exception("[Verification Failed] World 2 definition should be present and implemented with 10 levels!");
                 }
 
                 // =====================================================================
@@ -861,6 +876,7 @@ namespace MyShadowQuit.EditorTools
                     "Assets/Resources/Sprites/UI/world_card_frame_active.png",
                     "Assets/Resources/Sprites/UI/world_card_frame_locked.png",
                     "Assets/Resources/Sprites/UI/world1_ruins_map.png",
+                    "Assets/Resources/Sprites/UI/world2_forest_map.png",
                     "Assets/Resources/Sprites/UI/map_node_completed.png",
                     "Assets/Resources/Sprites/UI/map_node_available.png",
                     "Assets/Resources/Sprites/UI/map_node_locked.png",
@@ -873,6 +889,46 @@ namespace MyShadowQuit.EditorTools
                     if (!File.Exists(spritePath))
                     {
                         throw new Exception($"[Verification Failed] Missing custom UI/Map sprite asset: {spritePath}");
+                    }
+                }
+
+                string[] requiredBrandingFiles =
+                {
+                    "Assets/Art/Branding/master_app_icon_1024.png",
+                    "Assets/Art/Branding/android_adaptive_bg.png",
+                    "Assets/Art/Branding/android_adaptive_fg.png",
+                    "Assets/Art/Branding/app_icon_512.png",
+                    "Assets/Art/Branding/favicon.png",
+                    "Assets/Art/Branding/favicon.ico",
+                    "Assets/WebGLTemplates/Landscape16x9/favicon.png",
+                    "Assets/WebGLTemplates/Landscape16x9/favicon.ico"
+                };
+                foreach (string bPath in requiredBrandingFiles)
+                {
+                    if (!File.Exists(bPath))
+                    {
+                        throw new Exception($"[Verification Failed] Missing branding asset: {bPath}");
+                    }
+                }
+
+                string[] requiredWorld2Sprites =
+                {
+                    "Assets/Resources/Sprites/World2/moving_platform.png",
+                    "Assets/Resources/Sprites/World2/temp_platform.png",
+                    "Assets/Resources/Sprites/World2/temp_platform_fading.png",
+                    "Assets/Resources/Sprites/World2/light_root_inactive.png",
+                    "Assets/Resources/Sprites/World2/light_root_active.png",
+                    "Assets/Resources/Sprites/World2/shadow_vine.png",
+                    "Assets/Resources/Sprites/World2/light_bridge.png",
+                    "Assets/Resources/Sprites/World2/forest_thorns.png",
+                    "Assets/Resources/Sprites/World2/forest_platform.png",
+                    "Assets/Resources/Sprites/World2/world2_forest_bg.png"
+                };
+                foreach (string w2Sprite in requiredWorld2Sprites)
+                {
+                    if (!File.Exists(w2Sprite))
+                    {
+                        throw new Exception($"[Verification Failed] Missing World 2 sprite asset: {w2Sprite}");
                     }
                 }
 
@@ -957,6 +1013,88 @@ namespace MyShadowQuit.EditorTools
                 {
                     throw new Exception("[Verification Failed] Locked Level 3 node was allowed to launch from Level Select Map!");
                 }
+
+                // Verify World 2 Map Switching & World 2 Complete Screen
+                uiTest.SetSelectedMapWorld(1);
+                if (uiTest.SelectedMapWorldIndex != 1)
+                {
+                    throw new Exception("[Verification Failed] SetSelectedMapWorld(1) failed to switch map world index to 1!");
+                }
+                uiTest.ShowWorld2CompleteScreen();
+                if (!uiTest.IsWorld2CompleteScreenVisible)
+                {
+                    throw new Exception("[Verification Failed] ShowWorld2CompleteScreen failed to display World 2 Complete panel!");
+                }
+                uiTest.SetSelectedMapWorld(0);
+
+                // =====================================================================
+                // Verify World 2 (Levels 11 to 20) and 7 New Mechanics
+                // =====================================================================
+                lm.SetActiveWorld(world2Def);
+                if (lm.TotalLevels != 10)
+                {
+                    throw new Exception($"[Verification Failed] Expected World 2 to have 10 levels, got {lm.TotalLevels}!");
+                }
+
+                for (int lvlIdx = 0; lvlIdx < 10; lvlIdx++)
+                {
+                    lm.BuildLevel(lvlIdx, null);
+                    if (lm.Player == null || lm.Shadow == null || lm.Torch == null)
+                    {
+                        throw new Exception($"[Verification Failed] World 2 Level {lvlIdx + 11} missing core player/shadow/torch entities!");
+                    }
+                    LevelExitPortal exit = UnityEngine.Object.FindFirstObjectByType<LevelExitPortal>();
+                    if (exit == null)
+                    {
+                        throw new Exception($"[Verification Failed] World 2 Level {lvlIdx + 11} missing LevelExitPortal!");
+                    }
+                }
+
+                // Verify specific mechanic types exist across World 2 levels
+                lm.BuildLevel(1, null); // Level 12: MovingPlatform2D
+                if (UnityEngine.Object.FindFirstObjectByType<MovingPlatform2D>() == null)
+                {
+                    throw new Exception("[Verification Failed] Level 12 missing MovingPlatform2D component!");
+                }
+
+                lm.BuildLevel(0, null); // Level 11: TemporaryPlatform2D
+                if (UnityEngine.Object.FindFirstObjectByType<TemporaryPlatform2D>() == null)
+                {
+                    throw new Exception("[Verification Failed] Level 11 missing TemporaryPlatform2D component!");
+                }
+
+                lm.BuildLevel(2, null); // Level 13: LightRootMechanism
+                if (UnityEngine.Object.FindFirstObjectByType<LightRootMechanism>() == null)
+                {
+                    throw new Exception("[Verification Failed] Level 13 missing LightRootMechanism component!");
+                }
+
+                lm.BuildLevel(4, null); // Level 15: ShadowVinePassage
+                if (UnityEngine.Object.FindFirstObjectByType<ShadowVinePassage>() == null)
+                {
+                    throw new Exception("[Verification Failed] Level 15 missing ShadowVinePassage component!");
+                }
+
+                lm.BuildLevel(5, null); // Level 16: LightBridgeMechanism
+                if (UnityEngine.Object.FindFirstObjectByType<LightBridgeMechanism>() == null)
+                {
+                    throw new Exception("[Verification Failed] Level 16 missing LightBridgeMechanism component!");
+                }
+
+                lm.BuildLevel(6, null); // Level 17: ForestHazard
+                if (UnityEngine.Object.FindFirstObjectByType<ForestHazard>() == null)
+                {
+                    throw new Exception("[Verification Failed] Level 17 missing ForestHazard component!");
+                }
+
+                lm.BuildLevel(7, null); // Level 18: CooperativeSwitch
+                if (UnityEngine.Object.FindFirstObjectByType<CooperativeSwitch>() == null)
+                {
+                    throw new Exception("[Verification Failed] Level 18 missing CooperativeSwitch component!");
+                }
+
+                // Switch back to World 1 for subsequent tests
+                lm.SetActiveWorld(world1Def);
 
                 // =====================================================================
                 // 10. Verify In-Game PAUSE Button & PAUSE Menu Architecture
@@ -1212,7 +1350,7 @@ namespace MyShadowQuit.EditorTools
                 throw new Exception($"[Verification Failed] Leaked entities remain in EditMode scene: Players={leakedPlayers}, Shadows={leakedShadows}, Torches={leakedTorches}!");
             }
 
-            Debug.Log("[Verification Passed] HOME + WORLD SELECT + LEVEL SELECT Ruins Map (10 Nodes), WorldProgressSave Sequential Progression, World 1 (10 Levels: I. Awakening to X. The First Dawn), Zero Duplicated Objects, Shadow Double Jump, Audio dB Mix, and 16:9 Landscape verified!");
+            Debug.Log("[Verification Passed] HOME + WORLD SELECT + LEVEL SELECT Maps (World 1 & World 2, 20 Levels: I. Awakening to XX. Heart of the Inverted Forest), 7 New Physical Mechanics, Shop 3-Zone Cards, Branding Icons, Zero Duplicated Objects, Shadow Double Jump, Audio dB Mix, and 16:9 Landscape verified!");
         }
 
         [MenuItem("MyShadowQuit/Build WebGL Release")]

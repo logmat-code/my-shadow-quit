@@ -57,7 +57,7 @@ namespace MyShadowQuit.Core
         public string WorldSubtitle => worldSubtitle;
         public string CompletionQuote => completionQuote;
         public bool IsImplemented => isImplemented;
-        public bool IsUnlocked => unlockedByDefault;
+        public bool IsUnlocked => unlockedByDefault || (worldNumber == 2 && WorldProgressSave.IsWorldCompleted("world_1"));
         public IReadOnlyList<LevelEntry> Levels => levels;
         public int LevelCount => levels != null ? levels.Count : 0;
 
@@ -131,10 +131,19 @@ namespace MyShadowQuit.Core
                 EnsureWorld1HasTenLevels(w1);
             }
 
-            WorldDefinition w2 = Resources.Load<WorldDefinition>("Worlds/World2_ComingSoon");
+            WorldDefinition w2 = Resources.Load<WorldDefinition>("Worlds/World2_TheInvertedForest");
             if (w2 == null)
             {
+                w2 = Resources.Load<WorldDefinition>("Worlds/World2_ComingSoon");
+            }
+
+            if (w2 == null || w2.LevelCount < 10)
+            {
                 w2 = CreateDefaultWorld2();
+            }
+            else
+            {
+                EnsureWorld2HasTenLevels(w2);
             }
 
             _worlds.Add(w1);
@@ -184,21 +193,48 @@ namespace MyShadowQuit.Core
             };
         }
 
+        public static void EnsureWorld2HasTenLevels(WorldDefinition w2)
+        {
+            w2.worldId = "world_2";
+            w2.worldNumber = 2;
+            w2.worldName = "THE INVERTED FOREST";
+            w2.worldSubtitle = "WORLD 2";
+            w2.initialSceneName = "Level1_Awakening";
+            w2.artDirection = "Dark petroleum green, jade and deep turquoise bioluminescent forest, ancient twisted roots, mist, glowing flora.";
+            w2.musicTrackPath = "Music/dark_ambient_theme";
+            w2.completionQuote = "\"The roots remember the first spark. Light and Shadow breathe as one.\"";
+            w2.availableMechanics = new[]
+            {
+                "Kinematic Moving Platforms (Horizontal & Elevators)",
+                "Bioluminescent Temporary Fungal Platforms",
+                "Illuminated Light Root Bridges",
+                "Permeable Shadow Vine Passages",
+                "Shimmering Light Bridges",
+                "Cooperative Dual Switches",
+                "Environmental Forest Briars & Thorns"
+            };
+            w2.isImplemented = true;
+            w2.unlockedByDefault = false;
+            w2.levels = new List<LevelEntry>
+            {
+                new LevelEntry(0, "w2_lvl1", "XI. WHISPERS IN THE ROOTS", "Moving platforms carry the Flame across deep abysses. Switch between characters [TAB] to guide each other."),
+                new LevelEntry(1, "w2_lvl2", "XII. THE RISING PATH", "The vertical elevator ascends through the ancient tree canopy. Step aboard and ride upward."),
+                new LevelEntry(2, "w2_lvl3", "XIII. ROOTS OF LIGHT", "Dormant roots bloom into solid bridges under the Torch's golden warmth. Light the way for your Shadow."),
+                new LevelEntry(3, "w2_lvl4", "XIV. FADING FOOTSTEPS", "Bioluminescent fungal platforms crumble shortly after being touched. Move swiftly with double jumps."),
+                new LevelEntry(4, "w2_lvl5", "XV. THE HOLLOW CANOPY", "Dense shadow vines bar the Flame's passage, but your Shadow slips through freely to activate the lower mechanism."),
+                new LevelEntry(5, "w2_lvl6", "XVI. A BRIDGE OF EMBERS", "Mount the Torch on the ancient pedestal to awaken the shimmering Light Bridge across the chasm."),
+                new LevelEntry(6, "w2_lvl7", "XVII. THE SILENT THORNS", "Beware the toxic forest briars. Ride moving platforms carefully above the thorn beds."),
+                new LevelEntry(7, "w2_lvl8", "XVIII. THE FRACTURED GROVE", "Synchronize temporary platforms, light roots, and shadow passages to unlock the triad seals."),
+                new LevelEntry(8, "w2_lvl9", "XIX. TWO PATHS, ONE FLAME", "Two separate chambers: the Flame activates the light roots while the Shadow coordinates the dual switches."),
+                new LevelEntry(9, "w2_lvl10", "XX. HEART OF THE INVERTED FOREST", "Ascend to the core of the Great Tree. Overcome all forest mechanisms and reunite Flame and Shadow at the Ancient Arch.")
+            };
+        }
+
         public static WorldDefinition CreateDefaultWorld2()
         {
             WorldDefinition w2 = ScriptableObject.CreateInstance<WorldDefinition>();
-            w2.name = "World2_ComingSoon";
-            w2.worldId = "world_2";
-            w2.worldNumber = 2;
-            w2.worldName = "COMING SOON";
-            w2.worldSubtitle = "WORLD 2";
-            w2.initialSceneName = "";
-            w2.artDirection = "Reserved for future expansion beyond the Ceremonial Gate.";
-            w2.musicTrackPath = "Music/dark_ambient_theme";
-            w2.availableMechanics = Array.Empty<string>();
-            w2.isImplemented = false;
-            w2.unlockedByDefault = false;
-            w2.levels = new List<LevelEntry>();
+            w2.name = "World2_TheInvertedForest";
+            EnsureWorld2HasTenLevels(w2);
             return w2;
         }
     }

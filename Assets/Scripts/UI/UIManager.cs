@@ -51,6 +51,7 @@ namespace MyShadowQuit.UI
             Settings,
             Credits,
             World1Complete,
+            World2Complete,
             World2ComingSoon,
             Victory,
             NewGameConfirm,
@@ -68,6 +69,7 @@ namespace MyShadowQuit.UI
         private GameObject _creditsPanel;
         private GameObject _hudPanel;
         private GameObject _worldCompletePanel;
+        private GameObject _world2CompletePanel;
         private GameObject _world2ComingSoonPanel;
         private GameObject _victoryPanel;
         private GameObject _shopPanel;
@@ -124,6 +126,14 @@ namespace MyShadowQuit.UI
         private Image _world2CardSelectionOutline;
         private Text _world1ProgressText;
         private RectTransform _world1ProgressBarFill;
+        private Image _world2CardBgImage;
+        private Text _world2WorldTagText;
+        private Text _world2NameText;
+        private GameObject _world2LockSealObj;
+        private Text _world2ProgressText;
+        private RectTransform _world2ProgressBarFill;
+        private Button _world2ActionButton;
+        private Text _world2ActionBtnText;
         private int _selectedWorldCardIndex; // 0 = World 1, 1 = World 2
 
         // Level Select Map elements
@@ -153,6 +163,10 @@ namespace MyShadowQuit.UI
         private Image _inspectorPlayButtonImage;
         private Text _inspectorPlayButtonLabel;
         private int _selectedMapLevelIndex;
+        private int _selectedMapWorldIndex = 0; // 0 = World 1, 1 = World 2
+        private Image _mapContainerImage;
+        private Text _mapTitleBannerText;
+        private Sprite _forestMapSprite;
 
         // Shop UI elements
         private Text _shopCoinBalanceText;
@@ -256,6 +270,20 @@ namespace MyShadowQuit.UI
             new Vector2(432f, 86f)    // 10 — THE FIRST DAWN
         };
 
+        private static readonly Vector2[] World2MapNodePixelCoords =
+        {
+            new Vector2(60f, 215f),   // 11 — WHISPERS IN THE ROOTS
+            new Vector2(105f, 175f),  // 12 — THE RISING PATH
+            new Vector2(148f, 135f),  // 13 — ROOTS OF LIGHT
+            new Vector2(195f, 165f),  // 14 — FADING FOOTSTEPS
+            new Vector2(242f, 195f),  // 15 — THE HOLLOW CANOPY
+            new Vector2(290f, 145f),  // 16 — A BRIDGE OF EMBERS
+            new Vector2(335f, 110f),  // 17 — THE SILENT THORNS
+            new Vector2(365f, 160f),  // 18 — THE FRACTURED GROVE
+            new Vector2(405f, 120f),  // 19 — TWO PATHS, ONE FLAME
+            new Vector2(440f, 75f)    // 20 — HEART OF THE INVERTED FOREST
+        };
+
         public static readonly string[] CanonicalLevelShortNames =
         {
             "AWAKENING",
@@ -270,7 +298,22 @@ namespace MyShadowQuit.UI
             "THE FIRST DAWN"
         };
 
+        public static readonly string[] World2CanonicalLevelShortNames =
+        {
+            "WHISPERS IN THE ROOTS",
+            "THE RISING PATH",
+            "ROOTS OF LIGHT",
+            "FADING FOOTSTEPS",
+            "THE HOLLOW CANOPY",
+            "A BRIDGE OF EMBERS",
+            "THE SILENT THORNS",
+            "THE FRACTURED GROVE",
+            "TWO PATHS, ONE FLAME",
+            "HEART OF THE INVERTED FOREST"
+        };
+
         public const string World1CompleteQuote = "\"Beyond the darkness, another light awaits.\"";
+        public const string World2CompleteQuote = "\"The roots remember the first spark. Light and Shadow breathe as one.\"";
         public const string FinalNarrativeQuote = "\"Even shadows need a light to return to.\"";
 
         public bool IsHomeScreenVisible => _mainMenuPanel != null && _mainMenuPanel.activeSelf;
@@ -278,6 +321,7 @@ namespace MyShadowQuit.UI
         public bool IsLevelSelectScreenVisible => _levelSelectPanel != null && _levelSelectPanel.activeSelf;
         public bool IsPauseMenuVisible => _pauseMenuContainer != null && _pauseMenuContainer.activeSelf;
         public bool IsWorld1CompleteScreenVisible => _worldCompletePanel != null && _worldCompletePanel.activeSelf;
+        public bool IsWorld2CompleteScreenVisible => _world2CompletePanel != null && _world2CompletePanel.activeSelf;
         public bool IsWorld2ComingSoonScreenVisible => _world2ComingSoonPanel != null && _world2ComingSoonPanel.activeSelf;
         public bool IsVictoryScreenVisible => _victoryPanel != null && _victoryPanel.activeSelf;
         public bool IsNewGameConfirmVisible => _newGameConfirmModal != null && _newGameConfirmModal.activeSelf;
@@ -291,9 +335,11 @@ namespace MyShadowQuit.UI
         public GameObject PauseMenuContainer => _pauseMenuContainer;
         public Button InGamePauseButton => _inGamePauseButton;
         public GameObject WorldCompletePanel => _worldCompletePanel;
+        public GameObject World2CompletePanel => _world2CompletePanel;
         public GameObject World2ComingSoonPanel => _world2ComingSoonPanel;
         public GameObject VictoryPanel => _victoryPanel;
         public int SelectedMapLevelIndex => _selectedMapLevelIndex;
+        public int SelectedMapWorldIndex => _selectedMapWorldIndex;
         public int MapNodeCount => _mapNodes.Count;
         public int PauseButtonCount => _pauseMenuButtons.Count;
         public int ShopSelectedTab => _shopSelectedTab;
@@ -344,6 +390,7 @@ namespace MyShadowQuit.UI
             _lockSealSprite = AssetRegistry.GetSprite("UI/icon_lock_seal", 32f);
 
             _ruinsMapSprite = AssetRegistry.GetSprite("UI/world1_ruins_map", 32f);
+            _forestMapSprite = AssetRegistry.GetSprite("UI/world2_forest_map", 32f) ?? _ruinsMapSprite;
             _nodeCompletedSprite = AssetRegistry.GetSprite("UI/map_node_completed", 32f);
             _nodeAvailableSprite = AssetRegistry.GetSprite("UI/map_node_available", 32f);
             _nodeLockedSprite = AssetRegistry.GetSprite("UI/map_node_locked", 32f);
@@ -426,6 +473,7 @@ namespace MyShadowQuit.UI
             BuildSettingsMenu(canvasObj.transform);
             BuildCreditsMenu(canvasObj.transform);
             BuildWorld1CompleteScreen(canvasObj.transform);
+            BuildWorld2CompleteScreen(canvasObj.transform);
             BuildWorld2ComingSoonScreen(canvasObj.transform);
             BuildVictoryScreen(canvasObj.transform);
             BuildNewGameConfirmModal(canvasObj.transform);
@@ -740,10 +788,11 @@ namespace MyShadowQuit.UI
             }, new Vector2(440f, 64f));
 
             // ----------------------------------------------------------------
-            // WORLD 2 VISUAL CARD (LOCKED / COMING SOON)
+            // WORLD 2 VISUAL CARD (DYNAMIC: UNLOCKED OR LOCKED)
             // ----------------------------------------------------------------
             GameObject w2Card = CreateImagePanel(_worldSelectPanel.transform, "World2Card", new Vector2(360f, 10f), new Vector2(580f, 650f), _worldCardLockedSprite);
             _world2CardRect = w2Card.GetComponent<RectTransform>();
+            _world2CardBgImage = w2Card.GetComponent<Image>();
 
             GameObject w2Outline = CreateImagePanel(w2Card.transform, "W2SelectionOutline", Vector2.zero, new Vector2(596f, 666f), _btnSelected);
             _world2CardSelectionOutline = w2Outline.GetComponent<Image>();
@@ -751,35 +800,48 @@ namespace MyShadowQuit.UI
             _world2CardSelectionOutline.raycastTarget = false;
             w2Outline.transform.SetAsFirstSibling();
 
-            CreateText(w2Card.transform, "W2WorldTag", "WORLD 2   •   LOCKED", 21, new Vector2(0f, 278f), new Vector2(500f, 34f), new Color(0.68f, 0.62f, 0.86f, 1f), TextAnchor.MiddleCenter);
-            CreateStyledTitleText(w2Card.transform, "W2Name", "COMING SOON", 27, new Vector2(0f, 236f), new Vector2(500f, 42f), new Color(0.76f, 0.74f, 0.88f, 1f));
+            _world2WorldTagText = CreateText(w2Card.transform, "W2WorldTag", "WORLD 2   •   LOCKED", 21, new Vector2(0f, 278f), new Vector2(500f, 34f), new Color(0.68f, 0.62f, 0.86f, 1f), TextAnchor.MiddleCenter);
+            _world2NameText = CreateStyledTitleText(w2Card.transform, "W2Name", "THE INVERTED FOREST", 27, new Vector2(0f, 236f), new Vector2(500f, 42f), new Color(0.76f, 0.74f, 0.88f, 1f));
 
-            // Mysterious silhouette artwork + Lock seal overlay
+            // Artwork + Lock seal overlay
             GameObject w2Art = CreateSpriteElement(w2Card.transform, "W2Artwork", _world2ArtSprite, new Vector2(0f, 58f), new Vector2(496f, 290f));
             Button w2ArtBtn = w2Art.AddComponent<Button>();
             w2ArtBtn.transition = Selectable.Transition.None;
-            w2ArtBtn.onClick.AddListener(() => SelectWorldCard(1, openIfUnlocked: false));
+            w2ArtBtn.onClick.AddListener(() => SelectWorldCard(1, openIfUnlocked: true));
 
-            CreateSpriteElement(w2Art.transform, "W2LockSeal", _lockSealSprite, new Vector2(0f, 0f), new Vector2(88f, 88f));
+            _world2LockSealObj = CreateSpriteElement(w2Art.transform, "W2LockSeal", _lockSealSprite, new Vector2(0f, 0f), new Vector2(88f, 88f));
 
-            CreateText(
+            _world2ProgressText = CreateText(
                 w2Card.transform,
-                "W2MysteryText",
-                "\"Beyond the darkness, another light awaits.\"\nUncharted sanctuaries beyond the Ceremonial Gate.",
-                20,
-                new Vector2(0f, -135f),
-                new Vector2(490f, 64f),
-                new Color(0.64f, 0.62f, 0.78f, 1f),
+                "W2ProgressLabel",
+                "10 LEVELS   |   COMPLETED: 0 / 10",
+                21,
+                new Vector2(0f, -118f),
+                new Vector2(500f, 36f),
+                new Color(0.72f, 0.95f, 0.85f, 1f),
                 TextAnchor.MiddleCenter
             );
 
-            // Disabled World 2 button
-            Button w2DisabledBtn = CreateMenuButton(w2Card.transform, "WORLD 2 (LOCKED)", new Vector2(0f, -238f), () =>
+            // Progress Bar
+            GameObject w2BarBg = CreateImagePanel(w2Card.transform, "W2ProgressBarBg", new Vector2(0f, -158f), new Vector2(460f, 22f));
+            w2BarBg.GetComponent<Image>().color = new Color(0.04f, 0.08f, 0.08f, 0.95f);
+
+            GameObject w2BarFill = new GameObject("W2ProgressBarFill", typeof(RectTransform), typeof(Image));
+            w2BarFill.transform.SetParent(w2BarBg.transform, false);
+            _world2ProgressBarFill = w2BarFill.GetComponent<RectTransform>();
+            _world2ProgressBarFill.anchorMin = new Vector2(0f, 0f);
+            _world2ProgressBarFill.anchorMax = new Vector2(0f, 1f);
+            _world2ProgressBarFill.pivot = new Vector2(0f, 0.5f);
+            _world2ProgressBarFill.anchoredPosition = new Vector2(3f, 0f);
+            _world2ProgressBarFill.sizeDelta = new Vector2(18f, -6f);
+            w2BarFill.GetComponent<Image>().color = new Color(0.24f, 0.88f, 0.65f, 1f);
+
+            // Action button
+            _world2ActionButton = CreateMenuButton(w2Card.transform, "WORLD 2 — SELECT LEVEL", new Vector2(0f, -238f), () =>
             {
-                PlayMenuLockedSound();
-                SelectWorldCard(1, openIfUnlocked: false);
+                SelectWorldCard(1, openIfUnlocked: true);
             }, new Vector2(440f, 64f));
-            SetButtonVisualDisabled(w2DisabledBtn, true);
+            _world2ActionBtnText = _world2ActionButton.GetComponentInChildren<Text>();
 
             // Bottom Navigation Bar
             CreateMenuButton(_worldSelectPanel.transform, "BACK", new Vector2(-240f, -425f), () =>
@@ -790,7 +852,7 @@ namespace MyShadowQuit.UI
 
             CreateMenuButton(_worldSelectPanel.transform, "OPEN LEVEL MAP", new Vector2(240f, -425f), () =>
             {
-                SelectWorldCard(0, openIfUnlocked: true);
+                SelectWorldCard(_selectedWorldCardIndex, openIfUnlocked: true);
             }, new Vector2(340f, 62f));
 
             _worldSelectPanel.SetActive(false);
@@ -801,24 +863,49 @@ namespace MyShadowQuit.UI
             _selectedWorldCardIndex = Mathf.Clamp(worldIdx, 0, 1);
             UpdateWorldSelectHighlight();
 
-            if (_selectedWorldCardIndex == 0 && openIfUnlocked)
+            if (_selectedWorldCardIndex == 0)
             {
-                if (AudioManager.Instance != null)
+                if (openIfUnlocked)
                 {
-                    AudioManager.Instance.PlaySFX("torch_ignite", 0.55f, 1.05f);
+                    if (AudioManager.Instance != null)
+                    {
+                        AudioManager.Instance.PlaySFX("torch_ignite", 0.55f, 1.05f);
+                    }
+                    SetSelectedMapWorld(0);
+                    TransitionToAction(() =>
+                    {
+                        OnLevelSelectRequested?.Invoke();
+                        ShowLevelSelectScreen();
+                    });
                 }
-                TransitionToAction(() =>
-                {
-                    OnLevelSelectRequested?.Invoke();
-                    ShowLevelSelectScreen();
-                });
             }
             else if (_selectedWorldCardIndex == 1)
             {
-                PlayMenuLockedSound();
-                if (openIfUnlocked)
+                WorldDefinition w2 = WorldCatalog.GetWorld(1);
+                bool unlocked = w2 != null && w2.IsUnlocked;
+                if (!unlocked)
                 {
-                    TransitionToPanel(ShowWorld2ComingSoonScreen);
+                    PlayMenuLockedSound();
+                    if (openIfUnlocked)
+                    {
+                        TransitionToPanel(ShowWorld2ComingSoonScreen);
+                    }
+                }
+                else
+                {
+                    if (openIfUnlocked)
+                    {
+                        if (AudioManager.Instance != null)
+                        {
+                            AudioManager.Instance.PlaySFX("torch_ignite", 0.55f, 1.05f);
+                        }
+                        SetSelectedMapWorld(1);
+                        TransitionToAction(() =>
+                        {
+                            OnLevelSelectRequested?.Invoke();
+                            ShowLevelSelectScreen();
+                        });
+                    }
                 }
             }
         }
@@ -859,23 +946,72 @@ namespace MyShadowQuit.UI
 
         public void RefreshWorldSelectState()
         {
+            // World 1 Status
             WorldDefinition w1 = WorldCatalog.GetWorld(0);
-            int total = w1 != null ? w1.LevelCount : 10;
-            int completedCount = WorldProgressSave.GetCompletedLevelsCount("world_1", total);
-            bool worldCompleted = WorldProgressSave.IsWorldCompleted("world_1");
-            if (worldCompleted) completedCount = total;
+            int total1 = w1 != null ? w1.LevelCount : 10;
+            int completedCount1 = WorldProgressSave.GetCompletedLevelsCount("world_1", total1);
+            bool world1Completed = WorldProgressSave.IsWorldCompleted("world_1");
+            if (world1Completed) completedCount1 = total1;
 
             if (_world1ProgressText != null)
             {
-                string statusTag = worldCompleted ? "COMPLETED" : "AVAILABLE";
-                _world1ProgressText.text = $"10 LEVELS   |   COMPLETED: {completedCount} / {total}   |   {statusTag}";
+                string statusTag = world1Completed ? "COMPLETED" : "AVAILABLE";
+                _world1ProgressText.text = $"10 LEVELS   |   COMPLETED: {completedCount1} / {total1}   |   {statusTag}";
             }
 
             if (_world1ProgressBarFill != null)
             {
-                float ratio = Mathf.Clamp01(completedCount / (float)Mathf.Max(1, total));
+                float ratio = Mathf.Clamp01(completedCount1 / (float)Mathf.Max(1, total1));
                 float barWidth = Mathf.Max(18f, 454f * ratio);
                 _world1ProgressBarFill.sizeDelta = new Vector2(barWidth, -6f);
+            }
+
+            // World 2 Status
+            WorldDefinition w2 = WorldCatalog.GetWorld(1);
+            int total2 = w2 != null ? w2.LevelCount : 10;
+            bool isW2Unlocked = w2 != null && w2.IsUnlocked;
+            int completedCount2 = WorldProgressSave.GetCompletedLevelsCount("world_2", total2);
+            bool world2Completed = WorldProgressSave.IsWorldCompleted("world_2");
+            if (world2Completed) completedCount2 = total2;
+
+            if (_world2CardBgImage != null)
+            {
+                _world2CardBgImage.sprite = isW2Unlocked ? _worldCardActiveSprite : _worldCardLockedSprite;
+            }
+            if (_world2LockSealObj != null)
+            {
+                _world2LockSealObj.SetActive(!isW2Unlocked);
+            }
+            if (_world2WorldTagText != null)
+            {
+                _world2WorldTagText.text = isW2Unlocked
+                    ? (world2Completed ? "WORLD 2   •   COMPLETED" : "WORLD 2   •   AVAILABLE")
+                    : "WORLD 2   •   LOCKED (COMPLETE WORLD 1)";
+                _world2WorldTagText.color = isW2Unlocked ? new Color(0.45f, 0.95f, 0.75f, 1f) : new Color(0.68f, 0.62f, 0.86f, 1f);
+            }
+            if (_world2NameText != null)
+            {
+                _world2NameText.text = "THE INVERTED FOREST";
+            }
+            if (_world2ProgressText != null)
+            {
+                _world2ProgressText.text = isW2Unlocked
+                    ? $"10 LEVELS   |   COMPLETED: {completedCount2} / {total2}"
+                    : "COMPLETE WORLD 1 TO ENTER";
+            }
+            if (_world2ProgressBarFill != null)
+            {
+                float ratio = isW2Unlocked ? Mathf.Clamp01(completedCount2 / (float)Mathf.Max(1, total2)) : 0f;
+                float barWidth = Mathf.Max(18f, 454f * ratio);
+                _world2ProgressBarFill.sizeDelta = new Vector2(barWidth, -6f);
+            }
+            if (_world2ActionButton != null)
+            {
+                SetButtonVisualDisabled(_world2ActionButton, !isW2Unlocked);
+                if (_world2ActionBtnText != null)
+                {
+                    _world2ActionBtnText.text = isW2Unlocked ? "WORLD 2 — SELECT LEVEL" : "WORLD 2 (LOCKED)";
+                }
             }
 
             UpdateWorldSelectHighlight();
@@ -896,15 +1032,21 @@ namespace MyShadowQuit.UI
             GameObject topBanner = CreateImagePanel(_levelSelectPanel.transform, "MapTopBanner", new Vector2(0f, 478f), new Vector2(1840f, 82f));
             topBanner.GetComponent<Image>().color = new Color(0.06f, 0.07f, 0.14f, 0.96f);
 
-            CreateStyledTitleText(topBanner.transform, "MapTitle", "WORLD 1 — THE RUINS OF THE LAST FLAME", 32, new Vector2(-380f, 0f), new Vector2(960f, 54f), new Color(1f, 0.85f, 0.38f, 1f));
-            _mapHeaderProgressText = CreateText(topBanner.transform, "MapProgressSummary", "SANCTUARY PROGRESS: 0 / 10 COMPLETED", 23, new Vector2(520f, 0f), new Vector2(680f, 48f), new Color(0.86f, 0.78f, 1f, 1f), TextAnchor.MiddleRight);
+            _mapTitleBannerText = CreateStyledTitleText(topBanner.transform, "MapTitle", "WORLD 1 — THE RUINS OF THE LAST FLAME", 30, new Vector2(-430f, 0f), new Vector2(860f, 54f), new Color(1f, 0.85f, 0.38f, 1f));
+
+            // World Switcher Tabs on Map Banner
+            CreateMenuButton(topBanner.transform, "WORLD 1", new Vector2(90f, 0f), () => SetSelectedMapWorld(0), new Vector2(140f, 46f));
+            CreateMenuButton(topBanner.transform, "WORLD 2", new Vector2(245f, 0f), () => SetSelectedMapWorld(1), new Vector2(140f, 46f));
+
+            _mapHeaderProgressText = CreateText(topBanner.transform, "MapProgressSummary", "SANCTUARY PROGRESS: 0 / 10 COMPLETED", 21, new Vector2(585f, 0f), new Vector2(500f, 48f), new Color(0.86f, 0.78f, 1f, 1f), TextAnchor.MiddleRight);
 
             // ----------------------------------------------------------------
-            // LEFT/CENTER: 16:9 ILLUSTRATED PIXEL-ART MAP OF THE RUINS (1360x765)
+            // LEFT/CENTER: 16:9 ILLUSTRATED PIXEL-ART MAP (1360x765)
             // ----------------------------------------------------------------
             const float mapWidth = 1360f;
             const float mapHeight = 765f;
-            GameObject mapContainer = CreateSpriteElement(_levelSelectPanel.transform, "World1RuinsMapCanvas", _ruinsMapSprite, new Vector2(-215f, 8f), new Vector2(mapWidth, mapHeight));
+            GameObject mapContainer = CreateSpriteElement(_levelSelectPanel.transform, "WorldMapCanvas", _ruinsMapSprite, new Vector2(-215f, 8f), new Vector2(mapWidth, mapHeight));
+            _mapContainerImage = mapContainer.GetComponent<Image>();
             RectTransform mapRect = mapContainer.GetComponent<RectTransform>();
 
             // Scale factor from 480x270 pixel map to 1360x765 UI RectTransform
@@ -1097,6 +1239,73 @@ namespace MyShadowQuit.UI
             }
         }
 
+        public void SetSelectedMapWorld(int worldIdx)
+        {
+            if (worldIdx == 1)
+            {
+                WorldDefinition w2 = WorldCatalog.GetWorld(1);
+                if (w2 == null || !w2.IsUnlocked)
+                {
+                    PlayMenuLockedSound();
+                    return;
+                }
+            }
+
+            _selectedMapWorldIndex = Mathf.Clamp(worldIdx, 0, 1);
+            if (_mapContainerImage != null)
+            {
+                _mapContainerImage.sprite = (_selectedMapWorldIndex == 1 && _forestMapSprite != null)
+                    ? _forestMapSprite
+                    : _ruinsMapSprite;
+            }
+
+            if (_mapTitleBannerText != null)
+            {
+                _mapTitleBannerText.text = _selectedMapWorldIndex == 0
+                    ? "WORLD 1 — THE RUINS OF THE LAST FLAME"
+                    : "WORLD 2 — THE INVERTED FOREST";
+                _mapTitleBannerText.color = _selectedMapWorldIndex == 0
+                    ? new Color(1f, 0.85f, 0.38f, 1f)
+                    : new Color(0.42f, 0.95f, 0.75f, 1f);
+            }
+
+            const float mapWidth = 1360f;
+            const float mapHeight = 765f;
+            float scaleX = mapWidth / 480f;
+            float scaleY = mapHeight / 270f;
+
+            Vector2[] coords = _selectedMapWorldIndex == 0 ? MapNodePixelCoords : World2MapNodePixelCoords;
+            for (int i = 0; i < _mapNodes.Count && i < coords.Length; i++)
+            {
+                float ux = (coords[i].x - 240f) * scaleX;
+                float uy = (135f - coords[i].y) * scaleY;
+                Vector2 pos = new Vector2(ux, uy);
+                _mapNodes[i].MapAnchoredPos = pos;
+                _mapNodes[i].NodeRect.anchoredPosition = pos;
+                _mapNodes[i].NodeNumberLabel.text = _selectedMapWorldIndex == 0 ? $"{i + 1:D2}" : $"{i + 11:D2}";
+            }
+
+            // Update path segment positions
+            for (int p = 0; p < _mapPathSegments.Count; p++)
+            {
+                int targetIdx = _mapPathTargetNodeIndex[p];
+                int fromIdx = targetIdx - 1;
+                if (fromIdx >= 0 && targetIdx < _mapNodes.Count)
+                {
+                    Vector2 fromPos = _mapNodes[fromIdx].MapAnchoredPos;
+                    Vector2 toPos = _mapNodes[targetIdx].MapAnchoredPos;
+                    Vector2 delta = toPos - fromPos;
+                    RectTransform rt = _mapPathSegments[p].rectTransform;
+                    rt.anchoredPosition = fromPos + delta * 0.5f;
+                    rt.sizeDelta = new Vector2(delta.magnitude, 10f);
+                    float angle = Mathf.Atan2(delta.y, delta.x) * Mathf.Rad2Deg;
+                    rt.localRotation = Quaternion.Euler(0f, 0f, angle);
+                }
+            }
+
+            RefreshLevelSelectMap();
+        }
+
         public void SelectMapNode(int levelIndex)
         {
             int clamped = Mathf.Clamp(levelIndex, 0, _mapNodes.Count - 1);
@@ -1108,18 +1317,21 @@ namespace MyShadowQuit.UI
                 _mapSelectedRingRect.anchoredPosition = node.MapAnchoredPos;
             }
 
+            int displayNum = (_selectedMapWorldIndex == 0) ? (clamped + 1) : (clamped + 11);
             if (_inspectorLevelNumberText != null)
             {
-                _inspectorLevelNumberText.text = $"LEVEL {clamped + 1:D2}";
+                _inspectorLevelNumberText.text = $"LEVEL {displayNum:D2}";
             }
             if (_inspectorLevelTitleText != null)
             {
-                _inspectorLevelTitleText.text = CanonicalLevelShortNames[clamped];
+                string[] titles = _selectedMapWorldIndex == 0 ? CanonicalLevelShortNames : World2CanonicalLevelShortNames;
+                _inspectorLevelTitleText.text = (clamped < titles.Length) ? titles[clamped] : $"CHAMBER {displayNum:D2}";
             }
             if (_inspectorHintText != null)
             {
-                _inspectorHintText.text = clamped < LevelManager.LevelHints.Length
-                    ? LevelManager.LevelHints[clamped]
+                int globalIdx = (_selectedMapWorldIndex * 10) + clamped;
+                _inspectorHintText.text = globalIdx < LevelManager.LevelHints.Length
+                    ? LevelManager.LevelHints[globalIdx]
                     : "";
             }
 
@@ -1153,7 +1365,7 @@ namespace MyShadowQuit.UI
             {
                 if (_inspectorStatusBadgeText != null)
                 {
-                    _inspectorStatusBadgeText.text = $"LOCKED (COMPLETE LEVEL {clamped:D2})";
+                    _inspectorStatusBadgeText.text = $"LOCKED (COMPLETE LEVEL {displayNum - 1:D2})";
                     _inspectorStatusBadgeText.color = new Color(0.65f, 0.62f, 0.78f, 1f);
                 }
                 if (_inspectorPlayButtonLabel != null)
@@ -1181,9 +1393,10 @@ namespace MyShadowQuit.UI
             }
 
             int targetLevel = _selectedMapLevelIndex;
+            int targetWorld = _selectedMapWorldIndex;
             TransitionToAction(() =>
             {
-                OnStartWorldRequested?.Invoke(0, false);
+                OnStartWorldRequested?.Invoke(targetWorld, false);
                 OnLevelSelectedFromMap?.Invoke(targetLevel);
             });
             return true;
@@ -1191,27 +1404,31 @@ namespace MyShadowQuit.UI
 
         public void RefreshLevelSelectMap()
         {
-            WorldDefinition w1 = WorldCatalog.GetWorld(0);
-            int total = w1 != null ? w1.LevelCount : 10;
-            int completedCount = WorldProgressSave.GetCompletedLevelsCount("world_1", total);
+            string worldId = _selectedMapWorldIndex == 0 ? "world_1" : "world_2";
+            WorldDefinition w = WorldCatalog.GetWorld(_selectedMapWorldIndex);
+            int total = w != null ? w.LevelCount : 10;
+            int completedCount = WorldProgressSave.GetCompletedLevelsCount(worldId, total);
 
             if (_mapHeaderProgressText != null)
             {
-                _mapHeaderProgressText.text = $"SANCTUARY PROGRESS: {completedCount} / {total} COMPLETED";
+                string tag = _selectedMapWorldIndex == 0 ? "SANCTUARY PROGRESS" : "FOREST PROGRESS";
+                _mapHeaderProgressText.text = $"{tag}: {completedCount} / {total} COMPLETED";
             }
 
             for (int i = 0; i < _mapNodes.Count; i++)
             {
                 MapNodeUI node = _mapNodes[i];
-                node.IsUnlocked = WorldProgressSave.IsLevelUnlocked("world_1", i, total);
-                node.IsCompleted = WorldProgressSave.IsLevelCompleted("world_1", i, total);
+                node.IsUnlocked = WorldProgressSave.IsLevelUnlocked(worldId, i, total);
+                node.IsCompleted = WorldProgressSave.IsLevelCompleted(worldId, i, total);
 
                 if (node.IsCompleted)
                 {
                     node.NodeIconImage.sprite = _nodeCompletedSprite;
                     node.NodeIconImage.color = Color.white;
                     node.NodeGlowImage.gameObject.SetActive(true);
-                    node.NodeGlowImage.color = new Color(1f, 0.84f, 0.32f, 0.42f);
+                    node.NodeGlowImage.color = _selectedMapWorldIndex == 0
+                        ? new Color(1f, 0.84f, 0.32f, 0.42f)
+                        : new Color(0.35f, 0.95f, 0.72f, 0.45f);
                     node.NodeNumberLabel.color = new Color(1f, 0.90f, 0.48f, 1f);
                 }
                 else if (node.IsUnlocked)
@@ -1219,7 +1436,9 @@ namespace MyShadowQuit.UI
                     node.NodeIconImage.sprite = _nodeAvailableSprite;
                     node.NodeIconImage.color = Color.white;
                     node.NodeGlowImage.gameObject.SetActive(true);
-                    node.NodeGlowImage.color = new Color(0.98f, 0.56f, 0.22f, 0.46f);
+                    node.NodeGlowImage.color = _selectedMapWorldIndex == 0
+                        ? new Color(0.98f, 0.56f, 0.22f, 0.46f)
+                        : new Color(0.20f, 0.85f, 0.60f, 0.48f);
                     node.NodeNumberLabel.color = new Color(1f, 0.78f, 0.36f, 1f);
                 }
                 else
@@ -1238,11 +1457,11 @@ namespace MyShadowQuit.UI
                 bool pathLit = targetIdx < _mapNodes.Count && _mapNodes[targetIdx].IsUnlocked;
                 _mapPathSegments[p].sprite = pathLit ? _pathLitSprite : _pathDarkSprite;
                 _mapPathSegments[p].color = pathLit
-                    ? new Color(1f, 0.92f, 0.65f, 0.95f)
+                    ? (_selectedMapWorldIndex == 0 ? new Color(1f, 0.92f, 0.65f, 0.95f) : new Color(0.45f, 0.95f, 0.75f, 0.95f))
                     : new Color(0.55f, 0.58f, 0.75f, 0.75f);
             }
 
-            int defaultSelection = WorldProgressSave.GetContinueLevelIndex("world_1", total);
+            int defaultSelection = WorldProgressSave.GetContinueLevelIndex(worldId, total);
             SelectMapNode(defaultSelection);
         }
 
@@ -1319,23 +1538,21 @@ namespace MyShadowQuit.UI
                 Image cardBg = cardObj.GetComponent<Image>();
                 Button cardBtn = cardObj.AddComponent<Button>();
 
-                // Icon preview (64x64) on the left
-                GameObject iconObj = CreateSpriteElement(cardObj.transform, "SkinIcon", null, new Vector2(-295f, 0f), new Vector2(64f, 64f));
+                // Icon preview (64x64) in Left Zone
+                GameObject iconObj = CreateSpriteElement(cardObj.transform, "SkinIcon", null, new Vector2(-300f, 0f), new Vector2(64f, 64f));
                 Image iconImg = iconObj.GetComponent<Image>();
 
-                // Skin Title
-                Text titleTxt = CreateText(cardObj.transform, "SkinTitle", "SKIN NAME", 22, new Vector2(-110f, 16f), new Vector2(320f, 32f), Color.white, TextAnchor.MiddleLeft);
+                // Center Zone: Skin Title & Rarity Badge
+                Text titleTxt = CreateText(cardObj.transform, "SkinTitle", "SKIN NAME", 20, new Vector2(-75f, 16f), new Vector2(360f, 30f), Color.white, TextAnchor.MiddleLeft);
                 titleTxt.fontStyle = FontStyle.Bold;
 
-                // Rarity Badge Text
-                Text rarityTxt = CreateText(cardObj.transform, "SkinRarity", "COMMON", 16, new Vector2(-110f, -16f), new Vector2(320f, 26f), new Color(0.8f, 0.85f, 0.9f), TextAnchor.MiddleLeft);
+                Text rarityTxt = CreateText(cardObj.transform, "SkinRarity", "COMMON", 15, new Vector2(-75f, -16f), new Vector2(360f, 24f), new Color(0.8f, 0.85f, 0.9f), TextAnchor.MiddleLeft);
 
-                // Coin icon for price (if locked)
-                GameObject cardCoinObj = CreateSpriteElement(cardObj.transform, "CardCoinIcon", _coinSoulIconSprite, new Vector2(175f, 0f), new Vector2(24f, 24f));
+                // Right Zone: Price (Coin Icon + Number) or Status Badge (OWNED / EQUIPPED)
+                GameObject cardCoinObj = CreateSpriteElement(cardObj.transform, "CardCoinIcon", _coinSoulIconSprite, new Vector2(195f, 0f), new Vector2(24f, 24f));
                 Image cardCoinImg = cardCoinObj.GetComponent<Image>();
 
-                // Status / Price Text on the right
-                Text statusTxt = CreateText(cardObj.transform, "SkinStatus", "EQUIPPED", 20, new Vector2(255f, 0f), new Vector2(180f, 36f), new Color(1f, 0.85f, 0.35f), TextAnchor.MiddleRight);
+                Text statusTxt = CreateText(cardObj.transform, "SkinStatus", "EQUIPPED", 20, new Vector2(245f, 0f), new Vector2(210f, 36f), new Color(1f, 0.85f, 0.35f), TextAnchor.MiddleCenter);
                 statusTxt.fontStyle = FontStyle.Bold;
 
                 cardBtn.onClick.AddListener(() =>
@@ -1481,21 +1698,32 @@ namespace MyShadowQuit.UI
 
                 if (isEquipped)
                 {
+                    _shopCards[i].CardCoinIcon.gameObject.SetActive(false);
+                    _shopCards[i].CardStatusText.rectTransform.anchoredPosition = new Vector2(245f, 0f);
+                    _shopCards[i].CardStatusText.rectTransform.sizeDelta = new Vector2(210f, 36f);
+                    _shopCards[i].CardStatusText.alignment = TextAnchor.MiddleCenter;
                     _shopCards[i].CardStatusText.text = "EQUIPPED";
                     _shopCards[i].CardStatusText.color = new Color(0.4f, 1f, 0.5f);
-                    _shopCards[i].CardCoinIcon.gameObject.SetActive(false);
                 }
                 else if (isOwned)
                 {
+                    _shopCards[i].CardCoinIcon.gameObject.SetActive(false);
+                    _shopCards[i].CardStatusText.rectTransform.anchoredPosition = new Vector2(245f, 0f);
+                    _shopCards[i].CardStatusText.rectTransform.sizeDelta = new Vector2(210f, 36f);
+                    _shopCards[i].CardStatusText.alignment = TextAnchor.MiddleCenter;
                     _shopCards[i].CardStatusText.text = "OWNED";
                     _shopCards[i].CardStatusText.color = new Color(0.7f, 0.85f, 1f);
-                    _shopCards[i].CardCoinIcon.gameObject.SetActive(false);
                 }
                 else
                 {
+                    _shopCards[i].CardCoinIcon.gameObject.SetActive(true);
+                    _shopCards[i].CardCoinIcon.rectTransform.anchoredPosition = new Vector2(195f, 0f);
+                    _shopCards[i].CardCoinIcon.rectTransform.sizeDelta = new Vector2(24f, 24f);
+                    _shopCards[i].CardStatusText.rectTransform.anchoredPosition = new Vector2(275f, 0f);
+                    _shopCards[i].CardStatusText.rectTransform.sizeDelta = new Vector2(130f, 36f);
+                    _shopCards[i].CardStatusText.alignment = TextAnchor.MiddleLeft;
                     _shopCards[i].CardStatusText.text = $"{def.Price}";
                     _shopCards[i].CardStatusText.color = new Color(1f, 0.85f, 0.35f);
-                    _shopCards[i].CardCoinIcon.gameObject.SetActive(true);
                 }
             }
         }
@@ -1925,10 +2153,11 @@ namespace MyShadowQuit.UI
                 TextAnchor.MiddleCenter
             );
 
-            CreateMenuButton(_worldCompletePanel.transform, "CONTINUE", new Vector2(0f, -32f), () =>
+            CreateMenuButton(_worldCompletePanel.transform, "CONTINUE TO WORLD 2", new Vector2(0f, -32f), () =>
             {
                 OnWorldCompleteContinueRequested?.Invoke();
-                TransitionToPanel(ShowWorld2ComingSoonScreen);
+                SetSelectedMapWorld(1);
+                TransitionToPanel(ShowLevelSelectScreen);
             });
             CreateMenuButton(_worldCompletePanel.transform, "LEVEL SELECT", new Vector2(0f, -106f), () =>
             {
@@ -1946,6 +2175,46 @@ namespace MyShadowQuit.UI
             });
 
             _worldCompletePanel.SetActive(false);
+        }
+
+        private void BuildWorld2CompleteScreen(Transform parent)
+        {
+            _world2CompletePanel = CreateImagePanel(parent, "World2CompletePanel", Vector2.zero, new Vector2(880f, 700f), _modalFrameSprite);
+
+            GameObject torchDeco = CreateSpriteElement(_world2CompletePanel.transform, "World2CompleteTorchIcon", AssetRegistry.GetSprite("Torch/torch_item_0", 32f), new Vector2(0f, 268f), new Vector2(68f, 88f));
+            torchDeco.GetComponent<Image>().raycastTarget = false;
+
+            CreateStyledTitleText(_world2CompletePanel.transform, "World2CompleteTitle", "WORLD 2 COMPLETE", 46, new Vector2(0f, 192f), new Vector2(760f, 60f), new Color(0.42f, 0.95f, 0.72f, 1f));
+            CreateStyledTitleText(_world2CompletePanel.transform, "World2CompleteSub", "THE INVERTED FOREST", 28, new Vector2(0f, 140f), new Vector2(740f, 44f), new Color(0.78f, 0.62f, 0.98f, 1f));
+            CreateSpriteElement(_world2CompletePanel.transform, "World2CompleteDivider", _stoneDividerSprite, new Vector2(0f, 102f), new Vector2(520f, 24f));
+
+            CreateText(
+                _world2CompletePanel.transform,
+                "World2CompleteQuote",
+                World2CompleteQuote,
+                24,
+                new Vector2(0f, 48f),
+                new Vector2(760f, 64f),
+                new Color(1f, 0.94f, 0.80f, 1f),
+                TextAnchor.MiddleCenter
+            );
+
+            CreateMenuButton(_world2CompletePanel.transform, "LEVEL SELECT", new Vector2(0f, -32f), () =>
+            {
+                OnLevelSelectRequested?.Invoke();
+                TransitionToPanel(ShowLevelSelectScreen);
+            });
+            CreateMenuButton(_world2CompletePanel.transform, "WORLD SELECT", new Vector2(0f, -106f), () =>
+            {
+                OnWorldSelectRequested?.Invoke();
+                TransitionToPanel(ShowWorldSelectScreen);
+            });
+            CreateMenuButton(_world2CompletePanel.transform, "MAIN MENU", new Vector2(0f, -180f), () =>
+            {
+                TransitionToAction(() => OnMainMenuRequested?.Invoke());
+            });
+
+            _world2CompletePanel.SetActive(false);
         }
 
         private void BuildWorld2ComingSoonScreen(Transform parent)
@@ -2531,6 +2800,7 @@ namespace MyShadowQuit.UI
             if (_settingsPanel != null) _settingsPanel.SetActive(false);
             if (_creditsPanel != null) _creditsPanel.SetActive(false);
             if (_worldCompletePanel != null) _worldCompletePanel.SetActive(false);
+            if (_world2CompletePanel != null) _world2CompletePanel.SetActive(false);
             if (_world2ComingSoonPanel != null) _world2ComingSoonPanel.SetActive(false);
             if (_victoryPanel != null) _victoryPanel.SetActive(false);
             if (_hudPanel != null) _hudPanel.SetActive(false);
@@ -2575,6 +2845,16 @@ namespace MyShadowQuit.UI
             HideAllMenuPanels();
             _worldCompletePanel.SetActive(true);
             _currentScreen = ActiveMenuScreen.World1Complete;
+        }
+
+        public void ShowWorld2CompleteScreen()
+        {
+            RefreshWorldSelectState();
+            RefreshLevelSelectMap();
+            SetEndingQuoteAlpha(0f);
+            HideAllMenuPanels();
+            _world2CompletePanel.SetActive(true);
+            _currentScreen = ActiveMenuScreen.World2Complete;
         }
 
         public void ShowWorld2ComingSoonScreen()
