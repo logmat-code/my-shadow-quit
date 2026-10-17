@@ -155,6 +155,8 @@ namespace MyShadowQuit.Core
             _uiManager.OnLevelSelectedFromMap += StartLevelFromMap;
             _uiManager.OnWorldCompleteContinueRequested -= OpenWorld2ComingSoon;
             _uiManager.OnWorldCompleteContinueRequested += OpenWorld2ComingSoon;
+            _uiManager.OnPauseRequested -= TogglePause;
+            _uiManager.OnPauseRequested += TogglePause;
             _uiManager.OnResumeRequested -= TogglePause;
             _uiManager.OnResumeRequested += TogglePause;
             _uiManager.OnRestartRequested -= RestartCurrentLevel;
@@ -233,6 +235,8 @@ namespace MyShadowQuit.Core
             _isWorld1Completed = false;
             _isGameCompleted = false;
             Time.timeScale = 1f;
+            if (_audioManager != null) _audioManager.SetPauseDucking(false);
+            if (_uiManager != null) _uiManager.SetPauseMenuVisible(false);
             LoadLevel(0);
             if (_levelManager.Player != null) _levelManager.Player.SetControlActive(false);
             if (_levelManager.Shadow != null) _levelManager.Shadow.SetControlActive(false);
@@ -245,6 +249,8 @@ namespace MyShadowQuit.Core
             _isInMainMenu = true;
             _isPaused = false;
             Time.timeScale = 1f;
+            if (_audioManager != null) _audioManager.SetPauseDucking(false);
+            if (_uiManager != null) _uiManager.SetPauseMenuVisible(false);
             if (_levelManager.Player != null) _levelManager.Player.SetControlActive(false);
             if (_levelManager.Shadow != null) _levelManager.Shadow.SetControlActive(false);
             if (_uiManager != null)
@@ -259,6 +265,8 @@ namespace MyShadowQuit.Core
             _isInMainMenu = true;
             _isPaused = false;
             Time.timeScale = 1f;
+            if (_audioManager != null) _audioManager.SetPauseDucking(false);
+            if (_uiManager != null) _uiManager.SetPauseMenuVisible(false);
             if (_levelManager.Player != null) _levelManager.Player.SetControlActive(false);
             if (_levelManager.Shadow != null) _levelManager.Shadow.SetControlActive(false);
             if (_uiManager != null)
@@ -387,6 +395,8 @@ namespace MyShadowQuit.Core
         {
             _isPaused = false;
             Time.timeScale = 1f;
+            if (_audioManager != null) _audioManager.SetPauseDucking(false);
+            if (_uiManager != null) _uiManager.SetPauseMenuVisible(false);
             LoadLevel(_currentLevelIndex);
         }
 
@@ -443,13 +453,36 @@ namespace MyShadowQuit.Core
 
         public void TogglePause()
         {
-            if (_isEndingSequenceActive) return;
-            _isPaused = !_isPaused;
-            Time.timeScale = _isPaused ? 0f : 1f;
-            if (_uiManager != null)
+            if (_isInMainMenu || _isEndingSequenceActive) return;
+            if (_isPaused)
             {
-                _uiManager.SetPauseMenuVisible(_isPaused);
+                ResumeGame();
             }
+            else
+            {
+                PauseGame();
+            }
+        }
+
+        public void PauseGame()
+        {
+            if (_isInMainMenu || _isEndingSequenceActive || _isPaused) return;
+            _isPaused = true;
+            Time.timeScale = 0f;
+            if (_levelManager.Player != null) _levelManager.Player.SetControlActive(false);
+            if (_levelManager.Shadow != null) _levelManager.Shadow.SetControlActive(false);
+            if (_audioManager != null) _audioManager.SetPauseDucking(true);
+            if (_uiManager != null) _uiManager.SetPauseMenuVisible(true);
+        }
+
+        public void ResumeGame()
+        {
+            if (!_isPaused) return;
+            _isPaused = false;
+            Time.timeScale = 1f;
+            ApplyActiveCharacterControl();
+            if (_audioManager != null) _audioManager.SetPauseDucking(false);
+            if (_uiManager != null) _uiManager.SetPauseMenuVisible(false);
         }
 
         private void HandleLevelCompleted()

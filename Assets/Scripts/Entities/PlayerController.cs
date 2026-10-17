@@ -124,6 +124,8 @@ namespace MyShadowQuit.Entities
 
         private void Update()
         {
+            if (Time.timeScale <= 0f) return;
+
             if (_landAnimTimer > 0f) _landAnimTimer -= Time.deltaTime;
             if (_interactAnimTimer > 0f) _interactAnimTimer -= Time.deltaTime;
 

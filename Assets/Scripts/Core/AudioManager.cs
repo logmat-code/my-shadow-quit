@@ -164,13 +164,15 @@ namespace MyShadowQuit.Core
 
         private float _endingMusicScale = 1f;
         private float _endingSfxScale = 1f;
+        private float _pauseMusicScale = 1f;
+        private float _pauseSfxScale = 1f;
 
         public void ApplyBusVolumes()
         {
-            float musicLinear = HeadroomScale * DbToLinear(MusicBusDb) * _musicVolume * _endingMusicScale;
+            float musicLinear = HeadroomScale * DbToLinear(MusicBusDb) * _musicVolume * _endingMusicScale * _pauseMusicScale;
             float sfxLinear = HeadroomScale * DbToLinear(SfxBusDb) * _sfxVolume * _endingSfxScale;
-            // Fire crackle is -18 dB below Music reference, modulated by Ambience & SFX settings and torch proximity
-            float fireLinear = HeadroomScale * DbToLinear(FireRelativeToMusicDb) * _ambienceVolume * _sfxVolume * _torchProximityFactor * _endingSfxScale;
+            // Fire crackle is -18 dB below Music reference, modulated by Ambience & SFX settings, torch proximity, and pause state
+            float fireLinear = HeadroomScale * DbToLinear(FireRelativeToMusicDb) * _ambienceVolume * _sfxVolume * _torchProximityFactor * _endingSfxScale * _pauseSfxScale;
 
             if (_musicSource != null)
             {
@@ -187,6 +189,16 @@ namespace MyShadowQuit.Core
             }
         }
 
+        public void SetPauseDucking(bool isPaused)
+        {
+            _pauseMusicScale = isPaused ? 0.50f : 1f;
+            _pauseSfxScale = isPaused ? 0f : 1f;
+            ApplyBusVolumes();
+        }
+
+        public float PauseMusicScale => _pauseMusicScale;
+        public float PauseSfxScale => _pauseSfxScale;
+
         public void SetEndingMixDucking(float musicScale, float sfxAndFireScale)
         {
             _endingMusicScale = Mathf.Clamp01(musicScale);
@@ -198,6 +210,8 @@ namespace MyShadowQuit.Core
         {
             _endingMusicScale = 1f;
             _endingSfxScale = 1f;
+            _pauseMusicScale = 1f;
+            _pauseSfxScale = 1f;
             ApplyBusVolumes();
         }
 

@@ -34,6 +34,7 @@ namespace MyShadowQuit.UI
         public event Action OnResumeRequested;
         public event Action OnRestartRequested;
         public event Action OnMainMenuRequested;
+        public event Action OnPauseRequested;
 
         public enum ActiveMenuScreen
         {
@@ -55,6 +56,7 @@ namespace MyShadowQuit.UI
         private GameObject _newGameConfirmModal;
         private GameObject _worldSelectPanel;
         private GameObject _levelSelectPanel;
+        private GameObject _pauseMenuContainer;
         private GameObject _pauseMenuPanel;
         private GameObject _settingsPanel;
         private GameObject _creditsPanel;
@@ -88,6 +90,11 @@ namespace MyShadowQuit.UI
         private readonly List<Button> _homeMenuButtons = new List<Button>();
         private int _homeSelectedBtnIndex;
 
+        // In-game pause button & pause menu navigation
+        private Button _inGamePauseButton;
+        private readonly List<Button> _pauseMenuButtons = new List<Button>();
+        private int _pauseSelectedBtnIndex;
+
         // Floating ember particles shared across menu screens
         private struct MenuEmber
         {
@@ -110,7 +117,6 @@ namespace MyShadowQuit.UI
         private Image _world2CardSelectionOutline;
         private Text _world1ProgressText;
         private RectTransform _world1ProgressBarFill;
-        private Text _worldSelectFooterHint;
         private int _selectedWorldCardIndex; // 0 = World 1, 1 = World 2
 
         // Level Select Map elements
@@ -168,6 +174,9 @@ namespace MyShadowQuit.UI
         private Sprite _pathDarkSprite;
         private Sprite _lightHaloSprite;
         private Sprite _emberSprite;
+        private Sprite _btnPauseHudNormal;
+        private Sprite _btnPauseHudHover;
+        private Sprite _btnPauseHudPressed;
 
         private Sprite[] _protagonistIdleFrames;
         private Sprite[] _shadowIdleFrames;
@@ -213,6 +222,7 @@ namespace MyShadowQuit.UI
         public bool IsHomeScreenVisible => _mainMenuPanel != null && _mainMenuPanel.activeSelf;
         public bool IsWorldSelectScreenVisible => _worldSelectPanel != null && _worldSelectPanel.activeSelf;
         public bool IsLevelSelectScreenVisible => _levelSelectPanel != null && _levelSelectPanel.activeSelf;
+        public bool IsPauseMenuVisible => _pauseMenuContainer != null && _pauseMenuContainer.activeSelf;
         public bool IsWorld1CompleteScreenVisible => _worldCompletePanel != null && _worldCompletePanel.activeSelf;
         public bool IsWorld2ComingSoonScreenVisible => _world2ComingSoonPanel != null && _world2ComingSoonPanel.activeSelf;
         public bool IsVictoryScreenVisible => _victoryPanel != null && _victoryPanel.activeSelf;
@@ -221,11 +231,15 @@ namespace MyShadowQuit.UI
         public GameObject MainMenuPanel => _mainMenuPanel;
         public GameObject WorldSelectPanel => _worldSelectPanel;
         public GameObject LevelSelectPanel => _levelSelectPanel;
+        public GameObject PauseMenuPanel => _pauseMenuPanel;
+        public GameObject PauseMenuContainer => _pauseMenuContainer;
+        public Button InGamePauseButton => _inGamePauseButton;
         public GameObject WorldCompletePanel => _worldCompletePanel;
         public GameObject World2ComingSoonPanel => _world2ComingSoonPanel;
         public GameObject VictoryPanel => _victoryPanel;
         public int SelectedMapLevelIndex => _selectedMapLevelIndex;
         public int MapNodeCount => _mapNodes.Count;
+        public int PauseButtonCount => _pauseMenuButtons.Count;
 
         private void Awake()
         {
@@ -281,6 +295,10 @@ namespace MyShadowQuit.UI
             _lightHaloSprite = AssetRegistry.GetSprite("Torch/light_halo", 32f, FilterMode.Bilinear);
             _emberSprite = AssetRegistry.GetSprite("Torch/ember_particle", 32f);
 
+            _btnPauseHudNormal = AssetRegistry.GetSprite("UI/btn_pause_hud_normal", 32f);
+            _btnPauseHudHover = AssetRegistry.GetSprite("UI/btn_pause_hud_hover", 32f) ?? _btnPauseHudNormal;
+            _btnPauseHudPressed = AssetRegistry.GetSprite("UI/btn_pause_hud_pressed", 32f) ?? _btnPauseHudNormal;
+
             _protagonistIdleFrames = AssetRegistry.GetAnimationFrames("Characters/protagonist_idle", 4);
             _shadowIdleFrames = AssetRegistry.GetAnimationFrames("Characters/shadow_idle", 4);
             _torchFlameFrames = AssetRegistry.GetAnimationFrames("Torch/torch_item", 4);
@@ -314,6 +332,7 @@ namespace MyShadowQuit.UI
             }
 
             _homeMenuButtons.Clear();
+            _pauseMenuButtons.Clear();
             _menuEmbers.Clear();
             _mapNodes.Clear();
             _mapPathSegments.Clear();
@@ -358,7 +377,18 @@ namespace MyShadowQuit.UI
             topBar.GetComponent<Image>().color = new Color(0.05f, 0.06f, 0.12f, 0.85f);
 
             _levelTitleText = CreateText(topBar.transform, "LevelTitle", "I. AWAKENING", 30, new Vector2(-560f, 0f), new Vector2(620f, 58f), new Color(1f, 0.82f, 0.35f, 1f), TextAnchor.MiddleLeft);
-            _activeControlText = CreateText(topBar.transform, "ActiveControl", "ACTIVE: PROTAGONIST [TAB to switch]", 26, new Vector2(520f, 0f), new Vector2(720f, 58f), new Color(0.85f, 0.78f, 1f, 1f), TextAnchor.MiddleRight);
+            _activeControlText = CreateText(topBar.transform, "ActiveControl", "ACTIVE: PROTAGONIST [TAB to switch]", 25, new Vector2(430f, 0f), new Vector2(700f, 58f), new Color(0.85f, 0.78f, 1f, 1f), TextAnchor.MiddleRight);
+
+            // In-Game Pause Button in the top right of TopHUD
+            _inGamePauseButton = CreateCustomSpriteButton(topBar.transform, "InGamePauseButton", _btnPauseHudNormal, _btnPauseHudHover, _btnPauseHudPressed, new Vector2(845f, 0f), new Vector2(48f, 48f), () =>
+            {
+                if (_isTransitioning) return;
+                if (AudioManager.Instance != null)
+                {
+                    AudioManager.Instance.PlaySFX("switch_activate", 0.65f, 1.15f);
+                }
+                OnPauseRequested?.Invoke();
+            });
 
             GameObject bottomBar = CreateImagePanel(_hudPanel.transform, "BottomHUD", new Vector2(0f, -480f), new Vector2(1480f, 64f));
             bottomBar.GetComponent<Image>().color = new Color(0.04f, 0.05f, 0.10f, 0.88f);
@@ -509,17 +539,6 @@ namespace MyShadowQuit.UI
                 }, new Vector2(380f, 64f));
                 _homeMenuButtons.Add(quitBtn);
             }
-
-            CreateText(
-                menuColumn.transform,
-                "HomeControlsFooter",
-                "W/S or ARROWS : Navigate     ENTER : Confirm     MOUSE : Click",
-                17,
-                new Vector2(0f, -310f),
-                new Vector2(460f, 36f),
-                new Color(0.72f, 0.76f, 0.90f, 0.9f),
-                TextAnchor.MiddleCenter
-            );
         }
 
         private void BuildNewGameConfirmModal(Transform parent)
@@ -677,27 +696,16 @@ namespace MyShadowQuit.UI
             SetButtonVisualDisabled(w2DisabledBtn, true);
 
             // Bottom Navigation Bar
-            CreateMenuButton(_worldSelectPanel.transform, "BACK", new Vector2(-240f, -415f), () =>
+            CreateMenuButton(_worldSelectPanel.transform, "BACK", new Vector2(-240f, -425f), () =>
             {
                 PlayMenuBackSound();
                 TransitionToPanel(ShowMainMenu);
             }, new Vector2(340f, 62f));
 
-            CreateMenuButton(_worldSelectPanel.transform, "OPEN LEVEL MAP", new Vector2(240f, -415f), () =>
+            CreateMenuButton(_worldSelectPanel.transform, "OPEN LEVEL MAP", new Vector2(240f, -425f), () =>
             {
                 SelectWorldCard(0, openIfUnlocked: true);
             }, new Vector2(340f, 62f));
-
-            _worldSelectFooterHint = CreateText(
-                _worldSelectPanel.transform,
-                "WorldSelectHint",
-                "LEFT / RIGHT : Select World     ENTER : Open World 1 Map     ESC : Back to Home",
-                19,
-                new Vector2(0f, -482f),
-                new Vector2(1100f, 36f),
-                new Color(0.78f, 0.80f, 0.94f, 0.9f),
-                TextAnchor.MiddleCenter
-            );
 
             _worldSelectPanel.SetActive(false);
         }
@@ -722,9 +730,9 @@ namespace MyShadowQuit.UI
             else if (_selectedWorldCardIndex == 1)
             {
                 PlayMenuLockedSound();
-                if (_worldSelectFooterHint != null)
+                if (openIfUnlocked)
                 {
-                    _worldSelectFooterHint.text = "WORLD 2 IS LOCKED — COMING SOON. Select WORLD 1 to enter the Ruins Map.";
+                    TransitionToPanel(ShowWorld2ComingSoonScreen);
                 }
             }
         }
@@ -956,7 +964,7 @@ namespace MyShadowQuit.UI
             CreateText(
                 bottomBar.transform,
                 "MapLegendText",
-                "GOLDEN SHRINE: Completed     •     PULSING ALTAR: Available     •     SEALED OBELISK: Locked     |     ARROWS / A,D: Select Level     ENTER: Play     ESC: World Select",
+                "GOLDEN SHRINE: COMPLETED     •     PULSING ALTAR: AVAILABLE     •     SEALED OBELISK: LOCKED",
                 20,
                 Vector2.zero,
                 new Vector2(1780f, 52f),
@@ -1157,31 +1165,70 @@ namespace MyShadowQuit.UI
         // ====================================================================
         private void BuildPauseMenu(Transform parent)
         {
-            _pauseMenuPanel = CreateImagePanel(parent, "PauseMenuPanel", Vector2.zero, new Vector2(700f, 640f), _modalFrameSprite);
-            CreateStyledTitleText(_pauseMenuPanel.transform, "PauseHeader", "PAUSED", 42, new Vector2(0f, 235f), new Vector2(520f, 58f), new Color(1f, 0.84f, 0.35f, 1f));
-            CreateSpriteElement(_pauseMenuPanel.transform, "PauseDivider", _stoneDividerSprite, new Vector2(0f, 188f), new Vector2(420f, 24f));
+            _pauseMenuContainer = CreateFullScreenContainer(parent, "PauseMenuContainer");
+            Image backdrop = _pauseMenuContainer.AddComponent<Image>();
+            backdrop.color = new Color(0.02f, 0.03f, 0.06f, 0.72f); // partially dim gameplay behind pause
 
-            CreateMenuButton(_pauseMenuPanel.transform, "RESUME", new Vector2(0f, 118f), () => OnResumeRequested?.Invoke());
-            CreateMenuButton(_pauseMenuPanel.transform, "RESTART", new Vector2(0f, 42f), () => OnRestartRequested?.Invoke());
-            CreateMenuButton(_pauseMenuPanel.transform, "LEVEL SELECT", new Vector2(0f, -34f), () =>
+            _pauseMenuPanel = CreateImagePanel(_pauseMenuContainer.transform, "PauseMenuPanel", Vector2.zero, new Vector2(720f, 680f), _modalFrameSprite);
+            CreateStyledTitleText(_pauseMenuPanel.transform, "PauseHeader", "PAUSED", 46, new Vector2(0f, 248f), new Vector2(560f, 60f), new Color(1f, 0.84f, 0.35f, 1f));
+            CreateStyledTitleText(_pauseMenuPanel.transform, "PauseSubtitle", "THE FLAME RESTS", 24, new Vector2(0f, 198f), new Vector2(560f, 38f), new Color(0.78f, 0.62f, 0.98f, 1f));
+            CreateSpriteElement(_pauseMenuPanel.transform, "PauseDivider", _stoneDividerSprite, new Vector2(0f, 156f), new Vector2(460f, 24f));
+
+            _pauseMenuButtons.Clear();
+
+            Button resumeBtn = CreateMenuButton(_pauseMenuPanel.transform, "RESUME", new Vector2(0f, 86f), () => OnResumeRequested?.Invoke(), new Vector2(360f, 60f));
+            _pauseMenuButtons.Add(resumeBtn);
+
+            Button restartBtn = CreateMenuButton(_pauseMenuPanel.transform, "RESTART LEVEL", new Vector2(0f, 14f), () => OnRestartRequested?.Invoke(), new Vector2(360f, 60f));
+            _pauseMenuButtons.Add(restartBtn);
+
+            Button levelSelectBtn = CreateMenuButton(_pauseMenuPanel.transform, "LEVEL SELECT", new Vector2(0f, -58f), () =>
             {
                 TransitionToAction(() =>
                 {
                     OnLevelSelectRequested?.Invoke();
                     ShowLevelSelectScreen();
                 });
-            });
-            CreateMenuButton(_pauseMenuPanel.transform, "SETTINGS", new Vector2(0f, -110f), () =>
+            }, new Vector2(360f, 60f));
+            _pauseMenuButtons.Add(levelSelectBtn);
+
+            Button settingsBtn = CreateMenuButton(_pauseMenuPanel.transform, "SETTINGS", new Vector2(0f, -130f), () =>
             {
                 _screenBeforeSubPanel = ActiveMenuScreen.Pause;
                 ShowSubPanel(_settingsPanel);
-            });
-            CreateMenuButton(_pauseMenuPanel.transform, "MAIN MENU", new Vector2(0f, -186f), () =>
+            }, new Vector2(360f, 60f));
+            _pauseMenuButtons.Add(settingsBtn);
+
+            Button mainMenuBtn = CreateMenuButton(_pauseMenuPanel.transform, "MAIN MENU", new Vector2(0f, -202f), () =>
             {
                 TransitionToAction(() => OnMainMenuRequested?.Invoke());
-            });
+            }, new Vector2(360f, 60f));
+            _pauseMenuButtons.Add(mainMenuBtn);
 
+            _pauseMenuContainer.SetActive(false);
             _pauseMenuPanel.SetActive(false);
+        }
+
+        private void MovePauseButtonSelection(int delta)
+        {
+            if (_pauseMenuButtons.Count == 0) return;
+            _pauseSelectedBtnIndex = (_pauseSelectedBtnIndex + delta + _pauseMenuButtons.Count) % _pauseMenuButtons.Count;
+            PlayMenuHoverSound();
+            RefreshPauseButtonSelectionVisuals();
+        }
+
+        private void RefreshPauseButtonSelectionVisuals()
+        {
+            for (int i = 0; i < _pauseMenuButtons.Count; i++)
+            {
+                Button btn = _pauseMenuButtons[i];
+                if (btn == null) continue;
+                Image img = btn.GetComponent<Image>();
+                if (img != null)
+                {
+                    img.sprite = (i == _pauseSelectedBtnIndex) ? _btnSelected : _btnNormal;
+                }
+            }
         }
 
         private void BuildSettingsMenu(Transform parent)
@@ -1663,6 +1710,32 @@ namespace MyShadowQuit.UI
                     TransitionToPanel(ShowWorldSelectScreen);
                 }
             }
+            else if (_currentScreen == ActiveMenuScreen.Pause)
+            {
+                if (GameInput.GetMenuUpDown())
+                {
+                    MovePauseButtonSelection(-1);
+                }
+                else if (GameInput.GetMenuDownDown())
+                {
+                    MovePauseButtonSelection(1);
+                }
+                else if (GameInput.GetConfirmDown())
+                {
+                    if (_pauseSelectedBtnIndex >= 0 && _pauseSelectedBtnIndex < _pauseMenuButtons.Count)
+                    {
+                        Button b = _pauseMenuButtons[_pauseSelectedBtnIndex];
+                        if (b != null && b.interactable)
+                        {
+                            b.onClick.Invoke();
+                        }
+                    }
+                }
+                else if (GameInput.GetCancelDown())
+                {
+                    OnResumeRequested?.Invoke();
+                }
+            }
         }
 
         private void MoveHomeButtonSelection(int delta)
@@ -1809,6 +1882,7 @@ namespace MyShadowQuit.UI
             if (_newGameConfirmModal != null) _newGameConfirmModal.SetActive(false);
             if (_worldSelectPanel != null) _worldSelectPanel.SetActive(false);
             if (_levelSelectPanel != null) _levelSelectPanel.SetActive(false);
+            if (_pauseMenuContainer != null) _pauseMenuContainer.SetActive(false);
             if (_pauseMenuPanel != null) _pauseMenuPanel.SetActive(false);
             if (_settingsPanel != null) _settingsPanel.SetActive(false);
             if (_creditsPanel != null) _creditsPanel.SetActive(false);
@@ -1893,10 +1967,12 @@ namespace MyShadowQuit.UI
 
         public void SetPauseMenuVisible(bool visible)
         {
-            _pauseMenuPanel.SetActive(visible);
+            if (_pauseMenuContainer != null) _pauseMenuContainer.SetActive(visible);
+            if (_pauseMenuPanel != null) _pauseMenuPanel.SetActive(visible);
             if (!visible)
             {
-                _settingsPanel.SetActive(false);
+                if (_settingsPanel != null) _settingsPanel.SetActive(false);
+                if (_creditsPanel != null) _creditsPanel.SetActive(false);
                 if (_currentScreen == ActiveMenuScreen.Pause || _currentScreen == ActiveMenuScreen.Settings)
                 {
                     _currentScreen = ActiveMenuScreen.None;
@@ -1905,6 +1981,8 @@ namespace MyShadowQuit.UI
             else
             {
                 _currentScreen = ActiveMenuScreen.Pause;
+                _pauseSelectedBtnIndex = 0;
+                RefreshPauseButtonSelectionVisuals();
             }
         }
 
@@ -1919,6 +1997,10 @@ namespace MyShadowQuit.UI
         private void ShowSubPanel(GameObject panel)
         {
             RefreshAudioSettingsLabels();
+            if (_screenBeforeSubPanel == ActiveMenuScreen.Pause && _pauseMenuPanel != null)
+            {
+                _pauseMenuPanel.SetActive(false);
+            }
             _settingsPanel.SetActive(panel == _settingsPanel);
             _creditsPanel.SetActive(panel == _creditsPanel);
             _currentScreen = (panel == _settingsPanel) ? ActiveMenuScreen.Settings : ActiveMenuScreen.Credits;
@@ -1933,9 +2015,12 @@ namespace MyShadowQuit.UI
             PlayMenuBackSound();
             _settingsPanel.SetActive(false);
             _creditsPanel.SetActive(false);
-            if (_screenBeforeSubPanel == ActiveMenuScreen.Pause && _pauseMenuPanel != null && _pauseMenuPanel.activeSelf)
+            if (_screenBeforeSubPanel == ActiveMenuScreen.Pause)
             {
+                if (_pauseMenuContainer != null) _pauseMenuContainer.SetActive(true);
+                if (_pauseMenuPanel != null) _pauseMenuPanel.SetActive(true);
                 _currentScreen = ActiveMenuScreen.Pause;
+                RefreshPauseButtonSelectionVisuals();
             }
             else
             {
@@ -2099,6 +2184,45 @@ namespace MyShadowQuit.UI
                 {
                     AudioManager.Instance.PlaySFX("switch_activate", 0.65f, 1.05f);
                 }
+                onClick?.Invoke();
+            });
+
+            return btn;
+        }
+
+        private Button CreateCustomSpriteButton(Transform parent, string name, Sprite normal, Sprite hover, Sprite pressed, Vector2 pos, Vector2 size, Action onClick)
+        {
+            GameObject go = new GameObject(name, typeof(RectTransform), typeof(Image), typeof(Button));
+            go.transform.SetParent(parent, false);
+            RectTransform rt = go.GetComponent<RectTransform>();
+            rt.anchoredPosition = pos;
+            rt.sizeDelta = size;
+
+            Image img = go.GetComponent<Image>();
+            img.sprite = normal;
+
+            Button btn = go.GetComponent<Button>();
+            SpriteState st = new SpriteState
+            {
+                highlightedSprite = hover,
+                pressedSprite = pressed,
+                selectedSprite = hover,
+                disabledSprite = normal
+            };
+            btn.transition = Selectable.Transition.SpriteSwap;
+            btn.spriteState = st;
+
+            EventTrigger trigger = go.AddComponent<EventTrigger>();
+            EventTrigger.Entry hoverEntry = new EventTrigger.Entry { eventID = EventTriggerType.PointerEnter };
+            hoverEntry.callback.AddListener((_) =>
+            {
+                if (btn.interactable) PlayMenuHoverSound();
+            });
+            trigger.triggers.Add(hoverEntry);
+
+            btn.onClick.AddListener(() =>
+            {
+                if (_isTransitioning) return;
                 onClick?.Invoke();
             });
 

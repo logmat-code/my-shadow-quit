@@ -302,6 +302,8 @@ namespace MyShadowQuit.Entities
 
         private void Update()
         {
+            if (Time.timeScale <= 0f) return;
+
             if (_transitionTimer > 0f)
             {
                 _transitionTimer -= Time.deltaTime;

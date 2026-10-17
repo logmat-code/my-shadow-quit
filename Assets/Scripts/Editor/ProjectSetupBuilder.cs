@@ -955,6 +955,63 @@ namespace MyShadowQuit.EditorTools
                     throw new Exception("[Verification Failed] Locked Level 3 node was allowed to launch from Level Select Map!");
                 }
 
+                // =====================================================================
+                // 10. Verify In-Game PAUSE Button & PAUSE Menu Architecture
+                // =====================================================================
+                string[] pauseSprites =
+                {
+                    "Assets/Resources/Sprites/UI/btn_pause_hud_normal.png",
+                    "Assets/Resources/Sprites/UI/btn_pause_hud_hover.png",
+                    "Assets/Resources/Sprites/UI/btn_pause_hud_pressed.png"
+                };
+                foreach (string pSprite in pauseSprites)
+                {
+                    if (!File.Exists(pSprite))
+                    {
+                        throw new Exception($"[Verification Failed] Missing pause button sprite asset: {pSprite}");
+                    }
+                }
+
+                if (uiTest.InGamePauseButton == null)
+                {
+                    throw new Exception("[Verification Failed] InGamePauseButton was not created in HUD!");
+                }
+                RectTransform pauseBtnRect = uiTest.InGamePauseButton.GetComponent<RectTransform>();
+                if (pauseBtnRect.sizeDelta != new Vector2(48f, 48f) || pauseBtnRect.anchoredPosition.x < 800f)
+                {
+                    throw new Exception($"[Verification Failed] InGamePauseButton rect invalid: size={pauseBtnRect.sizeDelta}, pos={pauseBtnRect.anchoredPosition}!");
+                }
+
+                if (uiTest.PauseButtonCount != 5)
+                {
+                    throw new Exception($"[Verification Failed] Expected 5 buttons in Pause Menu, got {uiTest.PauseButtonCount}!");
+                }
+
+                uiTest.SetPauseMenuVisible(true);
+                if (!uiTest.IsPauseMenuVisible)
+                {
+                    throw new Exception("[Verification Failed] SetPauseMenuVisible(true) failed to show Pause Menu!");
+                }
+                uiTest.SetPauseMenuVisible(false);
+                if (uiTest.IsPauseMenuVisible)
+                {
+                    throw new Exception("[Verification Failed] SetPauseMenuVisible(false) failed to hide Pause Menu!");
+                }
+
+                // Verify AudioManager Pause Ducking (-6 dB / 50% music ducking, silence fire crackle)
+                AudioManager audioTest = testObj.AddComponent<AudioManager>();
+                audioTest.SetPauseDucking(true);
+                if (Mathf.Abs(audioTest.PauseMusicScale - 0.50f) > 0.01f || Mathf.Abs(audioTest.PauseSfxScale - 0f) > 0.01f)
+                {
+                    throw new Exception($"[Verification Failed] AudioManager pause ducking scales invalid: Music={audioTest.PauseMusicScale}, SFX/Fire={audioTest.PauseSfxScale}");
+                }
+                audioTest.SetPauseDucking(false);
+                if (Mathf.Abs(audioTest.PauseMusicScale - 1.0f) > 0.01f || Mathf.Abs(audioTest.PauseSfxScale - 1.0f) > 0.01f)
+                {
+                    throw new Exception($"[Verification Failed] AudioManager pause ducking restore invalid: Music={audioTest.PauseMusicScale}, SFX/Fire={audioTest.PauseSfxScale}");
+                }
+                UnityEngine.Object.DestroyImmediate(audioTest);
+
                 WorldProgressSave.ClearWorldProgress("world_1");
             }
             finally
