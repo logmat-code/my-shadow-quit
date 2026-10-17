@@ -33,6 +33,11 @@ namespace MyShadowQuit.Puzzle
 
         private void FixedUpdate()
         {
+            EvaluateOccupancy();
+        }
+
+        public void EvaluateOccupancy()
+        {
             if (stayPressedOnceActivated && isActivated) return;
 
             Bounds b = _trigger.bounds;

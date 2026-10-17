@@ -33,7 +33,7 @@ namespace MyShadowQuit.Core
         public static readonly string[] LevelHints =
         {
             "A/D: Move   SPACE: Jump   E: Pick up / Place Torch   TAB: Control Shadow",
-            "Stand on heavy stone plates together. Place the Torch [E] and switch to Shadow [TAB].",
+            "Stand on the lower stone plate, switch to Shadow [TAB], and Double Jump [SPACE x2 in mid-air] to the upper ledge.",
             "Darkness webs dissolve in Torchlight. Guide your Shadow across the illuminated path.",
             "Ancient solar crystals awaken when bathed in the Torch's golden flame.",
             "Push the carved stone block onto the plate while your Shadow unlocks the inner sanctum.",
