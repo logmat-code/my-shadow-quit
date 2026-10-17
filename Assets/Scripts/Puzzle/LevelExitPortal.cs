@@ -21,6 +21,9 @@ namespace MyShadowQuit.Puzzle
         private BoxCollider2D _trigger;
         private bool _triggered;
 
+        public bool IsTriggered => _triggered;
+        public AncientDoor GuardingDoor => guardingDoor;
+
         public void Configure(AncientDoor door, bool requireShadowNear = false)
         {
             guardingDoor = door;
@@ -38,29 +41,46 @@ namespace MyShadowQuit.Puzzle
             _trigger.size = new Vector2(1.2f, 2.0f);
         }
 
+        private void OnTriggerEnter2D(Collider2D other)
+        {
+            TryCompleteLevelWithCollider(other);
+        }
+
         private void OnTriggerStay2D(Collider2D other)
         {
-            if (_triggered) return;
-            if (guardingDoor != null && !guardingDoor.IsOpen) return;
+            TryCompleteLevelWithCollider(other);
+        }
 
+        public bool TryCompleteLevel(PlayerController player)
+        {
+            if (_triggered || player == null) return false;
+            if (guardingDoor != null && !guardingDoor.IsOpen) return false;
+
+            if (requireReconnectedShadow)
+            {
+                ShadowController shadow = FindFirstObjectByType<ShadowController>();
+                if (shadow != null && Vector2.Distance(player.transform.position, shadow.transform.position) > 2.5f)
+                {
+                    return false;
+                }
+            }
+
+            _triggered = true;
+            if (AudioManager.Instance != null)
+            {
+                AudioManager.Instance.PlaySFX("puzzle_complete", 0.95f, 1.0f);
+            }
+            OnLevelExitReached?.Invoke();
+            return true;
+        }
+
+        private void TryCompleteLevelWithCollider(Collider2D other)
+        {
+            if (_triggered || other == null) return;
             PlayerController player = other.GetComponent<PlayerController>();
             if (player != null)
             {
-                if (requireReconnectedShadow)
-                {
-                    ShadowController shadow = FindFirstObjectByType<ShadowController>();
-                    if (shadow != null && Vector2.Distance(player.transform.position, shadow.transform.position) > 2.5f)
-                    {
-                        return;
-                    }
-                }
-
-                _triggered = true;
-                if (AudioManager.Instance != null)
-                {
-                    AudioManager.Instance.PlaySFX("puzzle_complete", 0.95f, 1.0f);
-                }
-                OnLevelExitReached?.Invoke();
+                TryCompleteLevel(player);
             }
         }
     }

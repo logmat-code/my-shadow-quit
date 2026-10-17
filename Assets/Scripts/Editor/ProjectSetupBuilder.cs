@@ -25,7 +25,21 @@ namespace MyShadowQuit.EditorTools
     {
         static ProjectSetupBuilder()
         {
-            EditorApplication.delayCall += EnforceEditorGameViewLandscape16x9;
+            EditorApplication.delayCall += () =>
+            {
+                EnforceEditorGameViewLandscape16x9();
+                if (!EditorApplication.isPlayingOrWillChangePlaymode)
+                {
+                    try
+                    {
+                        RunAutomatedVerification();
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.LogError(ex);
+                    }
+                }
+            };
         }
 
         [MenuItem("MyShadowQuit/Build Prefabs, Scenes & Verify All Systems")]
@@ -256,11 +270,19 @@ namespace MyShadowQuit.EditorTools
             // Player places Torch on Pedestal -> step transitions to SwitchToShadow
             TorchPedestal pedestal = UnityEngine.Object.FindFirstObjectByType<TorchPedestal>();
             ShadowSwitch shadowSw = UnityEngine.Object.FindFirstObjectByType<ShadowSwitch>();
+            ShadowPassage passage = UnityEngine.Object.FindFirstObjectByType<ShadowPassage>();
             AncientDoor door = UnityEngine.Object.FindFirstObjectByType<AncientDoor>();
+            LevelExitPortal exitPortal = UnityEngine.Object.FindFirstObjectByType<LevelExitPortal>();
 
-            if (pedestal == null || shadowSw == null || door == null)
+            if (pedestal == null || shadowSw == null || passage == null || door == null || exitPortal == null)
             {
                 throw new Exception("[Verification Failed] Level 1 Awakening puzzle components not found!");
+            }
+
+            // Verify ShadowPassage starts closed and physically blocking the Protagonist
+            if (!passage.IsBlockingProtagonist || passage.IsOpen)
+            {
+                throw new Exception("[Verification Failed] Level 1 ShadowPassage should start closed and blocking!");
             }
 
             // Verify AncientDoor created visual RuneConduit lines for both required nodes
@@ -276,23 +298,71 @@ namespace MyShadowQuit.EditorTools
                 throw new Exception($"[Verification Failed] Expected SwitchToShadow step after placing torch, got {td.CurrentStep}");
             }
 
-            // Shadow activates ShadowSwitch -> Door opens -> step transitions to EnterSanctuaryExit
+            // Verify TutorialDirector never shows EnterSanctuaryExit if ShadowPassage is still blocking even if door were forced open
+            door.SetOpen(true);
+            td.EvaluateAwakeningProgression(false);
+            if (td.CurrentStep == TutorialDirector.AwakeningStep.EnterSanctuaryExit)
+            {
+                throw new Exception("[Verification Failed] TutorialDirector showed EnterSanctuaryExit while ShadowPassage was still physically blocking!");
+            }
+            door.SetOpen(false);
+
+            // Shadow activates ShadowSwitch -> Both ShadowPassage AND AncientDoor open!
             shadowSw.ActivateByShadow(lm.Shadow);
             if (!door.IsOpen)
             {
                 throw new Exception("[Verification Failed] AncientDoor failed to open after Pedestal + ShadowSwitch activation!");
             }
+            if (!passage.IsOpen || passage.IsBlockingProtagonist)
+            {
+                throw new Exception("[Verification Failed] ShadowPassage remained closed/blocking after ShadowSwitch activation!");
+            }
 
+            // Physical Linecast check along the ground corridor (y = -2.0) from x = 7.5 (before ShadowPassage) to x = 18.8 (ExitSanctuary)
+            Physics2D.SyncTransforms();
+            RaycastHit2D[] pathHits = Physics2D.LinecastAll(new Vector2(7.5f, -2.0f), exitPortal.transform.position);
+            foreach (RaycastHit2D hit in pathHits)
+            {
+                if (hit.collider != null && !hit.collider.isTrigger)
+                {
+                    if (hit.collider.GetComponent<PlayerController>() != null ||
+                        hit.collider.GetComponent<ShadowController>() != null)
+                    {
+                        continue;
+                    }
+                    throw new Exception($"[Verification Failed] Protagonist path to ExitSanctuary is still physically blocked by non-trigger collider: {hit.collider.name} at {hit.point}!");
+                }
+            }
+
+            // Now that both ShadowPassage and AncientDoor are physically open, TutorialDirector advances to EnterSanctuaryExit
             td.EvaluateAwakeningProgression(false);
             if (td.CurrentStep != TutorialDirector.AwakeningStep.EnterSanctuaryExit)
             {
-                throw new Exception($"[Verification Failed] Expected EnterSanctuaryExit step after door opens, got {td.CurrentStep}");
+                throw new Exception($"[Verification Failed] Expected EnterSanctuaryExit step after path is clear, got {td.CurrentStep}");
+            }
+
+            // Verify Protagonist entering LevelExitPortal triggers level completion event cleanly
+            bool exitEventFired = false;
+            Action onExit = () => { exitEventFired = true; };
+            LevelExitPortal.OnLevelExitReached += onExit;
+            try
+            {
+                lm.Player.transform.position = exitPortal.transform.position;
+                bool completed = exitPortal.TryCompleteLevel(lm.Player);
+                if (!completed || !exitEventFired)
+                {
+                    throw new Exception("[Verification Failed] LevelExitPortal did not trigger completion when Protagonist reached exit!");
+                }
+            }
+            finally
+            {
+                LevelExitPortal.OnLevelExitReached -= onExit;
             }
 
             lm.ClearCurrentLevel();
             UnityEngine.Object.DestroyImmediate(testObj);
 
-            Debug.Log("[Verification Passed] Landscape 16:9 (1920x1080), Audio dB Mix Hierarchy (Music 0dB > SFX -8dB > Ambience -12dB > Fire -18dB), and Level 1 Contextual Tutorial + Rune Conduits verified!");
+            Debug.Log("[Verification Passed] Level 1 Physical Path Clearance (ShadowPassage + AncientDoor), TutorialDirector Blocked-Path Guard, LevelExitPortal Transition, Audio dB Mix, and 16:9 Landscape verified!");
         }
 
         [MenuItem("MyShadowQuit/Build WebGL Release")]

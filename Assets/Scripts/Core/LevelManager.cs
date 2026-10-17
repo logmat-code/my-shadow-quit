@@ -141,10 +141,13 @@ namespace MyShadowQuit.Core
 
             // Shadow Passage dividing the upper & lower chamber at x = 9.0
             CreateWallColumn(9, 0, 7);
-            CreateShadowPassage(new Vector2(9.0f, -2.0f));
+            ShadowPassage passage1 = CreateShadowPassage(new Vector2(9.0f, -2.0f));
 
             // Shadow-only Obelisk Switch inside the shadow alcove (x = 12.2)
             ShadowSwitch shadowSwitch = CreateShadowSwitch(new Vector2(12.2f, -2.25f));
+
+            // Activating the ShadowSwitch dissolves the ShadowPassage barrier so the Protagonist can walk through!
+            passage1.ConfigureUnlockNodes(new List<PuzzleNode> { shadowSwitch }, requireAll: true, latchOpen: true);
 
             // Ancient Stone Door guarding the Exit Sanctuary (requires Pedestal Lit + Shadow Switch Active)
             // Automatically draws rune conduit lines to both pedestal and shadowSwitch!
@@ -219,8 +222,9 @@ namespace MyShadowQuit.Core
             CreateDarknessBarrier(new Vector2(7.5f, -2.0f), dissolvesWhenLit: true);
 
             // Shadow Passage at the end of the lower tunnel
-            CreateShadowPassage(new Vector2(11.5f, -2.0f));
+            ShadowPassage passage3 = CreateShadowPassage(new Vector2(11.5f, -2.0f));
             ShadowSwitch sw = CreateShadowSwitch(new Vector2(13.5f, -2.25f));
+            passage3.ConfigureUnlockNodes(new List<PuzzleNode> { sw }, requireAll: true, latchOpen: true);
 
             AncientDoor door = CreateAncientDoor(
                 new Vector2(16.5f, -1.5f),
@@ -251,10 +255,12 @@ namespace MyShadowQuit.Core
             CreatePlatformRow(0, 6, 0, true);
             TorchPedestal pedestal = CreateTorchPedestal(new Vector2(3.0f, 0.75f));
             LightSwitch lightCrystal = CreateLightSwitch(new Vector2(4.5f, 0.75f), latch: false);
+            _ = pedestal;
 
             // Shadow passage leading to second switch
-            CreateShadowPassage(new Vector2(9.0f, -2.0f));
+            ShadowPassage passage4 = CreateShadowPassage(new Vector2(9.0f, -2.0f));
             ShadowSwitch shadowSw = CreateShadowSwitch(new Vector2(12.0f, -2.25f));
+            passage4.ConfigureUnlockNodes(new List<PuzzleNode> { shadowSw }, requireAll: true, latchOpen: true);
 
             AncientDoor door = CreateAncientDoor(
                 new Vector2(16.0f, -1.5f),
@@ -360,8 +366,9 @@ namespace MyShadowQuit.Core
             PressurePlate plate = CreatePressurePlate(new Vector2(8.5f, -2.85f), false);
 
             // Stage 3: Shadow passage & obelisk
-            CreateShadowPassage(new Vector2(11.5f, -2.0f));
+            ShadowPassage passage7 = CreateShadowPassage(new Vector2(11.5f, -2.0f));
             ShadowSwitch shadowSw = CreateShadowSwitch(new Vector2(13.8f, -2.25f));
+            passage7.ConfigureUnlockNodes(new List<PuzzleNode> { shadowSw }, requireAll: true, latchOpen: true);
 
             AncientDoor door = CreateAncientDoor(
                 new Vector2(16.5f, -1.5f),
@@ -402,8 +409,9 @@ namespace MyShadowQuit.Core
             _ = pedestal;
 
             // Tier 3: Shadow passes barrier to trigger final Obelisk, then reunites with Protagonist
-            CreateShadowPassage(new Vector2(10.5f, -2.0f));
+            ShadowPassage passage8 = CreateShadowPassage(new Vector2(10.5f, -2.0f));
             ShadowSwitch shadowSw = CreateShadowSwitch(new Vector2(13.0f, -2.25f));
+            passage8.ConfigureUnlockNodes(new List<PuzzleNode> { shadowSw }, requireAll: true, latchOpen: true);
 
             AncientDoor finalDoor = CreateAncientDoor(
                 new Vector2(16.0f, -1.5f),

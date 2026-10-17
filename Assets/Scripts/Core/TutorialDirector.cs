@@ -34,6 +34,7 @@ namespace MyShadowQuit.Core
 
         private TorchPedestal _level1Pedestal;
         private ShadowSwitch _level1ShadowSwitch;
+        private ShadowPassage _level1Passage;
         private AncientDoor _level1Door;
         private LevelExitPortal _level1Exit;
 
@@ -61,6 +62,7 @@ namespace MyShadowQuit.Core
 
                 _level1Pedestal = FindFirstObjectByType<TorchPedestal>();
                 _level1ShadowSwitch = FindFirstObjectByType<ShadowSwitch>();
+                _level1Passage = FindFirstObjectByType<ShadowPassage>();
                 _level1Door = FindFirstObjectByType<AncientDoor>();
                 _level1Exit = FindFirstObjectByType<LevelExitPortal>();
 
@@ -84,6 +86,13 @@ namespace MyShadowQuit.Core
                 if (_worldPromptObj != null) _worldPromptObj.SetActive(false);
                 if (_beaconHalo != null) _beaconHalo.gameObject.SetActive(false);
             }
+        }
+
+        public bool IsPathToExitPhysicallyClear()
+        {
+            if (_level1Door == null || !_level1Door.IsOpen) return false;
+            if (_level1Passage != null && _level1Passage.IsBlockingProtagonist) return false;
+            return true;
         }
 
         private void EnsureWorldPromptObjects()
@@ -164,7 +173,7 @@ namespace MyShadowQuit.Core
 
             AwakeningStep nextStep;
 
-            if (_level1Door != null && _level1Door.IsOpen)
+            if (IsPathToExitPhysicallyClear())
             {
                 nextStep = AwakeningStep.EnterSanctuaryExit;
             }
