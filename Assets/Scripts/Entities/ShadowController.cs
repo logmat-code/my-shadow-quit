@@ -76,26 +76,49 @@ namespace MyShadowQuit.Entities
         public float GravityScale => shadowGravityScale;
         public float FirstJumpForce => jumpForce;
         public float SecondJumpForce => doubleJumpForce;
-        public BoxCollider2D Collider => _col;
+        public BoxCollider2D Collider => _col != null ? _col : (_col = GetComponent<BoxCollider2D>());
 
         private void Awake()
         {
-            _rb = GetComponent<Rigidbody2D>();
-            _col = GetComponent<BoxCollider2D>();
-            _sr = GetComponent<SpriteRenderer>();
+            EnsureInitialized();
+        }
 
-            _rb.gravityScale = shadowGravityScale;
-            _rb.constraints = RigidbodyConstraints2D.FreezeRotation;
-            _rb.interpolation = RigidbodyInterpolation2D.Interpolate;
-            _rb.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
+        public void EnsureInitialized()
+        {
+            if (_rb == null) _rb = GetComponent<Rigidbody2D>();
+            if (_col == null) _col = GetComponent<BoxCollider2D>();
+            if (_sr == null) _sr = GetComponent<SpriteRenderer>();
 
-            _col.size = new Vector2(0.44f, 0.80f);
-            _col.offset = new Vector2(0f, -0.03f);
-            _sr.sortingOrder = 11;
+            if (_rb != null)
+            {
+                _rb.gravityScale = shadowGravityScale;
+                _rb.constraints = RigidbodyConstraints2D.FreezeRotation;
+                _rb.interpolation = RigidbodyInterpolation2D.Interpolate;
+                _rb.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
+            }
+
+            if (_col != null)
+            {
+                _col.size = new Vector2(0.44f, 0.80f);
+                _col.offset = new Vector2(0f, -0.03f);
+            }
+
+            if (_sr != null)
+            {
+                _sr.sortingOrder = 11;
+            }
+
             _baseScale = transform.localScale;
 
-            LoadSprites();
-            CreateDoubleJumpEffects();
+            if (_idleSprites == null || _idleSprites.Length == 0)
+            {
+                LoadSprites();
+            }
+
+            if (_doubleJumpPulseRenderer == null || _doubleJumpParticles == null)
+            {
+                CreateDoubleJumpEffects();
+            }
         }
 
         private void LoadSprites()
@@ -107,7 +130,7 @@ namespace MyShadowQuit.Entities
             _reconnectSprites = AssetRegistry.GetAnimationFrames("Characters/shadow_reconnect", 4);
             _interactSprites = AssetRegistry.GetAnimationFrames("Characters/shadow_interact", 2);
 
-            if (_idleSprites != null && _idleSprites.Length > 0)
+            if (_idleSprites != null && _idleSprites.Length > 0 && _sr != null)
             {
                 _sr.sprite = _idleSprites[0];
             }
@@ -115,57 +138,64 @@ namespace MyShadowQuit.Entities
 
         private void CreateDoubleJumpEffects()
         {
-            // 1. Subtle violet ring/pulse child sprite using existing light_halo asset tinted violet
-            GameObject pulseObj = new GameObject("ShadowDoubleJumpPulse");
-            pulseObj.transform.SetParent(transform, false);
-            pulseObj.transform.localPosition = new Vector3(0f, -0.28f, 0f);
-            _doubleJumpPulseRenderer = pulseObj.AddComponent<SpriteRenderer>();
-            _doubleJumpPulseRenderer.sprite = AssetRegistry.GetSprite("Torch/light_halo", 32f, FilterMode.Bilinear);
-            _doubleJumpPulseRenderer.sortingOrder = 10;
-            _doubleJumpPulseRenderer.color = new Color(0.68f, 0.35f, 1f, 0f);
-            pulseObj.transform.localScale = new Vector3(0.35f, 0.16f, 1f);
-            pulseObj.SetActive(false);
-
-            // 2. Discrete dark-violet particle burst on second jump using existing ember_particle sprite
-            GameObject partObj = new GameObject("ShadowDoubleJumpParticles");
-            partObj.transform.SetParent(transform, false);
-            partObj.transform.localPosition = new Vector3(0f, -0.25f, 0f);
-
-            _doubleJumpParticles = partObj.AddComponent<ParticleSystem>();
-            var main = _doubleJumpParticles.main;
-            main.playOnAwake = false;
-            main.loop = false;
-            main.startLifetime = new ParticleSystem.MinMaxCurve(0.22f, 0.38f);
-            main.startSpeed = new ParticleSystem.MinMaxCurve(0.8f, 2.1f);
-            main.startSize = new ParticleSystem.MinMaxCurve(0.06f, 0.13f);
-            main.startColor = new ParticleSystem.MinMaxGradient(
-                new Color(0.14f, 0.08f, 0.24f, 0.92f),
-                new Color(0.65f, 0.36f, 0.95f, 0.88f)
-            );
-            main.gravityModifier = 0.2f;
-            main.simulationSpace = ParticleSystemSimulationSpace.World;
-            main.maxParticles = 16;
-
-            var emission = _doubleJumpParticles.emission;
-            emission.enabled = false;
-
-            var shape = _doubleJumpParticles.shape;
-            shape.shapeType = ParticleSystemShapeType.Circle;
-            shape.radius = 0.16f;
-
-            var psRenderer = partObj.GetComponent<ParticleSystemRenderer>();
-            psRenderer.sortingOrder = 12;
-            Sprite partSprite = AssetRegistry.GetSprite("Torch/ember_particle", 32f);
-            if (partSprite != null)
+            if (_doubleJumpPulseRenderer == null)
             {
-                Material mat = new Material(Shader.Find("Sprites/Default"));
-                mat.mainTexture = partSprite.texture;
-                psRenderer.material = mat;
+                // 1. Subtle violet ring/pulse child sprite using existing light_halo asset tinted violet
+                GameObject pulseObj = new GameObject("ShadowDoubleJumpPulse");
+                pulseObj.transform.SetParent(transform, false);
+                pulseObj.transform.localPosition = new Vector3(0f, -0.28f, 0f);
+                _doubleJumpPulseRenderer = pulseObj.AddComponent<SpriteRenderer>();
+                _doubleJumpPulseRenderer.sprite = AssetRegistry.GetSprite("Torch/light_halo", 32f, FilterMode.Bilinear);
+                _doubleJumpPulseRenderer.sortingOrder = 10;
+                _doubleJumpPulseRenderer.color = new Color(0.68f, 0.35f, 1f, 0f);
+                pulseObj.transform.localScale = new Vector3(0.35f, 0.16f, 1f);
+                pulseObj.SetActive(false);
+            }
+
+            if (_doubleJumpParticles == null)
+            {
+                // 2. Discrete dark-violet particle burst on second jump using existing ember_particle sprite
+                GameObject partObj = new GameObject("ShadowDoubleJumpParticles");
+                partObj.transform.SetParent(transform, false);
+                partObj.transform.localPosition = new Vector3(0f, -0.25f, 0f);
+
+                _doubleJumpParticles = partObj.AddComponent<ParticleSystem>();
+                var main = _doubleJumpParticles.main;
+                main.playOnAwake = false;
+                main.loop = false;
+                main.startLifetime = new ParticleSystem.MinMaxCurve(0.22f, 0.38f);
+                main.startSpeed = new ParticleSystem.MinMaxCurve(0.8f, 2.1f);
+                main.startSize = new ParticleSystem.MinMaxCurve(0.06f, 0.13f);
+                main.startColor = new ParticleSystem.MinMaxGradient(
+                    new Color(0.14f, 0.08f, 0.24f, 0.92f),
+                    new Color(0.65f, 0.36f, 0.95f, 0.88f)
+                );
+                main.gravityModifier = 0.2f;
+                main.simulationSpace = ParticleSystemSimulationSpace.World;
+                main.maxParticles = 16;
+
+                var emission = _doubleJumpParticles.emission;
+                emission.enabled = false;
+
+                var shape = _doubleJumpParticles.shape;
+                shape.shapeType = ParticleSystemShapeType.Circle;
+                shape.radius = 0.16f;
+
+                var psRenderer = partObj.GetComponent<ParticleSystemRenderer>();
+                psRenderer.sortingOrder = 12;
+                Sprite partSprite = AssetRegistry.GetSprite("Torch/ember_particle", 32f);
+                if (partSprite != null)
+                {
+                    Material mat = new Material(Shader.Find("Sprites/Default"));
+                    mat.mainTexture = partSprite.texture;
+                    psRenderer.material = mat;
+                }
             }
         }
 
         public void Initialize(PlayerController protagonist, TorchController torch, bool startSeparated = false)
         {
+            EnsureInitialized();
             _protagonist = protagonist;
             _torch = torch;
             _isSeparated = startSeparated;
@@ -173,6 +203,7 @@ namespace MyShadowQuit.Entities
             // Ignore physical collision between protagonist and shadow so they never block each other
             if (_protagonist != null)
             {
+                _protagonist.EnsureInitialized();
                 Collider2D playerCol = _protagonist.GetComponent<Collider2D>();
                 if (playerCol != null && _col != null)
                 {

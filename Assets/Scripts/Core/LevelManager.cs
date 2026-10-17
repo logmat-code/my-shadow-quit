@@ -102,9 +102,64 @@ namespace MyShadowQuit.Core
         {
             if (_levelRoot != null)
             {
-                if (Application.isPlaying) Destroy(_levelRoot);
-                else DestroyImmediate(_levelRoot);
+                DestroyObjectImmediateOrSafe(_levelRoot);
                 _levelRoot = null;
+            }
+
+            // Clean up any orphaned Level_* containers or stray Protagonist/Shadow/Torch instances
+            // (e.g., if left behind by an interrupted EditMode verification or scene reload)
+            PlayerController[] strayPlayers = FindObjectsByType<PlayerController>(FindObjectsSortMode.None);
+            foreach (PlayerController p in strayPlayers)
+            {
+                if (p != null)
+                {
+                    GameObject rootToDestroy = (p.transform.parent != null && p.transform.parent.name.StartsWith("Level_"))
+                        ? p.transform.parent.gameObject
+                        : p.gameObject;
+                    DestroyObjectImmediateOrSafe(rootToDestroy);
+                }
+            }
+
+            ShadowController[] strayShadows = FindObjectsByType<ShadowController>(FindObjectsSortMode.None);
+            foreach (ShadowController s in strayShadows)
+            {
+                if (s != null)
+                {
+                    GameObject rootToDestroy = (s.transform.parent != null && s.transform.parent.name.StartsWith("Level_"))
+                        ? s.transform.parent.gameObject
+                        : s.gameObject;
+                    DestroyObjectImmediateOrSafe(rootToDestroy);
+                }
+            }
+
+            TorchController[] strayTorches = FindObjectsByType<TorchController>(FindObjectsSortMode.None);
+            foreach (TorchController t in strayTorches)
+            {
+                if (t != null)
+                {
+                    GameObject rootToDestroy = (t.transform.parent != null && t.transform.parent.name.StartsWith("Level_"))
+                        ? t.transform.parent.gameObject
+                        : t.gameObject;
+                    DestroyObjectImmediateOrSafe(rootToDestroy);
+                }
+            }
+
+            _player = null;
+            _shadow = null;
+            _torch = null;
+        }
+
+        private static void DestroyObjectImmediateOrSafe(GameObject go)
+        {
+            if (go == null) return;
+            if (Application.isPlaying)
+            {
+                go.SetActive(false);
+                Destroy(go);
+            }
+            else
+            {
+                DestroyImmediate(go);
             }
         }
 
@@ -527,6 +582,7 @@ namespace MyShadowQuit.Core
             playerObj.transform.SetParent(_levelRoot.transform, false);
             playerObj.transform.position = playerPos;
             _player = playerObj.AddComponent<PlayerController>();
+            _player.EnsureInitialized();
 
             GameObject shadowObj = new GameObject("Shadow");
             shadowObj.transform.SetParent(_levelRoot.transform, false);
@@ -553,7 +609,9 @@ namespace MyShadowQuit.Core
             GameObject go = new GameObject("PressurePlate");
             go.transform.SetParent(_levelRoot.transform, false);
             go.transform.position = pos;
-            return go.AddComponent<PressurePlate>();
+            PressurePlate pp = go.AddComponent<PressurePlate>();
+            pp.EnsureInitialized();
+            return pp;
         }
 
         private LightSwitch CreateLightSwitch(Vector2 pos, bool latch)
@@ -579,7 +637,9 @@ namespace MyShadowQuit.Core
             GameObject go = new GameObject("ShadowPassage");
             go.transform.SetParent(_levelRoot.transform, false);
             go.transform.position = pos;
-            return go.AddComponent<ShadowPassage>();
+            ShadowPassage sp = go.AddComponent<ShadowPassage>();
+            sp.EnsureInitialized();
+            return sp;
         }
 
         private DarknessBarrier CreateDarknessBarrier(Vector2 pos, bool dissolvesWhenLit)

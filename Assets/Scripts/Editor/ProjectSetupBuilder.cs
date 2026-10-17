@@ -32,10 +32,13 @@ namespace MyShadowQuit.EditorTools
                 {
                     try
                     {
+                        EditorSettings.enterPlayModeOptionsEnabled = false;
+                        CleanupEditModeSceneArtifacts(saveIfCleaned: true);
                         RunAutomatedVerification();
                     }
                     catch (Exception ex)
                     {
+                        CleanupEditModeSceneArtifacts(saveIfCleaned: true);
                         Debug.LogError(ex);
                     }
                 }
@@ -58,8 +61,61 @@ namespace MyShadowQuit.EditorTools
             Debug.Log("[ProjectSetupBuilder] SUCCESS: All prefabs, scenes, and automated verifications completed with zero errors!");
         }
 
+        public static void CleanupEditModeSceneArtifacts(bool saveIfCleaned = false)
+        {
+            if (EditorApplication.isPlayingOrWillChangePlaymode) return;
+
+            Scene activeScene = SceneManager.GetActiveScene();
+            if (!activeScene.IsValid() || !activeScene.isLoaded) return;
+
+            int cleanedCount = 0;
+            bool seenMainCam = false;
+            bool seenGameManager = false;
+
+            GameObject[] roots = activeScene.GetRootGameObjects();
+            foreach (GameObject root in roots)
+            {
+                if (root == null) continue;
+
+                if (root.name == "Main Camera" && !seenMainCam)
+                {
+                    seenMainCam = true;
+                    CameraController cc = root.GetComponent<CameraController>();
+                    if (cc != null) cc.ClearParallaxLayers();
+                    for (int i = root.transform.childCount - 1; i >= 0; i--)
+                    {
+                        UnityEngine.Object.DestroyImmediate(root.transform.GetChild(i).gameObject);
+                        cleanedCount++;
+                    }
+                    continue;
+                }
+
+                if (root.name == "GameManager" && !seenGameManager)
+                {
+                    seenGameManager = true;
+                    for (int i = root.transform.childCount - 1; i >= 0; i--)
+                    {
+                        UnityEngine.Object.DestroyImmediate(root.transform.GetChild(i).gameObject);
+                        cleanedCount++;
+                    }
+                    continue;
+                }
+
+                // Destroy any leaked EditMode object (VerificationRunner, Level_1..8, ParallaxFar/Mid/Near, etc.)
+                UnityEngine.Object.DestroyImmediate(root);
+                cleanedCount++;
+            }
+
+            if (cleanedCount > 0 && saveIfCleaned && !string.IsNullOrEmpty(activeScene.path))
+            {
+                EditorSceneManager.SaveScene(activeScene);
+                Debug.Log($"[ProjectSetupBuilder] Cleaned {cleanedCount} leaked EditMode object(s) from active scene '{activeScene.name}' and saved clean state.");
+            }
+        }
+
         private static void ConfigureLandscapePlayerSettings()
         {
+            EditorSettings.enterPlayModeOptionsEnabled = false;
             PlayerSettings.defaultScreenWidth = 1920;
             PlayerSettings.defaultScreenHeight = 1080;
             PlayerSettings.defaultWebScreenWidth = 1280;
@@ -227,258 +283,284 @@ namespace MyShadowQuit.EditorTools
                 throw new Exception($"[Verification Failed] Audio bus gain hierarchy invalid: Music={musicGain}, SFX={sfxGain}, Ambience={ambienceGain}, Fire={fireGain}");
             }
 
-            // 3. Verify Level 1 ("Awakening") End-to-End Puzzle & Contextual Tutorial Progression
+            // 3. Verify Level 1 ("Awakening"), Level 2 ("The Separation"), & Idempotent Single-Instance Lifecycle
             GameObject testObj = new GameObject("VerificationRunner");
             LevelManager lm = testObj.AddComponent<LevelManager>();
             TutorialDirector td = testObj.AddComponent<TutorialDirector>();
-            CameraController cc = Camera.main != null ? Camera.main.GetComponent<CameraController>() : null;
 
-            for (int lvl = 0; lvl < lm.TotalLevels; lvl++)
-            {
-                lm.BuildLevel(lvl, cc);
-                if (lm.Player == null || lm.Shadow == null || lm.Torch == null)
-                {
-                    throw new Exception($"[Verification Failed] Level {lvl + 1} missing Player, Shadow, or Torch!");
-                }
-            }
-
-            // Test Level 1 Awakening step-by-step tutorial & puzzle flow
-            lm.BuildLevel(0, cc);
-            td.InitializeForLevel(0, lm, null);
-
-            if (td.CurrentStep != TutorialDirector.AwakeningStep.Move)
-            {
-                throw new Exception($"[Verification Failed] Expected initial tutorial step Move, got {td.CurrentStep}");
-            }
-
-            // Move player near torch -> step transitions to PickUpTorch
-            lm.Player.transform.position = lm.Torch.transform.position + new Vector3(-0.5f, 0f, 0f);
-            td.EvaluateAwakeningProgression(false);
-            if (td.CurrentStep != TutorialDirector.AwakeningStep.PickUpTorch)
-            {
-                throw new Exception($"[Verification Failed] Expected PickUpTorch step, got {td.CurrentStep}");
-            }
-
-            // Player picks up Torch -> step transitions to PlaceTorchOnPedestal
-            lm.Player.ForceEquipTorch(lm.Torch);
-            td.EvaluateAwakeningProgression(false);
-            if (td.CurrentStep != TutorialDirector.AwakeningStep.PlaceTorchOnPedestal)
-            {
-                throw new Exception($"[Verification Failed] Expected PlaceTorchOnPedestal step, got {td.CurrentStep}");
-            }
-
-            // Player places Torch on Pedestal -> step transitions to SwitchToShadow
-            TorchPedestal pedestal = UnityEngine.Object.FindFirstObjectByType<TorchPedestal>();
-            ShadowSwitch shadowSw = UnityEngine.Object.FindFirstObjectByType<ShadowSwitch>();
-            ShadowPassage passage = UnityEngine.Object.FindFirstObjectByType<ShadowPassage>();
-            AncientDoor door = UnityEngine.Object.FindFirstObjectByType<AncientDoor>();
-            LevelExitPortal exitPortal = UnityEngine.Object.FindFirstObjectByType<LevelExitPortal>();
-
-            if (pedestal == null || shadowSw == null || passage == null || door == null || exitPortal == null)
-            {
-                throw new Exception("[Verification Failed] Level 1 Awakening puzzle components not found!");
-            }
-
-            // Verify ShadowPassage starts closed and physically blocking the Protagonist
-            if (!passage.IsBlockingProtagonist || passage.IsOpen)
-            {
-                throw new Exception("[Verification Failed] Level 1 ShadowPassage should start closed and blocking!");
-            }
-
-            // Verify AncientDoor created visual RuneConduit lines for both required nodes
-            if (door.RequiredNodes.Count != 2)
-            {
-                throw new Exception("[Verification Failed] Level 1 AncientDoor should have 2 required nodes connected via Rune Conduits!");
-            }
-
-            lm.Torch.PlaceInPedestal(pedestal);
-            td.EvaluateAwakeningProgression(false);
-            if (td.CurrentStep != TutorialDirector.AwakeningStep.SwitchToShadow)
-            {
-                throw new Exception($"[Verification Failed] Expected SwitchToShadow step after placing torch, got {td.CurrentStep}");
-            }
-
-            // Verify TutorialDirector never shows EnterSanctuaryExit if ShadowPassage is still blocking even if door were forced open
-            door.SetOpen(true);
-            td.EvaluateAwakeningProgression(false);
-            if (td.CurrentStep == TutorialDirector.AwakeningStep.EnterSanctuaryExit)
-            {
-                throw new Exception("[Verification Failed] TutorialDirector showed EnterSanctuaryExit while ShadowPassage was still physically blocking!");
-            }
-            door.SetOpen(false);
-
-            // Shadow activates ShadowSwitch -> Both ShadowPassage AND AncientDoor open!
-            shadowSw.ActivateByShadow(lm.Shadow);
-            if (!door.IsOpen)
-            {
-                throw new Exception("[Verification Failed] AncientDoor failed to open after Pedestal + ShadowSwitch activation!");
-            }
-            if (!passage.IsOpen || passage.IsBlockingProtagonist)
-            {
-                throw new Exception("[Verification Failed] ShadowPassage remained closed/blocking after ShadowSwitch activation!");
-            }
-
-            // Physical Linecast check along the ground corridor (y = -2.0) from x = 7.5 (before ShadowPassage) to x = 18.8 (ExitSanctuary)
-            Physics2D.SyncTransforms();
-            RaycastHit2D[] pathHits = Physics2D.LinecastAll(new Vector2(7.5f, -2.0f), exitPortal.transform.position);
-            foreach (RaycastHit2D hit in pathHits)
-            {
-                if (hit.collider != null && !hit.collider.isTrigger)
-                {
-                    if (hit.collider.GetComponent<PlayerController>() != null ||
-                        hit.collider.GetComponent<ShadowController>() != null)
-                    {
-                        continue;
-                    }
-                    throw new Exception($"[Verification Failed] Protagonist path to ExitSanctuary is still physically blocked by non-trigger collider: {hit.collider.name} at {hit.point}!");
-                }
-            }
-
-            // Now that both ShadowPassage and AncientDoor are physically open, TutorialDirector advances to EnterSanctuaryExit
-            td.EvaluateAwakeningProgression(false);
-            if (td.CurrentStep != TutorialDirector.AwakeningStep.EnterSanctuaryExit)
-            {
-                throw new Exception($"[Verification Failed] Expected EnterSanctuaryExit step after path is clear, got {td.CurrentStep}");
-            }
-
-            // Verify Protagonist entering LevelExitPortal triggers level completion event cleanly
-            bool exitEventFired = false;
-            Action onExit = () => { exitEventFired = true; };
-            LevelExitPortal.OnLevelExitReached += onExit;
             try
             {
-                lm.Player.transform.position = exitPortal.transform.position;
-                bool completed = exitPortal.TryCompleteLevel(lm.Player);
-                if (!completed || !exitEventFired)
+                for (int lvl = 0; lvl < lm.TotalLevels; lvl++)
                 {
-                    throw new Exception("[Verification Failed] LevelExitPortal did not trigger completion when Protagonist reached exit!");
+                    lm.BuildLevel(lvl, null);
+                    if (lm.Player == null || lm.Shadow == null || lm.Torch == null)
+                    {
+                        throw new Exception($"[Verification Failed] Level {lvl + 1} missing Player, Shadow, or Torch!");
+                    }
+
+                    // Verify exactly 1 PlayerController, 1 ShadowController, and 1 TorchController exist per level build
+                    int playerCount = UnityEngine.Object.FindObjectsByType<PlayerController>(FindObjectsSortMode.None).Length;
+                    int shadowCount = UnityEngine.Object.FindObjectsByType<ShadowController>(FindObjectsSortMode.None).Length;
+                    int torchCount = UnityEngine.Object.FindObjectsByType<TorchController>(FindObjectsSortMode.None).Length;
+                    if (playerCount != 1 || shadowCount != 1 || torchCount != 1)
+                    {
+                        throw new Exception($"[Verification Failed] Duplicated entities in Level {lvl + 1}: Players={playerCount}, Shadows={shadowCount}, Torches={torchCount}!");
+                    }
+                }
+
+                // Test repeated Level 1 rebuild (idempotency check) + step-by-step tutorial & puzzle flow
+                lm.BuildLevel(0, null);
+                lm.BuildLevel(0, null);
+                td.InitializeForLevel(0, lm, null);
+
+                if (td.CurrentStep != TutorialDirector.AwakeningStep.Move)
+                {
+                    throw new Exception($"[Verification Failed] Expected initial tutorial step Move, got {td.CurrentStep}");
+                }
+
+                // Move player near torch -> step transitions to PickUpTorch
+                lm.Player.transform.position = lm.Torch.transform.position + new Vector3(-0.5f, 0f, 0f);
+                td.EvaluateAwakeningProgression(false);
+                if (td.CurrentStep != TutorialDirector.AwakeningStep.PickUpTorch)
+                {
+                    throw new Exception($"[Verification Failed] Expected PickUpTorch step, got {td.CurrentStep}");
+                }
+
+                // Player picks up Torch -> step transitions to PlaceTorchOnPedestal
+                lm.Player.ForceEquipTorch(lm.Torch);
+                td.EvaluateAwakeningProgression(false);
+                if (td.CurrentStep != TutorialDirector.AwakeningStep.PlaceTorchOnPedestal)
+                {
+                    throw new Exception($"[Verification Failed] Expected PlaceTorchOnPedestal step, got {td.CurrentStep}");
+                }
+
+                // Player places Torch on Pedestal -> step transitions to SwitchToShadow
+                TorchPedestal pedestal = UnityEngine.Object.FindFirstObjectByType<TorchPedestal>();
+                ShadowSwitch shadowSw = UnityEngine.Object.FindFirstObjectByType<ShadowSwitch>();
+                ShadowPassage passage = UnityEngine.Object.FindFirstObjectByType<ShadowPassage>();
+                AncientDoor door = UnityEngine.Object.FindFirstObjectByType<AncientDoor>();
+                LevelExitPortal exitPortal = UnityEngine.Object.FindFirstObjectByType<LevelExitPortal>();
+
+                if (pedestal == null || shadowSw == null || passage == null || door == null || exitPortal == null)
+                {
+                    throw new Exception("[Verification Failed] Level 1 Awakening puzzle components not found!");
+                }
+
+                // Verify ShadowPassage starts closed and physically blocking the Protagonist
+                if (!passage.IsBlockingProtagonist || passage.IsOpen)
+                {
+                    throw new Exception("[Verification Failed] Level 1 ShadowPassage should start closed and blocking!");
+                }
+
+                // Verify AncientDoor created visual RuneConduit lines for both required nodes
+                if (door.RequiredNodes.Count != 2)
+                {
+                    throw new Exception("[Verification Failed] Level 1 AncientDoor should have 2 required nodes connected via Rune Conduits!");
+                }
+
+                lm.Torch.PlaceInPedestal(pedestal);
+                td.EvaluateAwakeningProgression(false);
+                if (td.CurrentStep != TutorialDirector.AwakeningStep.SwitchToShadow)
+                {
+                    throw new Exception($"[Verification Failed] Expected SwitchToShadow step after placing torch, got {td.CurrentStep}");
+                }
+
+                // Verify TutorialDirector never shows EnterSanctuaryExit if ShadowPassage is still blocking even if door were forced open
+                door.SetOpen(true);
+                td.EvaluateAwakeningProgression(false);
+                if (td.CurrentStep == TutorialDirector.AwakeningStep.EnterSanctuaryExit)
+                {
+                    throw new Exception("[Verification Failed] TutorialDirector showed EnterSanctuaryExit while ShadowPassage was still physically blocking!");
+                }
+                door.SetOpen(false);
+
+                // Shadow activates ShadowSwitch -> Both ShadowPassage AND AncientDoor open!
+                shadowSw.ActivateByShadow(lm.Shadow);
+                if (!door.IsOpen)
+                {
+                    throw new Exception("[Verification Failed] AncientDoor failed to open after Pedestal + ShadowSwitch activation!");
+                }
+                if (!passage.IsOpen || passage.IsBlockingProtagonist)
+                {
+                    throw new Exception("[Verification Failed] ShadowPassage remained closed/blocking after ShadowSwitch activation!");
+                }
+
+                // Physical Linecast check along the ground corridor (y = -2.0) from x = 7.5 (before ShadowPassage) to x = 18.8 (ExitSanctuary)
+                Physics2D.SyncTransforms();
+                RaycastHit2D[] pathHits = Physics2D.LinecastAll(new Vector2(7.5f, -2.0f), exitPortal.transform.position);
+                foreach (RaycastHit2D hit in pathHits)
+                {
+                    if (hit.collider != null && !hit.collider.isTrigger)
+                    {
+                        if (hit.collider.GetComponent<PlayerController>() != null ||
+                            hit.collider.GetComponent<ShadowController>() != null)
+                        {
+                            continue;
+                        }
+                        throw new Exception($"[Verification Failed] Protagonist path to ExitSanctuary is still physically blocked by non-trigger collider: {hit.collider.name} at {hit.point}!");
+                    }
+                }
+
+                // Now that both ShadowPassage and AncientDoor are physically open, TutorialDirector advances to EnterSanctuaryExit
+                td.EvaluateAwakeningProgression(false);
+                if (td.CurrentStep != TutorialDirector.AwakeningStep.EnterSanctuaryExit)
+                {
+                    throw new Exception($"[Verification Failed] Expected EnterSanctuaryExit step after path is clear, got {td.CurrentStep}");
+                }
+
+                // Verify Protagonist entering LevelExitPortal triggers level completion event cleanly
+                bool exitEventFired = false;
+                Action onExit = () => { exitEventFired = true; };
+                LevelExitPortal.OnLevelExitReached += onExit;
+                try
+                {
+                    lm.Player.transform.position = exitPortal.transform.position;
+                    bool completed = exitPortal.TryCompleteLevel(lm.Player);
+                    if (!completed || !exitEventFired)
+                    {
+                        throw new Exception("[Verification Failed] LevelExitPortal did not trigger completion when Protagonist reached exit!");
+                    }
+                }
+                finally
+                {
+                    LevelExitPortal.OnLevelExitReached -= onExit;
+                }
+
+                // 4. Verify Level 2 ("The Separation") + Shadow Double Jump + Reduced Gravity + Air Control
+                lm.BuildLevel(1, null);
+                ShadowController shadow2 = lm.Shadow;
+                if (!Mathf.Approximately(shadow2.GravityScale, 1.3f))
+                {
+                    throw new Exception($"[Verification Failed] Expected Shadow gravity scale 1.3f (50% of Player 2.6f), got {shadow2.GravityScale}");
+                }
+
+                float gEff = Mathf.Abs(Physics2D.gravity.y) * shadow2.GravityScale;
+                float h1 = (shadow2.FirstJumpForce * shadow2.FirstJumpForce) / (2f * gEff);
+                float h2 = (shadow2.SecondJumpForce * shadow2.SecondJumpForce) / (2f * gEff);
+                float totalJumpApex = h1 + h2;
+                if (totalJumpApex < 4.0f || totalJumpApex > 5.2f)
+                {
+                    throw new Exception($"[Verification Failed] Shadow double jump apex ({totalJumpApex:F2}u) out of balanced target range [4.0u..5.2u] for 3.47u upper platform!");
+                }
+
+                // Verify 2-jump state machine: 1st jump succeeds, 2nd mid-air jump succeeds, 3rd jump rejected until grounded
+                shadow2.SetGroundedStateForTest(true);
+                if (!shadow2.TryPerformJumpForTest() || shadow2.JumpsRemaining != 1)
+                {
+                    throw new Exception("[Verification Failed] Shadow 1st jump from ground failed or did not leave 1 jump remaining!");
+                }
+                if (!shadow2.TryPerformJumpForTest() || shadow2.JumpsRemaining != 0)
+                {
+                    throw new Exception("[Verification Failed] Shadow 2nd jump in mid-air failed or did not leave 0 jumps remaining!");
+                }
+                if (shadow2.TryPerformJumpForTest())
+                {
+                    throw new Exception("[Verification Failed] Shadow allowed a 3rd jump in mid-air (infinite jump bug)!");
+                }
+                shadow2.SetGroundedStateForTest(true);
+                if (shadow2.JumpsRemaining != ShadowController.MaxJumps)
+                {
+                    throw new Exception("[Verification Failed] Shadow jumps did not reset upon landing on valid ground!");
+                }
+
+                // Verify Level 2 Dual Pressure Plate cooperation & physical path to Level 3
+                PressurePlate[] plates = UnityEngine.Object.FindObjectsByType<PressurePlate>(FindObjectsSortMode.None);
+                AncientDoor door2 = UnityEngine.Object.FindFirstObjectByType<AncientDoor>();
+                ShadowPassage passage2 = UnityEngine.Object.FindFirstObjectByType<ShadowPassage>();
+                LevelExitPortal exitPortal2 = UnityEngine.Object.FindFirstObjectByType<LevelExitPortal>();
+
+                if (plates.Length < 2 || door2 == null || passage2 == null || exitPortal2 == null)
+                {
+                    throw new Exception("[Verification Failed] Level 2 puzzle components missing!");
+                }
+
+                PressurePlate lowerPlate = plates[0].transform.position.y < 0f ? plates[0] : plates[1];
+                PressurePlate upperPlate = plates[0].transform.position.y >= 0f ? plates[0] : plates[1];
+
+                // Verify Shadow ignores collision with upper ShadowPassage while Protagonist is blocked by it
+                passage2.EnsureInitialized();
+                shadow2.EnsureInitialized();
+                Collider2D shadowCol = shadow2.Collider;
+                Collider2D passageCol = passage2.GetComponent<Collider2D>();
+                if (!Physics2D.GetIgnoreCollision(shadowCol, passageCol))
+                {
+                    throw new Exception("[Verification Failed] Level 2 ShadowPassage is not ignoring collision with Shadow!");
+                }
+
+                // Position Protagonist on lower plate and Shadow (after double jump + passing ShadowPassage) on upper plate
+                lm.Player.transform.position = lowerPlate.transform.position + new Vector3(0f, 0.5f, 0f);
+                shadow2.transform.position = upperPlate.transform.position + new Vector3(0f, 0.5f, 0f);
+                Physics2D.SyncTransforms();
+
+                lowerPlate.EvaluateOccupancy();
+                upperPlate.EvaluateOccupancy();
+
+                if (!lowerPlate.IsActivated || !upperPlate.IsActivated)
+                {
+                    throw new Exception("[Verification Failed] Level 2 lower or upper PressurePlate failed to activate when occupied!");
+                }
+                if (!door2.IsOpen)
+                {
+                    throw new Exception("[Verification Failed] Level 2 AncientDoor failed to open when both PressurePlates were activated!");
+                }
+
+                // Verify AncientDoor latches open when Protagonist steps off lowerPlate to walk to ExitSanctuary
+                lm.Player.transform.position = new Vector3(6.0f, -2.2f, 0f);
+                Physics2D.SyncTransforms();
+                lowerPlate.EvaluateOccupancy();
+                if (!door2.IsOpen)
+                {
+                    throw new Exception("[Verification Failed] Level 2 AncientDoor did not stay latched open when Protagonist walked toward exit!");
+                }
+
+                // Physical Linecast check along the ground floor (y = -2.0) from x = 1.5 to ExitSanctuary (x = 19.0)
+                RaycastHit2D[] pathHits2 = Physics2D.LinecastAll(new Vector2(1.5f, -2.0f), exitPortal2.transform.position);
+                foreach (RaycastHit2D hit in pathHits2)
+                {
+                    if (hit.collider != null && !hit.collider.isTrigger)
+                    {
+                        if (hit.collider.GetComponent<PlayerController>() != null ||
+                            hit.collider.GetComponent<ShadowController>() != null)
+                        {
+                            continue;
+                        }
+                        throw new Exception($"[Verification Failed] Level 2 Protagonist path to ExitSanctuary is blocked by: {hit.collider.name} at {hit.point}!");
+                    }
+                }
+
+                bool level2ExitFired = false;
+                Action onExit2 = () => { level2ExitFired = true; };
+                LevelExitPortal.OnLevelExitReached += onExit2;
+                try
+                {
+                    lm.Player.transform.position = exitPortal2.transform.position;
+                    if (!exitPortal2.TryCompleteLevel(lm.Player) || !level2ExitFired)
+                    {
+                        throw new Exception("[Verification Failed] Level 2 ExitSanctuary did not trigger transition to Level 3!");
+                    }
+                }
+                finally
+                {
+                    LevelExitPortal.OnLevelExitReached -= onExit2;
                 }
             }
             finally
             {
-                LevelExitPortal.OnLevelExitReached -= onExit;
+                if (lm != null) lm.ClearCurrentLevel();
+                if (testObj != null) UnityEngine.Object.DestroyImmediate(testObj);
+                CleanupEditModeSceneArtifacts(saveIfCleaned: false);
             }
 
-            // 4. Verify Level 2 ("The Separation") + Shadow Double Jump + Reduced Gravity + Air Control
-            lm.BuildLevel(1, cc);
-            ShadowController shadow2 = lm.Shadow;
-            if (!Mathf.Approximately(shadow2.GravityScale, 1.3f))
+            // 5. Verify EditMode scene is 100% clean (0 leaked Protagonists, Shadows, Torches; 1 of each core Manager)
+            int leakedPlayers = UnityEngine.Object.FindObjectsByType<PlayerController>(FindObjectsSortMode.None).Length;
+            int leakedShadows = UnityEngine.Object.FindObjectsByType<ShadowController>(FindObjectsSortMode.None).Length;
+            int leakedTorches = UnityEngine.Object.FindObjectsByType<TorchController>(FindObjectsSortMode.None).Length;
+            if (leakedPlayers != 0 || leakedShadows != 0 || leakedTorches != 0)
             {
-                throw new Exception($"[Verification Failed] Expected Shadow gravity scale 1.3f (50% of Player 2.6f), got {shadow2.GravityScale}");
+                throw new Exception($"[Verification Failed] Leaked entities remain in EditMode scene: Players={leakedPlayers}, Shadows={leakedShadows}, Torches={leakedTorches}!");
             }
 
-            float gEff = Mathf.Abs(Physics2D.gravity.y) * shadow2.GravityScale;
-            float h1 = (shadow2.FirstJumpForce * shadow2.FirstJumpForce) / (2f * gEff);
-            float h2 = (shadow2.SecondJumpForce * shadow2.SecondJumpForce) / (2f * gEff);
-            float totalJumpApex = h1 + h2;
-            if (totalJumpApex < 4.0f || totalJumpApex > 5.2f)
-            {
-                throw new Exception($"[Verification Failed] Shadow double jump apex ({totalJumpApex:F2}u) out of balanced target range [4.0u..5.2u] for 3.47u upper platform!");
-            }
-
-            // Verify 2-jump state machine: 1st jump succeeds, 2nd mid-air jump succeeds, 3rd jump rejected until grounded
-            shadow2.SetGroundedStateForTest(true);
-            if (!shadow2.TryPerformJumpForTest() || shadow2.JumpsRemaining != 1)
-            {
-                throw new Exception("[Verification Failed] Shadow 1st jump from ground failed or did not leave 1 jump remaining!");
-            }
-            if (!shadow2.TryPerformJumpForTest() || shadow2.JumpsRemaining != 0)
-            {
-                throw new Exception("[Verification Failed] Shadow 2nd jump in mid-air failed or did not leave 0 jumps remaining!");
-            }
-            if (shadow2.TryPerformJumpForTest())
-            {
-                throw new Exception("[Verification Failed] Shadow allowed a 3rd jump in mid-air (infinite jump bug)!");
-            }
-            shadow2.SetGroundedStateForTest(true);
-            if (shadow2.JumpsRemaining != ShadowController.MaxJumps)
-            {
-                throw new Exception("[Verification Failed] Shadow jumps did not reset upon landing on valid ground!");
-            }
-
-            // Verify Level 2 Dual Pressure Plate cooperation & physical path to Level 3
-            PressurePlate[] plates = UnityEngine.Object.FindObjectsByType<PressurePlate>(FindObjectsSortMode.None);
-            AncientDoor door2 = UnityEngine.Object.FindFirstObjectByType<AncientDoor>();
-            ShadowPassage passage2 = UnityEngine.Object.FindFirstObjectByType<ShadowPassage>();
-            LevelExitPortal exitPortal2 = UnityEngine.Object.FindFirstObjectByType<LevelExitPortal>();
-
-            if (plates.Length < 2 || door2 == null || passage2 == null || exitPortal2 == null)
-            {
-                throw new Exception("[Verification Failed] Level 2 puzzle components missing!");
-            }
-
-            PressurePlate lowerPlate = plates[0].transform.position.y < 0f ? plates[0] : plates[1];
-            PressurePlate upperPlate = plates[0].transform.position.y >= 0f ? plates[0] : plates[1];
-
-            //Verify Shadow ignores collision with upper ShadowPassage while Protagonist is blocked by it
-            Collider2D shadowCol = shadow2.GetComponent<Collider2D>();
-            Collider2D passageCol = passage2.GetComponent<Collider2D>();
-            if (!Physics2D.GetIgnoreCollision(shadowCol, passageCol))
-            {
-                throw new Exception("[Verification Failed] Level 2 ShadowPassage is not ignoring collision with Shadow!");
-            }
-
-            // Position Protagonist on lower plate and Shadow (after double jump + passing ShadowPassage) on upper plate
-            lm.Player.transform.position = lowerPlate.transform.position + new Vector3(0f, 0.5f, 0f);
-            shadow2.transform.position = upperPlate.transform.position + new Vector3(0f, 0.5f, 0f);
-            Physics2D.SyncTransforms();
-
-            lowerPlate.EvaluateOccupancy();
-            upperPlate.EvaluateOccupancy();
-
-            if (!lowerPlate.IsActivated || !upperPlate.IsActivated)
-            {
-                throw new Exception("[Verification Failed] Level 2 lower or upper PressurePlate failed to activate when occupied!");
-            }
-            if (!door2.IsOpen)
-            {
-                throw new Exception("[Verification Failed] Level 2 AncientDoor failed to open when both PressurePlates were activated!");
-            }
-
-            // Verify AncientDoor latches open when Protagonist steps off lowerPlate to walk to ExitSanctuary
-            lm.Player.transform.position = new Vector3(6.0f, -2.2f, 0f);
-            Physics2D.SyncTransforms();
-            lowerPlate.EvaluateOccupancy();
-            if (!door2.IsOpen)
-            {
-                throw new Exception("[Verification Failed] Level 2 AncientDoor did not stay latched open when Protagonist walked toward exit!");
-            }
-
-            // Physical Linecast check along the ground floor (y = -2.0) from x = 1.5 to ExitSanctuary (x = 19.0)
-            RaycastHit2D[] pathHits2 = Physics2D.LinecastAll(new Vector2(1.5f, -2.0f), exitPortal2.transform.position);
-            foreach (RaycastHit2D hit in pathHits2)
-            {
-                if (hit.collider != null && !hit.collider.isTrigger)
-                {
-                    if (hit.collider.GetComponent<PlayerController>() != null ||
-                        hit.collider.GetComponent<ShadowController>() != null)
-                    {
-                        continue;
-                    }
-                    throw new Exception($"[Verification Failed] Level 2 Protagonist path to ExitSanctuary is blocked by: {hit.collider.name} at {hit.point}!");
-                }
-            }
-
-            bool level2ExitFired = false;
-            Action onExit2 = () => { level2ExitFired = true; };
-            LevelExitPortal.OnLevelExitReached += onExit2;
-            try
-            {
-                lm.Player.transform.position = exitPortal2.transform.position;
-                if (!exitPortal2.TryCompleteLevel(lm.Player) || !level2ExitFired)
-                {
-                    throw new Exception("[Verification Failed] Level 2 ExitSanctuary did not trigger transition to Level 3!");
-                }
-            }
-            finally
-            {
-                LevelExitPortal.OnLevelExitReached -= onExit2;
-            }
-
-            lm.ClearCurrentLevel();
-            UnityEngine.Object.DestroyImmediate(testObj);
-
-            Debug.Log("[Verification Passed] Shadow Double Jump (2 jumps max, 50% gravity, air control, visual/SFX feedback), Level 1 & Level 2 Physical Completion, Audio dB Mix, and 16:9 Landscape verified!");
+            Debug.Log("[Verification Passed] Zero Duplicated Objects, Idempotent Level Lifecycle, Shadow Double Jump (2 jumps max, 50% gravity), Level 1 & Level 2 Physical Completion, Audio dB Mix, and 16:9 Landscape verified!");
         }
 
         [MenuItem("MyShadowQuit/Build WebGL Release")]

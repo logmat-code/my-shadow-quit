@@ -95,6 +95,12 @@ namespace MyShadowQuit.Core
             return dB <= -80f ? 0f : Mathf.Pow(10f, dB / 20f);
         }
 
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetStaticState()
+        {
+            Instance = null;
+        }
+
         private void Awake()
         {
             if (Instance != null && Instance != this)

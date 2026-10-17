@@ -61,20 +61,38 @@ namespace MyShadowQuit.Entities
 
         private void Awake()
         {
-            _rb = GetComponent<Rigidbody2D>();
-            _col = GetComponent<BoxCollider2D>();
-            _sr = GetComponent<SpriteRenderer>();
+            EnsureInitialized();
+        }
 
-            _rb.gravityScale = 2.6f;
-            _rb.constraints = RigidbodyConstraints2D.FreezeRotation;
-            _rb.interpolation = RigidbodyInterpolation2D.Interpolate;
-            _rb.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
+        public void EnsureInitialized()
+        {
+            if (_rb == null) _rb = GetComponent<Rigidbody2D>();
+            if (_col == null) _col = GetComponent<BoxCollider2D>();
+            if (_sr == null) _sr = GetComponent<SpriteRenderer>();
 
-            _col.size = new Vector2(0.46f, 0.82f);
-            _col.offset = new Vector2(0f, -0.03f);
-            _sr.sortingOrder = 10;
+            if (_rb != null)
+            {
+                _rb.gravityScale = 2.6f;
+                _rb.constraints = RigidbodyConstraints2D.FreezeRotation;
+                _rb.interpolation = RigidbodyInterpolation2D.Interpolate;
+                _rb.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
+            }
 
-            LoadSprites();
+            if (_col != null)
+            {
+                _col.size = new Vector2(0.46f, 0.82f);
+                _col.offset = new Vector2(0f, -0.03f);
+            }
+
+            if (_sr != null)
+            {
+                _sr.sortingOrder = 10;
+            }
+
+            if (_idleSprites == null || _idleSprites.Length == 0)
+            {
+                LoadSprites();
+            }
         }
 
         private void LoadSprites()

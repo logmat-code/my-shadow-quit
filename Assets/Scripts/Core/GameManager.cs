@@ -35,6 +35,12 @@ namespace MyShadowQuit.Core
         public LevelManager Levels => _levelManager;
         public TutorialDirector Tutorial => _tutorialDirector;
 
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetStaticState()
+        {
+            Instance = null;
+        }
+
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void AutoBootstrap()
         {
@@ -49,6 +55,7 @@ namespace MyShadowQuit.Core
         {
             if (Instance != null && Instance != this)
             {
+                gameObject.SetActive(false);
                 Destroy(gameObject);
                 return;
             }
@@ -60,7 +67,23 @@ namespace MyShadowQuit.Core
 
         private void SetupSystems()
         {
-            _audioManager = FindFirstObjectByType<AudioManager>();
+            // Clean up any leftover EditMode VerificationRunner objects if present in the scene
+            LevelManager[] allLevelManagers = FindObjectsByType<LevelManager>(FindObjectsSortMode.None);
+            foreach (LevelManager lm in allLevelManagers)
+            {
+                if (lm != null && lm.gameObject != gameObject)
+                {
+                    lm.ClearCurrentLevel();
+                    lm.gameObject.SetActive(false);
+                    Destroy(lm.gameObject);
+                }
+            }
+
+            _audioManager = GetComponent<AudioManager>();
+            if (_audioManager == null)
+            {
+                _audioManager = FindFirstObjectByType<AudioManager>();
+            }
             if (_audioManager == null)
             {
                 _audioManager = gameObject.AddComponent<AudioManager>();
@@ -86,7 +109,11 @@ namespace MyShadowQuit.Core
                 _levelManager = gameObject.AddComponent<LevelManager>();
             }
 
-            _uiManager = FindFirstObjectByType<UIManager>();
+            _uiManager = GetComponent<UIManager>();
+            if (_uiManager == null)
+            {
+                _uiManager = FindFirstObjectByType<UIManager>();
+            }
             if (_uiManager == null)
             {
                 _uiManager = gameObject.AddComponent<UIManager>();
@@ -98,9 +125,13 @@ namespace MyShadowQuit.Core
                 _tutorialDirector = gameObject.AddComponent<TutorialDirector>();
             }
 
+            _uiManager.OnPlayRequested -= StartNewGame;
             _uiManager.OnPlayRequested += StartNewGame;
+            _uiManager.OnResumeRequested -= TogglePause;
             _uiManager.OnResumeRequested += TogglePause;
+            _uiManager.OnRestartRequested -= RestartCurrentLevel;
             _uiManager.OnRestartRequested += RestartCurrentLevel;
+            _uiManager.OnMainMenuRequested -= OpenMainMenu;
             _uiManager.OnMainMenuRequested += OpenMainMenu;
 
             LevelExitPortal.OnLevelExitReached -= HandleLevelCompleted;

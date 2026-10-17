@@ -19,16 +19,28 @@ namespace MyShadowQuit.Puzzle
 
         private void Awake()
         {
-            _sr = GetComponent<SpriteRenderer>();
-            _sr.sortingOrder = 3;
-            _upSprite = AssetRegistry.GetSprite("Environment/pressure_plate_up");
-            _downSprite = AssetRegistry.GetSprite("Environment/pressure_plate_down");
-            _sr.sprite = _upSprite;
+            EnsureInitialized();
+        }
 
-            _trigger = GetComponent<BoxCollider2D>();
-            _trigger.isTrigger = true;
-            _trigger.size = new Vector2(0.75f, 0.35f);
-            _trigger.offset = new Vector2(0f, -0.05f);
+        public void EnsureInitialized()
+        {
+            if (_sr == null) _sr = GetComponent<SpriteRenderer>();
+            if (_trigger == null) _trigger = GetComponent<BoxCollider2D>();
+
+            if (_sr != null)
+            {
+                _sr.sortingOrder = 3;
+                if (_upSprite == null) _upSprite = AssetRegistry.GetSprite("Environment/pressure_plate_up");
+                if (_downSprite == null) _downSprite = AssetRegistry.GetSprite("Environment/pressure_plate_down");
+                if (_sr.sprite == null) _sr.sprite = isActivated ? _downSprite : _upSprite;
+            }
+
+            if (_trigger != null)
+            {
+                _trigger.isTrigger = true;
+                _trigger.size = new Vector2(0.75f, 0.35f);
+                _trigger.offset = new Vector2(0f, -0.05f);
+            }
         }
 
         private void FixedUpdate()
@@ -38,6 +50,7 @@ namespace MyShadowQuit.Puzzle
 
         public void EvaluateOccupancy()
         {
+            EnsureInitialized();
             if (stayPressedOnceActivated && isActivated) return;
 
             Bounds b = _trigger.bounds;

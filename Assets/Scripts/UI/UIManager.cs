@@ -71,6 +71,20 @@ namespace MyShadowQuit.UI
 
         private void BuildCanvasAndPanels()
         {
+            Transform existingCanvas = transform.Find("UICanvas");
+            if (existingCanvas != null)
+            {
+                if (Application.isPlaying)
+                {
+                    existingCanvas.gameObject.SetActive(false);
+                    Destroy(existingCanvas.gameObject);
+                }
+                else
+                {
+                    DestroyImmediate(existingCanvas.gameObject);
+                }
+            }
+
             GameObject canvasObj = new GameObject("UICanvas");
             canvasObj.transform.SetParent(transform, false);
             _canvas = canvasObj.AddComponent<Canvas>();

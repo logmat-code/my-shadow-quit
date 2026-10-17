@@ -132,11 +132,18 @@ namespace MyShadowQuit.Core
             _backgroundClearCam.backgroundColor = new Color(0.02f, 0.025f, 0.045f, 1f);
         }
 
+        private GameObject _parallaxRoot;
+
         public void BuildParallaxLayers()
         {
-            DestroyLayerList(_farLayer);
-            DestroyLayerList(_midLayer);
-            DestroyLayerList(_nearLayer);
+            ClearParallaxLayers();
+
+            if (!Application.isPlaying)
+            {
+                return;
+            }
+
+            _parallaxRoot = new GameObject("ParallaxBackground");
 
             Sprite farSp = AssetRegistry.GetSprite("Environment/parallax_far", 16f);
             Sprite midSp = AssetRegistry.GetSprite("Environment/parallax_mid", 16f);
@@ -151,14 +158,64 @@ namespace MyShadowQuit.Core
             }
         }
 
+        public void ClearParallaxLayers()
+        {
+            DestroyLayerList(_farLayer);
+            DestroyLayerList(_midLayer);
+            DestroyLayerList(_nearLayer);
+
+            if (_parallaxRoot != null)
+            {
+                if (Application.isPlaying)
+                {
+                    _parallaxRoot.SetActive(false);
+                    Destroy(_parallaxRoot);
+                }
+                else
+                {
+                    DestroyImmediate(_parallaxRoot);
+                }
+                _parallaxRoot = null;
+            }
+
+            // Also clean up any orphaned Parallax objects left in the scene
+            SpriteRenderer[] renderers = FindObjectsByType<SpriteRenderer>(FindObjectsSortMode.None);
+            foreach (SpriteRenderer sr in renderers)
+            {
+                if (sr != null && sr.gameObject != null)
+                {
+                    string n = sr.gameObject.name;
+                    if (n.StartsWith("ParallaxFar_") || n.StartsWith("ParallaxMid_") || n.StartsWith("ParallaxNear_"))
+                    {
+                        if (Application.isPlaying)
+                        {
+                            sr.gameObject.SetActive(false);
+                            Destroy(sr.gameObject);
+                        }
+                        else
+                        {
+                            DestroyImmediate(sr.gameObject);
+                        }
+                    }
+                }
+            }
+        }
+
         private void DestroyLayerList(List<Transform> list)
         {
             foreach (Transform t in list)
             {
                 if (t != null)
                 {
-                    if (Application.isPlaying) Destroy(t.gameObject);
-                    else DestroyImmediate(t.gameObject);
+                    if (Application.isPlaying)
+                    {
+                        t.gameObject.SetActive(false);
+                        Destroy(t.gameObject);
+                    }
+                    else
+                    {
+                        DestroyImmediate(t.gameObject);
+                    }
                 }
             }
             list.Clear();
@@ -167,6 +224,10 @@ namespace MyShadowQuit.Core
         private Transform CreateLayerTile(string objName, Sprite sp, Vector3 pos, int sortOrder, Color tint)
         {
             GameObject go = new GameObject(objName);
+            if (_parallaxRoot != null)
+            {
+                go.transform.SetParent(_parallaxRoot.transform, false);
+            }
             go.transform.position = pos;
             SpriteRenderer sr = go.AddComponent<SpriteRenderer>();
             sr.sprite = sp;

@@ -32,7 +32,7 @@ namespace MyShadowQuit.Puzzle
             EnsureInitialized();
         }
 
-        private void EnsureInitialized()
+        public void EnsureInitialized()
         {
             if (_sr == null) _sr = GetComponent<SpriteRenderer>();
             if (_col == null) _col = GetComponent<BoxCollider2D>();
