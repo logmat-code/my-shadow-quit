@@ -135,6 +135,102 @@ namespace MyShadowQuit.Core
             catch { return false; }
         }
 
+        public static bool GetCancelDown()
+        {
+#if ENABLE_INPUT_SYSTEM
+            if (Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame)
+            {
+                return true;
+            }
+#endif
+            try
+            {
+                return Input.GetKeyDown(KeyCode.Escape);
+            }
+            catch { return false; }
+        }
+
+        public static bool GetConfirmDown()
+        {
+#if ENABLE_INPUT_SYSTEM
+            if (Keyboard.current != null &&
+                (Keyboard.current.enterKey.wasPressedThisFrame ||
+                 Keyboard.current.numpadEnterKey.wasPressedThisFrame))
+            {
+                return true;
+            }
+#endif
+            try
+            {
+                return Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter);
+            }
+            catch { return false; }
+        }
+
+        public static bool GetMenuUpDown()
+        {
+#if ENABLE_INPUT_SYSTEM
+            if (Keyboard.current != null &&
+                (Keyboard.current.upArrowKey.wasPressedThisFrame || Keyboard.current.wKey.wasPressedThisFrame))
+            {
+                return true;
+            }
+#endif
+            try
+            {
+                return Input.GetKeyDown(KeyCode.UpArrow) || Input.GetKeyDown(KeyCode.W);
+            }
+            catch { return false; }
+        }
+
+        public static bool GetMenuDownDown()
+        {
+#if ENABLE_INPUT_SYSTEM
+            if (Keyboard.current != null &&
+                (Keyboard.current.downArrowKey.wasPressedThisFrame || Keyboard.current.sKey.wasPressedThisFrame))
+            {
+                return true;
+            }
+#endif
+            try
+            {
+                return Input.GetKeyDown(KeyCode.DownArrow) || Input.GetKeyDown(KeyCode.S);
+            }
+            catch { return false; }
+        }
+
+        public static bool GetMenuLeftDown()
+        {
+#if ENABLE_INPUT_SYSTEM
+            if (Keyboard.current != null &&
+                (Keyboard.current.leftArrowKey.wasPressedThisFrame || Keyboard.current.aKey.wasPressedThisFrame))
+            {
+                return true;
+            }
+#endif
+            try
+            {
+                return Input.GetKeyDown(KeyCode.LeftArrow) || Input.GetKeyDown(KeyCode.A);
+            }
+            catch { return false; }
+        }
+
+        public static bool GetMenuRightDown()
+        {
+#if ENABLE_INPUT_SYSTEM
+            if (Keyboard.current != null &&
+                (Keyboard.current.rightArrowKey.wasPressedThisFrame || Keyboard.current.dKey.wasPressedThisFrame))
+            {
+                return true;
+            }
+#endif
+            try
+            {
+                return Input.GetKeyDown(KeyCode.RightArrow) || Input.GetKeyDown(KeyCode.D);
+            }
+            catch { return false; }
+        }
+
         public static Vector2 GetMouseScreenPosition()
         {
 #if ENABLE_INPUT_SYSTEM

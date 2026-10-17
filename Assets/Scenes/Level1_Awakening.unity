@@ -296,7 +296,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ba490b4b59d2b470ba9a4b8af0e48979, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MyShadowQuit.Core.GameManager
-  startInMainMenu: 0
+  startInMainMenu: 1
 --- !u!4 &1743170618
 Transform:
   m_ObjectHideFlags: 0

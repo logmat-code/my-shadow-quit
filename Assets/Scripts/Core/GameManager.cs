@@ -18,7 +18,7 @@ namespace MyShadowQuit.Core
     {
         public static GameManager Instance { get; private set; }
 
-        [SerializeField] private bool startInMainMenu = false;
+        [SerializeField] private bool startInMainMenu = true;
 
         private LevelManager _levelManager;
         private UIManager _uiManager;
@@ -38,6 +38,7 @@ namespace MyShadowQuit.Core
         public int CurrentLevelIndex => _currentLevelIndex;
         public bool IsControllingShadow => _isControllingShadow;
         public bool IsPaused => _isPaused;
+        public bool IsInMainMenu => _isInMainMenu;
         public bool IsEndingSequenceActive => _isEndingSequenceActive;
         public bool IsWorld1Completed => _isWorld1Completed;
         public bool IsGameCompleted => _isGameCompleted;
@@ -140,10 +141,18 @@ namespace MyShadowQuit.Core
 
             _uiManager.OnPlayRequested -= StartNewGame;
             _uiManager.OnPlayRequested += StartNewGame;
+            _uiManager.OnContinueRequested -= ContinueSavedGame;
+            _uiManager.OnContinueRequested += ContinueSavedGame;
+            _uiManager.OnNewGameRequested -= StartNewGameWithReset;
+            _uiManager.OnNewGameRequested += StartNewGameWithReset;
             _uiManager.OnWorldSelectRequested -= OpenWorldSelect;
             _uiManager.OnWorldSelectRequested += OpenWorldSelect;
+            _uiManager.OnLevelSelectRequested -= OpenLevelSelect;
+            _uiManager.OnLevelSelectRequested += OpenLevelSelect;
             _uiManager.OnStartWorldRequested -= SelectWorldAndStart;
             _uiManager.OnStartWorldRequested += SelectWorldAndStart;
+            _uiManager.OnLevelSelectedFromMap -= StartLevelFromMap;
+            _uiManager.OnLevelSelectedFromMap += StartLevelFromMap;
             _uiManager.OnWorldCompleteContinueRequested -= OpenWorld2ComingSoon;
             _uiManager.OnWorldCompleteContinueRequested += OpenWorld2ComingSoon;
             _uiManager.OnResumeRequested -= TogglePause;
@@ -244,6 +253,20 @@ namespace MyShadowQuit.Core
             }
         }
 
+        public void OpenLevelSelect()
+        {
+            StopEndingSequenceIfNeeded();
+            _isInMainMenu = true;
+            _isPaused = false;
+            Time.timeScale = 1f;
+            if (_levelManager.Player != null) _levelManager.Player.SetControlActive(false);
+            if (_levelManager.Shadow != null) _levelManager.Shadow.SetControlActive(false);
+            if (_uiManager != null)
+            {
+                _uiManager.ShowLevelSelectScreen();
+            }
+        }
+
         public void OpenWorld2ComingSoon()
         {
             StopEndingSequenceIfNeeded();
@@ -256,6 +279,37 @@ namespace MyShadowQuit.Core
             {
                 _uiManager.ShowWorld2ComingSoonScreen();
             }
+        }
+
+        public void ContinueSavedGame()
+        {
+            SelectWorldAndStart(0, continueSavedProgress: true);
+        }
+
+        public void StartNewGameWithReset()
+        {
+            WorldProgressSave.ResetWorldProgress("world_1");
+            SelectWorldAndStart(0, continueSavedProgress: false);
+        }
+
+        public void StartLevelFromMap(int levelIndex)
+        {
+            WorldDefinition world = WorldCatalog.GetWorld(0);
+            int total = world != null ? world.LevelCount : _levelManager.TotalLevels;
+            if (!WorldProgressSave.IsLevelUnlocked("world_1", levelIndex, total))
+            {
+                return;
+            }
+
+            StopEndingSequenceIfNeeded();
+            if (world != null) _levelManager.SetActiveWorld(world);
+            _isInMainMenu = false;
+            _isPaused = false;
+            _isWorld1Completed = false;
+            _isGameCompleted = false;
+            Time.timeScale = 1f;
+
+            LoadLevel(levelIndex);
         }
 
         public void SelectWorldAndStart(int worldIndex, bool continueSavedProgress)
@@ -278,7 +332,7 @@ namespace MyShadowQuit.Core
             int startLevel = 0;
             if (continueSavedProgress && WorldProgressSave.HasSavedProgress(world.WorldId))
             {
-                startLevel = WorldProgressSave.GetLastPlayedLevel(world.WorldId, world.LevelCount);
+                startLevel = WorldProgressSave.GetContinueLevelIndex(world.WorldId, world.LevelCount);
             }
 
             LoadLevel(startLevel);
@@ -400,6 +454,8 @@ namespace MyShadowQuit.Core
 
         private void HandleLevelCompleted()
         {
+            WorldProgressSave.MarkLevelCompleted(ActiveWorldId, _currentLevelIndex, _levelManager.TotalLevels);
+
             if (_currentLevelIndex + 1 < _levelManager.TotalLevels)
             {
                 LoadLevel(_currentLevelIndex + 1);

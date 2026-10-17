@@ -205,11 +205,14 @@ namespace MyShadowQuit.Core
 
     /// <summary>
     /// Local progress persistence for worlds and levels using PlayerPrefs.
+    /// Maintains backward compatibility with existing save keys while tracking
+    /// unlocked levels, completed levels, last played level, and world completion.
     /// </summary>
     public static class WorldProgressSave
     {
         private const string KeyPrefixLastLevel = "MSQ_LastLevel_";
         private const string KeyPrefixHighestLevel = "MSQ_HighestLevel_";
+        private const string KeyPrefixCompletedMask = "MSQ_CompletedMask_";
         private const string KeyPrefixWorldComplete = "MSQ_WorldComplete_";
         private const string KeyHasAnySave = "MSQ_HasSavedProgress_";
 
@@ -218,6 +221,7 @@ namespace MyShadowQuit.Core
             if (string.IsNullOrEmpty(worldId)) worldId = "world_1";
             return PlayerPrefs.GetInt(KeyHasAnySave + worldId, 0) == 1 ||
                    PlayerPrefs.GetInt(KeyPrefixHighestLevel + worldId, 0) > 0 ||
+                   PlayerPrefs.GetInt(KeyPrefixCompletedMask + worldId, 0) > 0 ||
                    IsWorldCompleted(worldId);
         }
 
@@ -236,15 +240,51 @@ namespace MyShadowQuit.Core
             if (string.IsNullOrEmpty(worldId)) worldId = "world_1";
             int maxIdx = Mathf.Max(0, totalLevels - 1);
             int saved = PlayerPrefs.GetInt(KeyPrefixLastLevel + worldId, 0);
-            return Mathf.Clamp(saved, 0, maxIdx);
+            int highest = GetHighestUnlockedLevelIndex(worldId, totalLevels);
+            return Mathf.Clamp(Mathf.Min(saved, highest), 0, maxIdx);
         }
 
         public static int GetHighestUnlockedLevelIndex(string worldId, int totalLevels)
         {
             if (string.IsNullOrEmpty(worldId)) worldId = "world_1";
             int maxIdx = Mathf.Max(0, totalLevels - 1);
+            if (IsWorldCompleted(worldId)) return maxIdx;
             int highest = PlayerPrefs.GetInt(KeyPrefixHighestLevel + worldId, 0);
             return Mathf.Clamp(highest, 0, maxIdx);
+        }
+
+        public static bool IsLevelUnlocked(string worldId, int levelIndex, int totalLevels)
+        {
+            if (levelIndex <= 0) return true;
+            if (levelIndex >= totalLevels) return false;
+            return levelIndex <= GetHighestUnlockedLevelIndex(worldId, totalLevels);
+        }
+
+        public static bool IsLevelCompleted(string worldId, int levelIndex, int totalLevels)
+        {
+            if (string.IsNullOrEmpty(worldId)) worldId = "world_1";
+            if (levelIndex < 0 || levelIndex >= totalLevels) return false;
+            if (IsWorldCompleted(worldId)) return true;
+
+            int mask = PlayerPrefs.GetInt(KeyPrefixCompletedMask + worldId, 0);
+            if ((mask & (1 << levelIndex)) != 0) return true;
+
+            // Backward compatibility: if a higher level is already unlocked, earlier levels were completed
+            int highest = PlayerPrefs.GetInt(KeyPrefixHighestLevel + worldId, 0);
+            return levelIndex < highest;
+        }
+
+        public static int GetCompletedLevelsCount(string worldId, int totalLevels)
+        {
+            int count = 0;
+            for (int i = 0; i < totalLevels; i++)
+            {
+                if (IsLevelCompleted(worldId, i, totalLevels))
+                {
+                    count++;
+                }
+            }
+            return count;
         }
 
         public static void SaveLevelProgress(string worldId, int levelIndex, int totalLevels)
@@ -259,10 +299,35 @@ namespace MyShadowQuit.Core
             {
                 PlayerPrefs.SetInt(KeyPrefixHighestLevel + worldId, clamped);
             }
-            if (clamped > 0)
+            PlayerPrefs.SetInt(KeyHasAnySave + worldId, 1);
+            PlayerPrefs.Save();
+        }
+
+        public static void MarkLevelCompleted(string worldId, int completedLevelIndex, int totalLevels)
+        {
+            if (string.IsNullOrEmpty(worldId)) worldId = "world_1";
+            int maxIdx = Mathf.Max(0, totalLevels - 1);
+            int clamped = Mathf.Clamp(completedLevelIndex, 0, maxIdx);
+
+            int mask = PlayerPrefs.GetInt(KeyPrefixCompletedMask + worldId, 0);
+            mask |= (1 << clamped);
+            PlayerPrefs.SetInt(KeyPrefixCompletedMask + worldId, mask);
+
+            int nextIdx = Mathf.Min(clamped + 1, maxIdx);
+            int prevHighest = PlayerPrefs.GetInt(KeyPrefixHighestLevel + worldId, 0);
+            if (nextIdx > prevHighest)
             {
-                PlayerPrefs.SetInt(KeyHasAnySave + worldId, 1);
+                PlayerPrefs.SetInt(KeyPrefixHighestLevel + worldId, nextIdx);
             }
+
+            PlayerPrefs.SetInt(KeyPrefixLastLevel + worldId, nextIdx);
+            PlayerPrefs.SetInt(KeyHasAnySave + worldId, 1);
+
+            if (clamped >= maxIdx)
+            {
+                PlayerPrefs.SetInt(KeyPrefixWorldComplete + worldId, 1);
+            }
+
             PlayerPrefs.Save();
         }
 
@@ -270,10 +335,34 @@ namespace MyShadowQuit.Core
         {
             if (string.IsNullOrEmpty(worldId)) worldId = "world_1";
             int maxIdx = Mathf.Max(0, totalLevels - 1);
+            int fullMask = (1 << Mathf.Min(totalLevels, 30)) - 1;
+            PlayerPrefs.SetInt(KeyPrefixCompletedMask + worldId, fullMask);
             PlayerPrefs.SetInt(KeyPrefixWorldComplete + worldId, 1);
             PlayerPrefs.SetInt(KeyPrefixHighestLevel + worldId, maxIdx);
             PlayerPrefs.SetInt(KeyPrefixLastLevel + worldId, maxIdx);
             PlayerPrefs.SetInt(KeyHasAnySave + worldId, 1);
+            PlayerPrefs.Save();
+        }
+
+        public static void ResetWorldProgress(string worldId)
+        {
+            if (string.IsNullOrEmpty(worldId)) worldId = "world_1";
+            PlayerPrefs.SetInt(KeyPrefixLastLevel + worldId, 0);
+            PlayerPrefs.SetInt(KeyPrefixHighestLevel + worldId, 0);
+            PlayerPrefs.SetInt(KeyPrefixCompletedMask + worldId, 0);
+            PlayerPrefs.SetInt(KeyPrefixWorldComplete + worldId, 0);
+            PlayerPrefs.SetInt(KeyHasAnySave + worldId, 1);
+            PlayerPrefs.Save();
+        }
+
+        public static void ClearWorldProgress(string worldId)
+        {
+            if (string.IsNullOrEmpty(worldId)) worldId = "world_1";
+            PlayerPrefs.DeleteKey(KeyPrefixLastLevel + worldId);
+            PlayerPrefs.DeleteKey(KeyPrefixHighestLevel + worldId);
+            PlayerPrefs.DeleteKey(KeyPrefixCompletedMask + worldId);
+            PlayerPrefs.DeleteKey(KeyPrefixWorldComplete + worldId);
+            PlayerPrefs.DeleteKey(KeyHasAnySave + worldId);
             PlayerPrefs.Save();
         }
 

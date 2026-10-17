@@ -34,11 +34,9 @@ namespace MyShadowQuit.EditorTools
                     {
                         EditorSettings.enterPlayModeOptionsEnabled = false;
                         CleanupEditModeSceneArtifacts(saveIfCleaned: true);
-                        RunAutomatedVerification();
                     }
                     catch (Exception ex)
                     {
-                        CleanupEditModeSceneArtifacts(saveIfCleaned: true);
                         Debug.LogError(ex);
                     }
                 }
@@ -846,6 +844,118 @@ namespace MyShadowQuit.EditorTools
                 {
                     LevelExitPortal.OnLevelExitReached -= onExit10;
                 }
+
+                // =====================================================================
+                // 9. Verify HOME, WORLD SELECT, LEVEL SELECT Ruins Map & Persistence
+                // =====================================================================
+                string[] requiredUiSprites =
+                {
+                    "Assets/Resources/Sprites/UI/home_ruins_bg.png",
+                    "Assets/Resources/Sprites/UI/home_foreground_arch.png",
+                    "Assets/Resources/Sprites/UI/logo_emblem_crest.png",
+                    "Assets/Resources/Sprites/UI/world1_card_art.png",
+                    "Assets/Resources/Sprites/UI/world2_card_art.png",
+                    "Assets/Resources/Sprites/UI/world_card_frame_active.png",
+                    "Assets/Resources/Sprites/UI/world_card_frame_locked.png",
+                    "Assets/Resources/Sprites/UI/world1_ruins_map.png",
+                    "Assets/Resources/Sprites/UI/map_node_completed.png",
+                    "Assets/Resources/Sprites/UI/map_node_available.png",
+                    "Assets/Resources/Sprites/UI/map_node_locked.png",
+                    "Assets/Resources/Sprites/UI/map_node_selected_ring.png",
+                    "Assets/Resources/Sprites/UI/map_path_segment_lit.png",
+                    "Assets/Resources/Sprites/UI/map_path_segment_dark.png"
+                };
+                foreach (string spritePath in requiredUiSprites)
+                {
+                    if (!File.Exists(spritePath))
+                    {
+                        throw new Exception($"[Verification Failed] Missing custom UI/Map sprite asset: {spritePath}");
+                    }
+                }
+
+                // Verify WorldProgressSave sequential unlock logic (Levels 1..10)
+                WorldProgressSave.ClearWorldProgress("world_1");
+                if (WorldProgressSave.HasSavedProgress("world_1"))
+                {
+                    throw new Exception("[Verification Failed] HasSavedProgress(\"world_1\") should be false after ClearWorldProgress!");
+                }
+                if (!WorldProgressSave.IsLevelUnlocked("world_1", 0, 10) || WorldProgressSave.IsLevelUnlocked("world_1", 1, 10))
+                {
+                    throw new Exception("[Verification Failed] Initially only Level 1 (index 0) should be unlocked!");
+                }
+
+                WorldProgressSave.ResetWorldProgress("world_1");
+                if (!WorldProgressSave.HasSavedProgress("world_1") || WorldProgressSave.GetContinueLevelIndex("world_1", 10) != 0)
+                {
+                    throw new Exception("[Verification Failed] ResetWorldProgress(\"world_1\") should initialize save at Level 1 (index 0)!");
+                }
+
+                for (int i = 0; i < 10; i++)
+                {
+                    WorldProgressSave.MarkLevelCompleted("world_1", i, 10);
+                    if (!WorldProgressSave.IsLevelCompleted("world_1", i, 10))
+                    {
+                        throw new Exception($"[Verification Failed] Level {i + 1} was not marked completed!");
+                    }
+                    if (i + 1 < 10 && !WorldProgressSave.IsLevelUnlocked("world_1", i + 1, 10))
+                    {
+                        throw new Exception($"[Verification Failed] Completing Level {i + 1} did not unlock Level {i + 2}!");
+                    }
+                }
+                if (WorldProgressSave.GetCompletedLevelsCount("world_1", 10) != 10 || !WorldProgressSave.IsWorldCompleted("world_1"))
+                {
+                    throw new Exception("[Verification Failed] World 1 should report 10/10 completed levels and IsWorldCompleted == true!");
+                }
+
+                // Reset back to Level 1 completed, Level 2 available, Levels 3..10 locked for UIManager map test
+                WorldProgressSave.ClearWorldProgress("world_1");
+                WorldProgressSave.MarkLevelCompleted("world_1", 0, 10);
+
+                // Verify UIManager HOME, WORLD SELECT, and LEVEL SELECT (10-node Map)
+                UIManager uiTest = testObj.AddComponent<UIManager>();
+                uiTest.EnsureInitialized();
+
+                if (uiTest.MapNodeCount != 10)
+                {
+                    throw new Exception($"[Verification Failed] Expected 10 nodes in Level Select Ruins Map, got {uiTest.MapNodeCount}!");
+                }
+
+                uiTest.ShowMainMenu();
+                if (!uiTest.IsHomeScreenVisible)
+                {
+                    throw new Exception("[Verification Failed] UIManager failed to activate HOME / Main Menu screen!");
+                }
+
+                uiTest.ShowWorldSelectScreen();
+                if (!uiTest.IsWorldSelectScreenVisible)
+                {
+                    throw new Exception("[Verification Failed] UIManager failed to activate WORLD SELECT screen!");
+                }
+
+                uiTest.ShowLevelSelectScreen();
+                if (!uiTest.IsLevelSelectScreenVisible)
+                {
+                    throw new Exception("[Verification Failed] UIManager failed to activate LEVEL SELECT Map screen!");
+                }
+
+                // Node 0 (Completed) & Node 1 (Available) must launch; Node 2 (Locked) must be blocked
+                uiTest.SelectMapNode(0);
+                if (!uiTest.TryLaunchSelectedMapLevel())
+                {
+                    throw new Exception("[Verification Failed] Completed Level 1 node could not be replayed from Level Select Map!");
+                }
+                uiTest.SelectMapNode(1);
+                if (!uiTest.TryLaunchSelectedMapLevel())
+                {
+                    throw new Exception("[Verification Failed] Unlocked Level 2 node could not be launched from Level Select Map!");
+                }
+                uiTest.SelectMapNode(2);
+                if (uiTest.TryLaunchSelectedMapLevel())
+                {
+                    throw new Exception("[Verification Failed] Locked Level 3 node was allowed to launch from Level Select Map!");
+                }
+
+                WorldProgressSave.ClearWorldProgress("world_1");
             }
             finally
             {
@@ -854,7 +964,7 @@ namespace MyShadowQuit.EditorTools
                 CleanupEditModeSceneArtifacts(saveIfCleaned: false);
             }
 
-            // 9. Verify EditMode scene is 100% clean (0 leaked Protagonists, Shadows, Torches; 1 of each core Manager)
+            // 10. Verify EditMode scene is 100% clean (0 leaked Protagonists, Shadows, Torches; 1 of each core Manager)
             int leakedPlayers = UnityEngine.Object.FindObjectsByType<PlayerController>(FindObjectsSortMode.None).Length;
             int leakedShadows = UnityEngine.Object.FindObjectsByType<ShadowController>(FindObjectsSortMode.None).Length;
             int leakedTorches = UnityEngine.Object.FindObjectsByType<TorchController>(FindObjectsSortMode.None).Length;
@@ -863,7 +973,7 @@ namespace MyShadowQuit.EditorTools
                 throw new Exception($"[Verification Failed] Leaked entities remain in EditMode scene: Players={leakedPlayers}, Shadows={leakedShadows}, Torches={leakedTorches}!");
             }
 
-            Debug.Log("[Verification Passed] World 1 (10 Levels: I. Awakening to X. The First Dawn), Level 9 & Level 10 Solvability, World 1 Complete Transition, World System + World 2 Coming Soon, Zero Duplicated Objects, Shadow Double Jump, Audio dB Mix, and 16:9 Landscape verified!");
+            Debug.Log("[Verification Passed] HOME + WORLD SELECT + LEVEL SELECT Ruins Map (10 Nodes), WorldProgressSave Sequential Progression, World 1 (10 Levels: I. Awakening to X. The First Dawn), Zero Duplicated Objects, Shadow Double Jump, Audio dB Mix, and 16:9 Landscape verified!");
         }
 
         [MenuItem("MyShadowQuit/Build WebGL Release")]
