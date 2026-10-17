@@ -34,6 +34,11 @@ namespace MyShadowQuit.Puzzle
 
         private void Update()
         {
+            EvaluateIllumination();
+        }
+
+        public void EvaluateIllumination()
+        {
             if (latchWhenLit && isActivated) return;
 
             if (_torch == null)

@@ -308,6 +308,12 @@ namespace MyShadowQuit.Core
 
         private void UpdateGeneralInteractivePrompts()
         {
+            if (GameManager.Instance != null && GameManager.Instance.IsEndingSequenceActive)
+            {
+                UpdateBeaconAndWorldTag(null, Color.clear, "");
+                return;
+            }
+
             PlayerController player = _levelManager.Player;
             ShadowController shadow = _levelManager.Shadow;
             TorchController torch = _levelManager.Torch;
@@ -316,6 +322,65 @@ namespace MyShadowQuit.Core
             Transform target = null;
             string tagText = "";
             Color col = new Color(1f, 0.82f, 0.35f, 0.3f);
+
+            // Dynamic guidance for Level 8 (Grand Finale) when the final Sanctuary Door is open
+            if (GameManager.Instance != null && GameManager.Instance.CurrentLevelIndex == 7 && player != null && shadow != null)
+            {
+                LevelExitPortal exit = FindFirstObjectByType<LevelExitPortal>();
+                if (exit != null && exit.GuardingDoor != null && exit.GuardingDoor.IsOpen)
+                {
+                    bool playerAtArch = exit.IsCharacterAtArch(player.transform.position);
+                    bool shadowAtArch = exit.IsCharacterAtArch(shadow.transform.position);
+                    string finaleHint;
+
+                    if (playerAtArch && !shadowAtArch)
+                    {
+                        if (!isShadow)
+                        {
+                            finaleHint = "The Sanctuary Arch awaits you both! Press TAB to bring your Shadow to the Arch.";
+                            target = shadow.transform;
+                            tagText = "[TAB] Control Shadow";
+                            col = new Color(0.75f, 0.48f, 1f, 0.42f);
+                        }
+                        else
+                        {
+                            finaleHint = "Guide your Shadow into the Sanctuary Arch beside the Protagonist.";
+                            target = exit.transform;
+                            tagText = "Reunite Here";
+                            col = new Color(0.75f, 0.48f, 1f, 0.42f);
+                        }
+                    }
+                    else if (shadowAtArch && !playerAtArch)
+                    {
+                        if (isShadow)
+                        {
+                            finaleHint = "Your Shadow is at the Arch! Press TAB to bring the Protagonist to the Arch.";
+                            target = player.transform;
+                            tagText = "[TAB] Control Protagonist";
+                        }
+                        else
+                        {
+                            finaleHint = "Walk the Protagonist into the Sanctuary Arch beside your Shadow.";
+                            target = exit.transform;
+                            tagText = "Reunite Here";
+                        }
+                    }
+                    else
+                    {
+                        finaleHint = "The final seal is open! Reconnect Flame and Shadow together at the Sanctuary Arch.";
+                        target = exit.transform;
+                        tagText = "Sanctuary Arch";
+                    }
+
+                    ActiveInstruction = finaleHint;
+                    if (_uiManager != null)
+                    {
+                        _uiManager.UpdateHUDText(LevelManager.LevelTitles[7], finaleHint, isShadow);
+                    }
+                    UpdateBeaconAndWorldTag(target, col, tagText);
+                    return;
+                }
+            }
 
             if (!isShadow && player != null)
             {

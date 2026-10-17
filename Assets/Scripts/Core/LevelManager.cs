@@ -453,17 +453,18 @@ namespace MyShadowQuit.Core
                 startWithTorch: true
             );
 
-            // Tier 1: Movable block onto ancient pressure plate
+            // Tier 1: Movable block onto ancient latching pressure plate
             CreateMovableBlock(new Vector2(-2.5f, -2.1f));
-            PressurePlate plate = CreatePressurePlate(new Vector2(0.5f, -2.85f), false);
+            PressurePlate plate = CreatePressurePlate(new Vector2(0.5f, -2.85f), true);
 
-            // Tier 2: Upper altar where Torch is placed in Pedestal to ignite Solar Crystal
-            CreatePlatformRow(2, 8, 0, true);
-            TorchPedestal pedestal = CreateTorchPedestal(new Vector2(5.0f, 0.75f));
-            LightSwitch crystal = CreateLightSwitch(new Vector2(6.5f, 0.75f), latch: true);
+            // Tier 2: Stepped ledge + Upper altar where Torch illuminates Solar Crystal & Pedestal
+            CreatePlatformRow(1, 2, -2, true);
+            CreatePlatformRow(4, 8, -1, true);
+            TorchPedestal pedestal = CreateTorchPedestal(new Vector2(5.2f, -0.25f));
+            LightSwitch crystal = CreateLightSwitch(new Vector2(6.8f, -0.25f), latch: true);
             _ = pedestal;
 
-            // Tier 3: Shadow passes barrier to trigger final Obelisk, then reunites with Protagonist
+            // Tier 3: Shadow passes barrier to trigger final Obelisk, unlocking the barrier for Protagonist
             ShadowPassage passage8 = CreateShadowPassage(new Vector2(10.5f, -2.0f));
             ShadowSwitch shadowSw = CreateShadowSwitch(new Vector2(13.0f, -2.25f));
             passage8.ConfigureUnlockNodes(new List<PuzzleNode> { shadowSw }, requireAll: true, latchOpen: true);
@@ -610,7 +611,7 @@ namespace MyShadowQuit.Core
             go.transform.SetParent(_levelRoot.transform, false);
             go.transform.position = pos;
             PressurePlate pp = go.AddComponent<PressurePlate>();
-            pp.EnsureInitialized();
+            pp.Configure(latch);
             return pp;
         }
 

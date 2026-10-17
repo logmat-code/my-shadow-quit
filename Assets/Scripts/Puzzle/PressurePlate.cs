@@ -17,6 +17,14 @@ namespace MyShadowQuit.Puzzle
         private Sprite _upSprite;
         private Sprite _downSprite;
 
+        public bool StayPressedOnceActivated => stayPressedOnceActivated;
+
+        public void Configure(bool shouldLatch)
+        {
+            stayPressedOnceActivated = shouldLatch;
+            EnsureInitialized();
+        }
+
         private void Awake()
         {
             EnsureInitialized();

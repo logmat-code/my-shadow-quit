@@ -36,9 +36,11 @@ namespace MyShadowQuit.Entities
         private int _currentFrame;
 
         private Vector2 _aimOffset = new Vector2(0.45f, 0.15f);
+        private float _endingRadiusScale = 1f;
+        private float _endingIntensity = 1f;
 
         public TorchState State => _state;
-        public float LightRadius => lightRadius;
+        public float LightRadius => lightRadius * _endingRadiusScale;
         public float PickupRadius => pickupRadius;
         public TorchPedestal CurrentPedestal => _currentPedestal;
 
@@ -123,13 +125,19 @@ namespace MyShadowQuit.Entities
                 }
             }
 
-            // Organic warm flicker on light halo
+            // Organic warm flicker on light halo modulated by ending sequence glow/attenuation
             if (_haloRenderer != null)
             {
                 float flicker = 1f + Mathf.Sin(Time.time * 11.3f) * 0.04f + Mathf.Cos(Time.time * 19.7f) * 0.03f;
-                float baseScale = (lightRadius * 2f) / 4f;
+                float baseScale = (lightRadius * _endingRadiusScale * 2f) / 4f;
                 _haloRenderer.transform.localScale = new Vector3(baseScale * flicker, baseScale * flicker, 1f);
-                _haloRenderer.color = new Color(1f, 0.80f, 0.42f, 0.46f + 0.05f * Mathf.Sin(Time.time * 8.5f));
+                float alpha = (0.46f + 0.05f * Mathf.Sin(Time.time * 8.5f)) * _endingIntensity;
+                _haloRenderer.color = new Color(1f, 0.80f, 0.42f, Mathf.Clamp01(alpha));
+            }
+
+            if (_torchRenderer != null)
+            {
+                _torchRenderer.color = new Color(1f, 1f, 1f, Mathf.Clamp01(_endingIntensity));
             }
 
             // Follow carrier if carried
@@ -148,6 +156,30 @@ namespace MyShadowQuit.Entities
             {
                 _torchRenderer.enabled = true;
             }
+        }
+
+        public void SetEndingGlow(float radiusScale, float intensityAlpha)
+        {
+            _endingRadiusScale = Mathf.Max(0.05f, radiusScale);
+            _endingIntensity = Mathf.Clamp(intensityAlpha, 0f, 1.5f);
+
+            if (_haloRenderer != null)
+            {
+                float baseScale = (lightRadius * _endingRadiusScale * 2f) / 4f;
+                _haloRenderer.transform.localScale = new Vector3(baseScale, baseScale, 1f);
+                _haloRenderer.color = new Color(1f, 0.82f, 0.44f, Mathf.Clamp01(0.52f * _endingIntensity));
+            }
+
+            if (_emberParticles != null)
+            {
+                var emission = _emberParticles.emission;
+                emission.rateOverTime = 10f * Mathf.Clamp01(_endingIntensity);
+            }
+        }
+
+        public void ResetEndingGlow()
+        {
+            SetEndingGlow(1f, 1f);
         }
 
         public void SetAimDirection(Vector2 dir)

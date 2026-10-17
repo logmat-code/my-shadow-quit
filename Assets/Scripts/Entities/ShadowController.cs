@@ -241,15 +241,43 @@ namespace MyShadowQuit.Entities
             }
         }
 
+        public void StepEndingApproach(Vector2 targetPos, float speed)
+        {
+            EnsureInitialized();
+            _isControlActive = false;
+            float dx = targetPos.x - transform.position.x;
+            if (Mathf.Abs(dx) > 0.05f)
+            {
+                _facingDir = dx > 0f ? 1 : -1;
+            }
+            transform.position = Vector2.MoveTowards(transform.position, targetPos, speed * Time.deltaTime);
+            if (_rb != null)
+            {
+                _rb.linearVelocity = new Vector2(Mathf.Sign(dx) * Mathf.Min(Mathf.Abs(dx) * 4f, speed), 0f);
+            }
+        }
+
         public void ReconnectToProtagonist()
         {
+            EnsureInitialized();
             if (_protagonist == null) return;
+            _isControlActive = false;
+            _isSeparated = false;
             _isReconnectingAnim = true;
             _isSeparatingAnim = false;
-            _transitionTimer = 0.35f;
+            _transitionTimer = 0.65f;
             _animFrame = 0;
-            transform.position = _protagonist.transform.position + new Vector3(-_protagonist.FacingDirection * 0.6f, 0f, 0f);
-            _rb.linearVelocity = Vector2.zero;
+            _facingDir = _protagonist.FacingDirection;
+            transform.position = _protagonist.transform.position + new Vector3(-_protagonist.FacingDirection * 0.48f, 0f, 0f);
+            if (_rb != null)
+            {
+                _rb.linearVelocity = Vector2.zero;
+            }
+
+            if (_doubleJumpParticles != null)
+            {
+                _doubleJumpParticles.Emit(14);
+            }
 
             if (AudioManager.Instance != null)
             {

@@ -543,6 +543,86 @@ namespace MyShadowQuit.EditorTools
                 {
                     LevelExitPortal.OnLevelExitReached -= onExit2;
                 }
+
+                // =====================================================================
+                // 5. Verify Level 8 ("MY SHADOW QUIT") Grand Finale & Reunion Completion
+                // =====================================================================
+                lm.BuildLevel(7, null);
+                PressurePlate plate8 = UnityEngine.Object.FindFirstObjectByType<PressurePlate>();
+                LightSwitch crystal8 = UnityEngine.Object.FindFirstObjectByType<LightSwitch>();
+                TorchPedestal pedestal8 = UnityEngine.Object.FindFirstObjectByType<TorchPedestal>();
+                ShadowPassage passage8 = UnityEngine.Object.FindFirstObjectByType<ShadowPassage>();
+                ShadowSwitch shadowSw8 = UnityEngine.Object.FindFirstObjectByType<ShadowSwitch>();
+                AncientDoor finalDoor8 = UnityEngine.Object.FindFirstObjectByType<AncientDoor>();
+                LevelExitPortal exitPortal8 = UnityEngine.Object.FindFirstObjectByType<LevelExitPortal>();
+
+                if (plate8 == null || crystal8 == null || pedestal8 == null || passage8 == null || shadowSw8 == null || finalDoor8 == null || exitPortal8 == null)
+                {
+                    throw new Exception("[Verification Failed] Level 8 puzzle components missing!");
+                }
+                if (!plate8.StayPressedOnceActivated)
+                {
+                    throw new Exception("[Verification Failed] Level 8 PressurePlate must latch once activated!");
+                }
+                if (!exitPortal8.RequireReconnectedShadow)
+                {
+                    throw new Exception("[Verification Failed] Level 8 ExitSanctuary must require reconnected Shadow!");
+                }
+
+                // Step 1: Activate PressurePlate via physical occupancy & verify latch
+                lm.Player.transform.position = plate8.transform.position + new Vector3(0f, 0.35f, 0f);
+                Physics2D.SyncTransforms();
+                plate8.EvaluateOccupancy();
+                if (!plate8.IsActivated)
+                {
+                    throw new Exception("[Verification Failed] Level 8 PressurePlate did not activate when occupied!");
+                }
+                // Step 2: Place Torch on Pedestal & illuminate Solar Crystal
+                lm.Torch.PlaceInPedestal(pedestal8);
+                crystal8.EvaluateIllumination();
+                if (!crystal8.IsActivated)
+                {
+                    throw new Exception("[Verification Failed] Level 8 Solar Crystal did not activate when Torch placed on altar Pedestal!");
+                }
+                // Step 3: Shadow passes ShadowPassage and activates ShadowSwitch
+                lm.Shadow.transform.position = shadowSw8.transform.position;
+                shadowSw8.ActivateByShadow(lm.Shadow);
+
+                if (!passage8.IsOpen || passage8.IsBlockingProtagonist)
+                {
+                    throw new Exception("[Verification Failed] Level 8 ShadowPassage did not unlock after ShadowSwitch activation!");
+                }
+                if (!finalDoor8.IsOpen)
+                {
+                    throw new Exception("[Verification Failed] Level 8 Final AncientDoor did not open after all 3 seals were activated!");
+                }
+
+                // Step 4: Protagonist arrives at Sanctuary Arch first while Shadow is still at ShadowSwitch (x = 13.0)
+                lm.Player.transform.position = exitPortal8.transform.position;
+                exitPortal8.EvaluatePortalProximity();
+                if (exitPortal8.IsTriggered)
+                {
+                    throw new Exception("[Verification Failed] Level 8 ExitSanctuary triggered before Shadow reunited with Protagonist!");
+                }
+
+                // Step 5: Shadow walks into Sanctuary Arch beside stationary Protagonist -> Portal triggers!
+                bool level8ExitFired = false;
+                Action onExit8 = () => { level8ExitFired = true; };
+                LevelExitPortal.OnLevelExitReached += onExit8;
+                try
+                {
+                    lm.Shadow.transform.position = exitPortal8.transform.position + new Vector3(-0.6f, 0f, 0f);
+                    Physics2D.SyncTransforms();
+                    exitPortal8.EvaluatePortalProximity();
+                    if (!exitPortal8.IsTriggered || !level8ExitFired)
+                    {
+                        throw new Exception("[Verification Failed] Level 8 ExitSanctuary did not trigger when Shadow reunited with Protagonist at the Arch!");
+                    }
+                }
+                finally
+                {
+                    LevelExitPortal.OnLevelExitReached -= onExit8;
+                }
             }
             finally
             {
@@ -551,7 +631,7 @@ namespace MyShadowQuit.EditorTools
                 CleanupEditModeSceneArtifacts(saveIfCleaned: false);
             }
 
-            // 5. Verify EditMode scene is 100% clean (0 leaked Protagonists, Shadows, Torches; 1 of each core Manager)
+            // 6. Verify EditMode scene is 100% clean (0 leaked Protagonists, Shadows, Torches; 1 of each core Manager)
             int leakedPlayers = UnityEngine.Object.FindObjectsByType<PlayerController>(FindObjectsSortMode.None).Length;
             int leakedShadows = UnityEngine.Object.FindObjectsByType<ShadowController>(FindObjectsSortMode.None).Length;
             int leakedTorches = UnityEngine.Object.FindObjectsByType<TorchController>(FindObjectsSortMode.None).Length;
@@ -560,7 +640,7 @@ namespace MyShadowQuit.EditorTools
                 throw new Exception($"[Verification Failed] Leaked entities remain in EditMode scene: Players={leakedPlayers}, Shadows={leakedShadows}, Torches={leakedTorches}!");
             }
 
-            Debug.Log("[Verification Passed] Zero Duplicated Objects, Idempotent Level Lifecycle, Shadow Double Jump (2 jumps max, 50% gravity), Level 1 & Level 2 Physical Completion, Audio dB Mix, and 16:9 Landscape verified!");
+            Debug.Log("[Verification Passed] Zero Duplicated Objects, Idempotent Level Lifecycle, Shadow Double Jump (2 jumps max, 50% gravity), Level 1, Level 2 & Level 8 + Ending Completion, Audio dB Mix, and 16:9 Landscape verified!");
         }
 
         [MenuItem("MyShadowQuit/Build WebGL Release")]

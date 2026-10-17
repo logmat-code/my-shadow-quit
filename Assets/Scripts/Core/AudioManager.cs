@@ -162,12 +162,15 @@ namespace MyShadowQuit.Core
             _sfxSource.priority = 96;
         }
 
+        private float _endingMusicScale = 1f;
+        private float _endingSfxScale = 1f;
+
         public void ApplyBusVolumes()
         {
-            float musicLinear = HeadroomScale * DbToLinear(MusicBusDb) * _musicVolume;
-            float sfxLinear = HeadroomScale * DbToLinear(SfxBusDb) * _sfxVolume;
-            // Fire crackle is -18 dB below Music reference, modulated by Ambience &SFX settings and torch proximity
-            float fireLinear = HeadroomScale * DbToLinear(FireRelativeToMusicDb) * _ambienceVolume * _sfxVolume * _torchProximityFactor;
+            float musicLinear = HeadroomScale * DbToLinear(MusicBusDb) * _musicVolume * _endingMusicScale;
+            float sfxLinear = HeadroomScale * DbToLinear(SfxBusDb) * _sfxVolume * _endingSfxScale;
+            // Fire crackle is -18 dB below Music reference, modulated by Ambience & SFX settings and torch proximity
+            float fireLinear = HeadroomScale * DbToLinear(FireRelativeToMusicDb) * _ambienceVolume * _sfxVolume * _torchProximityFactor * _endingSfxScale;
 
             if (_musicSource != null)
             {
@@ -182,6 +185,20 @@ namespace MyShadowQuit.Core
             {
                 _sfxSource.volume = Mathf.Clamp(sfxLinear, 0f, 0.65f);
             }
+        }
+
+        public void SetEndingMixDucking(float musicScale, float sfxAndFireScale)
+        {
+            _endingMusicScale = Mathf.Clamp01(musicScale);
+            _endingSfxScale = Mathf.Clamp01(sfxAndFireScale);
+            ApplyBusVolumes();
+        }
+
+        public void RestoreNormalMix()
+        {
+            _endingMusicScale = 1f;
+            _endingSfxScale = 1f;
+            ApplyBusVolumes();
         }
 
         private void Start()

@@ -152,8 +152,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::MyShadowQuit.Core.CameraController
   smoothTime: 0.16
   followOffset: {x: 0, y: 0.65}
-  minBounds: {x: -8, y: -3}
-  maxBounds: {x: 18, y: 6}
+  minBounds: {x: -1.2, y: 0.2}
+  maxBounds: {x: 14.8, y: 2.8}
 --- !u!81 &928975042
 AudioListener:
   m_ObjectHideFlags: 0

@@ -33,6 +33,7 @@ namespace MyShadowQuit.UI
         private Text _activeControlText;
         private Text _musicVolumeText;
         private Text _sfxVolumeText;
+        private Text _endingQuoteText;
         private Image _fadeOverlay;
 
         private Font _uiFont;
@@ -41,6 +42,12 @@ namespace MyShadowQuit.UI
         private Sprite _panelSprite;
 
         private float _targetFadeAlpha;
+        private float _fadeSpeed = 2.5f;
+
+        public const string FinalNarrativeQuote = "\"Even shadows need a light to return to.\"";
+
+        public bool IsVictoryScreenVisible => _victoryPanel != null && _victoryPanel.activeSelf;
+        public GameObject VictoryPanel => _victoryPanel;
 
         private void Awake()
         {
@@ -100,12 +107,12 @@ namespace MyShadowQuit.UI
             canvasObj.AddComponent<GraphicRaycaster>();
 
             BuildHUD(canvasObj.transform);
+            BuildFadeOverlay(canvasObj.transform);
             BuildMainMenu(canvasObj.transform);
             BuildPauseMenu(canvasObj.transform);
             BuildSettingsMenu(canvasObj.transform);
             BuildCreditsMenu(canvasObj.transform);
             BuildVictoryScreen(canvasObj.transform);
-            BuildFadeOverlay(canvasObj.transform);
         }
 
         private void BuildHUD(Transform parent)
@@ -261,21 +268,44 @@ namespace MyShadowQuit.UI
 
         private void BuildVictoryScreen(Transform parent)
         {
-            _victoryPanel = CreateImagePanel(parent, "VictoryPanel", Vector2.zero, new Vector2(760f, 540f));
-            CreateText(_victoryPanel.transform, "VictoryHeader", "THE FLAME ENDURES", 42, new Vector2(0f, 160f), new Vector2(640f, 58f), new Color(1f, 0.86f, 0.38f, 1f), TextAnchor.MiddleCenter);
+            _victoryPanel = CreateImagePanel(parent, "VictoryPanel", Vector2.zero, new Vector2(820f, 620f));
+
+            // Decorative torch icon on Victory Screen
+            GameObject torchDeco = new GameObject("VictoryTorchIcon", typeof(RectTransform), typeof(Image));
+            torchDeco.transform.SetParent(_victoryPanel.transform, false);
+            RectTransform trt = torchDeco.GetComponent<RectTransform>();
+            trt.anchoredPosition = new Vector2(0f, 235f);
+            trt.sizeDelta = new Vector2(64f, 84f);
+            Image tImg = torchDeco.GetComponent<Image>();
+            tImg.sprite = AssetRegistry.GetSprite("Torch/torch_item_0", 32f);
+
+            CreateText(_victoryPanel.transform, "VictoryTitleMain", "MY SHADOW QUIT", 46, new Vector2(0f, 162f), new Vector2(720f, 60f), new Color(1f, 0.86f, 0.38f, 1f), TextAnchor.MiddleCenter);
+            CreateText(_victoryPanel.transform, "VictoryTitleSub", "THE LAST FLAME", 28, new Vector2(0f, 112f), new Vector2(680f, 44f), new Color(0.76f, 0.58f, 0.98f, 1f), TextAnchor.MiddleCenter);
+
             CreateText(
                 _victoryPanel.transform,
-                "VictoryBody",
-                "Together in light and shadow, you have escaped the ancient ruins.\nYour shadow no longer walks behind you—it walks beside you.",
-                24,
-                new Vector2(0f, 35f),
-                new Vector2(660f, 140f),
-                new Color(0.85f, 0.82f, 0.98f, 1f),
+                "VictoryQuote",
+                FinalNarrativeQuote,
+                25,
+                new Vector2(0f, 42f),
+                new Vector2(720f, 64f),
+                new Color(1f, 0.93f, 0.78f, 1f),
                 TextAnchor.MiddleCenter
             );
 
-            CreateMenuButton(_victoryPanel.transform, "PLAY AGAIN", new Vector2(0f, -80f), () => OnPlayRequested?.Invoke());
-            CreateMenuButton(_victoryPanel.transform, "MAIN MENU", new Vector2(0f, -165f), () => OnMainMenuRequested?.Invoke());
+            CreateText(
+                _victoryPanel.transform,
+                "VictoryThanks",
+                "THANK YOU FOR PLAYING",
+                26,
+                new Vector2(0f, -22f),
+                new Vector2(680f, 48f),
+                new Color(0.88f, 0.84f, 1f, 1f),
+                TextAnchor.MiddleCenter
+            );
+
+            CreateMenuButton(_victoryPanel.transform, "PLAY AGAIN", new Vector2(0f, -110f), () => OnPlayRequested?.Invoke());
+            CreateMenuButton(_victoryPanel.transform, "MAIN MENU", new Vector2(0f, -192f), () => OnMainMenuRequested?.Invoke());
             _victoryPanel.SetActive(false);
         }
 
@@ -292,6 +322,18 @@ namespace MyShadowQuit.UI
             _fadeOverlay = fadeObj.GetComponent<Image>();
             _fadeOverlay.color = new Color(0.03f, 0.04f, 0.08f, 0f);
             _fadeOverlay.raycastTarget = false;
+
+            _endingQuoteText = CreateText(
+                fadeObj.transform,
+                "EndingNarrativeQuote",
+                FinalNarrativeQuote,
+                32,
+                new Vector2(0f, 24f),
+                new Vector2(1280f, 120f),
+                new Color(1f, 0.92f, 0.76f, 0f),
+                TextAnchor.MiddleCenter
+            );
+            _endingQuoteText.gameObject.SetActive(false);
         }
 
         private void Update()
@@ -299,7 +341,7 @@ namespace MyShadowQuit.UI
             if (_fadeOverlay != null)
             {
                 Color c = _fadeOverlay.color;
-                c.a = Mathf.MoveTowards(c.a, _targetFadeAlpha, Time.unscaledDeltaTime * 2.5f);
+                c.a = Mathf.MoveTowards(c.a, _targetFadeAlpha, Time.unscaledDeltaTime * _fadeSpeed);
                 _fadeOverlay.color = c;
             }
         }
@@ -308,13 +350,31 @@ namespace MyShadowQuit.UI
         {
             if (_fadeOverlay != null)
             {
+                _fadeSpeed = 2.5f;
                 _fadeOverlay.color = new Color(0.03f, 0.04f, 0.08f, 0.85f);
                 _targetFadeAlpha = 0f;
             }
+            SetEndingQuoteAlpha(0f);
+        }
+
+        public void SetEndingFade(float targetAlpha, float fadeSpeed = 0.85f)
+        {
+            _targetFadeAlpha = Mathf.Clamp01(targetAlpha);
+            _fadeSpeed = Mathf.Max(0.1f, fadeSpeed);
+        }
+
+        public void SetEndingQuoteAlpha(float alpha)
+        {
+            if (_endingQuoteText == null) return;
+            float clamped = Mathf.Clamp01(alpha);
+            _endingQuoteText.gameObject.SetActive(clamped > 0.01f);
+            _endingQuoteText.color = new Color(1f, 0.92f, 0.76f, clamped);
         }
 
         public void ShowMainMenu()
         {
+            _targetFadeAlpha = 0f;
+            SetEndingQuoteAlpha(0f);
             _mainMenuPanel.SetActive(true);
             _pauseMenuPanel.SetActive(false);
             _settingsPanel.SetActive(false);
@@ -325,6 +385,7 @@ namespace MyShadowQuit.UI
 
         public void ShowGameplayHUD(string levelTitle, string hint, bool isControllingShadow)
         {
+            SetEndingQuoteAlpha(0f);
             _mainMenuPanel.SetActive(false);
             _pauseMenuPanel.SetActive(false);
             _settingsPanel.SetActive(false);
@@ -361,8 +422,12 @@ namespace MyShadowQuit.UI
 
         public void ShowVictoryScreen()
         {
+            SetEndingQuoteAlpha(0f);
             _hudPanel.SetActive(false);
             _pauseMenuPanel.SetActive(false);
+            _settingsPanel.SetActive(false);
+            _creditsPanel.SetActive(false);
+            _mainMenuPanel.SetActive(false);
             _victoryPanel.SetActive(true);
         }
 
