@@ -24,29 +24,51 @@ namespace MyShadowQuit.Core
         public static readonly string[] LevelTitles =
         {
             // World 1: The Ruins of the Last Flame (Levels 1–10)
-            "I. AWAKENING",
-            "II. THE SEPARATION",
-            "III. FOLLOW THE LIGHT",
-            "IV. THE FORGOTTEN FLAME",
-            "V. DARK PASSAGE",
-            "VI. TWO SIDES",
-            "VII. THE LAST LIGHT",
-            "VIII. MY SHADOW QUIT",
-            "IX. ECHOES IN THE DARK",
-            "X. THE FIRST DAWN",
+            "LEVEL 1: AWAKENING",
+            "LEVEL 2: THE SEPARATION",
+            "LEVEL 3: FOLLOW THE LIGHT",
+            "LEVEL 4: THE FORGOTTEN FLAME",
+            "LEVEL 5: DARK PASSAGE",
+            "LEVEL 6: TWO SIDES",
+            "LEVEL 7: THE LAST LIGHT",
+            "LEVEL 8: MY SHADOW QUIT",
+            "LEVEL 9: ECHOES IN THE DARK",
+            "LEVEL 10: THE FIRST DAWN",
 
             // World 2: The Inverted Forest (Levels 11–20)
-            "XI. WHISPERS IN THE ROOTS",
-            "XII. THE RISING PATH",
-            "XIII. ROOTS OF LIGHT",
-            "XIV. FADING FOOTSTEPS",
-            "XV. THE HOLLOW CANOPY",
-            "XVI. A BRIDGE OF EMBERS",
-            "XVII. THE SILENT THORNS",
-            "XVIII. THE FRACTURED GROVE",
-            "XIX. TWO PATHS, ONE FLAME",
-            "XX. HEART OF THE INVERTED FOREST"
+            "LEVEL 11: WHISPERS IN THE ROOTS",
+            "LEVEL 12: THE RISING PATH",
+            "LEVEL 13: ROOTS OF LIGHT",
+            "LEVEL 14: FADING FOOTSTEPS",
+            "LEVEL 15: THE HOLLOW CANOPY",
+            "LEVEL 16: A BRIDGE OF EMBERS",
+            "LEVEL 17: THE SILENT THORNS",
+            "LEVEL 18: THE FRACTURED GROVE",
+            "LEVEL 19: TWO PATHS, ONE FLAME",
+            "LEVEL 20: HEART OF THE INVERTED FOREST",
+
+            // World 3: The Hollow Clocktower (Levels 21–30)
+            "LEVEL 21: THE SILENT HANDS",
+            "LEVEL 22: THE FIRST TICK",
+            "LEVEL 23: BROKEN GEARS",
+            "LEVEL 24: THE SWINGING HALL",
+            "LEVEL 25: THE FROZEN MINUTE",
+            "LEVEL 26: THE LENS OF EMBERS",
+            "LEVEL 27: BETWEEN TWO TICKS",
+            "LEVEL 28: THE FALLEN BELLS",
+            "LEVEL 29: THE LAST HOUR",
+            "LEVEL 30: HEART OF THE CLOCKTOWER"
         };
+
+        public static string FormatLevelTitle(int globalLevelNumber, string shortTitle)
+        {
+            return $"LEVEL {globalLevelNumber}: {shortTitle}";
+        }
+
+        public static string FormatLevelNumber(int globalLevelNumber)
+        {
+            return $"LEVEL {globalLevelNumber}";
+        }
 
         public static readonly string[] LevelHints =
         {
@@ -72,7 +94,19 @@ namespace MyShadowQuit.Core
             "Beware the toxic forest briars. Ride moving platforms carefully above the thorn beds.",
             "Synchronize temporary platforms, light roots, and shadow passages to unlock the triad seals.",
             "Two separate chambers: the Flame activates the light roots while the Shadow coordinates the dual switches.",
-            "Ascend to the core of the Great Tree. Overcome all forest mechanisms and reunite Flame and Shadow at the Ancient Arch."
+            "Ascend to the core of the Great Tree. Overcome all forest mechanisms and reunite Flame and Shadow at the Ancient Arch.",
+
+            // World 3 Hints
+            "Step aboard the slow-turning gear platform to traverse the clocktower vestibule.",
+            "The clockwork switch winds the ancient spring, opening the timed gate for a brief interval.",
+            "Gear platforms rotate at differing cadences. Use your Shadow's double jump [SPACE x2] to bridge the high gap.",
+            "Observe the pendulum's rhythmic swing. Wait for the apex before dashing through the hazard zone.",
+            "Hit the clockwork switch to temporarily lock the swinging pendulums in place.",
+            "Focus the Torch's golden flame upon the ancient lens to activate the dormant clockwork bridge.",
+            "Your Shadow slips through the spectral iron grate while the Flame operates the mechanical lever.",
+            "Ascend the vertical belfry. Coordinate moving gear platforms and evade the resonant pendulum weights.",
+            "Synchronize gear elevators, clockwork levers, and the solar lens to unseal the high sanctuary.",
+            "The Heart of the Clocktower. Unwind all five ancient celestial clockworks to open the Grand Chrono Portal."
         };
 
         private GameObject _levelRoot;

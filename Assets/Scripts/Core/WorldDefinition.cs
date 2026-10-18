@@ -213,16 +213,16 @@ namespace MyShadowQuit.Core
             };
             w1.levels = new List<LevelEntry>
             {
-                new LevelEntry(0, "w1_lvl1", "I. AWAKENING", "A/D: Move   SPACE: Jump   E: Pick up / Place Torch   TAB: Control Shadow"),
-                new LevelEntry(1, "w1_lvl2", "II. THE SEPARATION", "Stand on the lower stone plate, switch to Shadow [TAB], and Double Jump [SPACE x2 in mid-air] to the upper ledge."),
-                new LevelEntry(2, "w1_lvl3", "III. FOLLOW THE LIGHT", "Darkness webs dissolve in Torchlight. Guide your Shadow across the illuminated path."),
-                new LevelEntry(3, "w1_lvl4", "IV. THE FORGOTTEN FLAME", "Ancient solar crystals awaken when bathed in the Torch's golden flame."),
-                new LevelEntry(4, "w1_lvl5", "V. DARK PASSAGE", "Push the carved stone block onto the plate while your Shadow unlocks the inner sanctum."),
-                new LevelEntry(5, "w1_lvl6", "VI. TWO SIDES", "Two parallel tiers: the Flame walks above, the Shadow walks below."),
-                new LevelEntry(6, "w1_lvl7", "VII. THE LAST LIGHT", "Transfer the Torch between pedestals to clear Darkness Webs and open the final seal."),
-                new LevelEntry(7, "w1_lvl8", "VIII. MY SHADOW QUIT", "Unite the three ancient seals and reconnect Flame and Shadow at the Sanctuary Arch."),
-                new LevelEntry(8, "w1_lvl9", "IX. ECHOES IN THE DARK", "Mount the Torch to awaken the upper path, Double Jump with your Shadow across the high vault, and weight the lower seal."),
-                new LevelEntry(9, "w1_lvl10", "X. THE FIRST DAWN", "Awaken all five ceremonial seals of light and shadow to open the Great Gate toward the First Dawn.")
+                new LevelEntry(0, "w1_lvl1", "LEVEL 1: AWAKENING", "A/D: Move   SPACE: Jump   E: Pick up / Place Torch   TAB: Control Shadow"),
+                new LevelEntry(1, "w1_lvl2", "LEVEL 2: THE SEPARATION", "Stand on the lower stone plate, switch to Shadow [TAB], and Double Jump [SPACE x2 in mid-air] to the upper ledge."),
+                new LevelEntry(2, "w1_lvl3", "LEVEL 3: FOLLOW THE LIGHT", "Darkness webs dissolve in Torchlight. Guide your Shadow across the illuminated path."),
+                new LevelEntry(3, "w1_lvl4", "LEVEL 4: THE FORGOTTEN FLAME", "Ancient solar crystals awaken when bathed in the Torch's golden flame."),
+                new LevelEntry(4, "w1_lvl5", "LEVEL 5: DARK PASSAGE", "Push the carved stone block onto the plate while your Shadow unlocks the inner sanctum."),
+                new LevelEntry(5, "w1_lvl6", "LEVEL 6: TWO SIDES", "Two parallel tiers: the Flame walks above, the Shadow walks below."),
+                new LevelEntry(6, "w1_lvl7", "LEVEL 7: THE LAST LIGHT", "Transfer the Torch between pedestals to clear Darkness Webs and open the final seal."),
+                new LevelEntry(7, "w1_lvl8", "LEVEL 8: MY SHADOW QUIT", "Unite the three ancient seals and reconnect Flame and Shadow at the Sanctuary Arch."),
+                new LevelEntry(8, "w1_lvl9", "LEVEL 9: ECHOES IN THE DARK", "Mount the Torch to awaken the upper path, Double Jump with your Shadow across the high vault, and weight the lower seal."),
+                new LevelEntry(9, "w1_lvl10", "LEVEL 10: THE FIRST DAWN", "Awaken all five ceremonial seals of light and shadow to open the Great Gate toward the First Dawn.")
             };
         }
 
@@ -264,16 +264,16 @@ namespace MyShadowQuit.Core
             w2.unlockedByDefault = false;
             w2.levels = new List<LevelEntry>
             {
-                new LevelEntry(0, "w2_lvl1", "XI. WHISPERS IN THE ROOTS", "Moving platforms carry the Flame across deep abysses. Switch between characters [TAB] to guide each other."),
-                new LevelEntry(1, "w2_lvl2", "XII. THE RISING PATH", "The vertical elevator ascends through the ancient tree canopy. Step aboard and ride upward."),
-                new LevelEntry(2, "w2_lvl3", "XIII. ROOTS OF LIGHT", "Dormant roots bloom into solid bridges under the Torch's golden warmth. Light the way for your Shadow."),
-                new LevelEntry(3, "w2_lvl4", "XIV. FADING FOOTSTEPS", "Bioluminescent fungal platforms crumble shortly after being touched. Move swiftly with double jumps."),
-                new LevelEntry(4, "w2_lvl5", "XV. THE HOLLOW CANOPY", "Dense shadow vines bar the Flame's passage, but your Shadow slips through freely to activate the lower mechanism."),
-                new LevelEntry(5, "w2_lvl6", "XVI. A BRIDGE OF EMBERS", "Mount the Torch on the ancient pedestal to awaken the shimmering Light Bridge across the chasm."),
-                new LevelEntry(6, "w2_lvl7", "XVII. THE SILENT THORNS", "Beware the toxic forest briars. Ride moving platforms carefully above the thorn beds."),
-                new LevelEntry(7, "w2_lvl8", "XVIII. THE FRACTURED GROVE", "Synchronize temporary platforms, light roots, and shadow passages to unlock the triad seals."),
-                new LevelEntry(8, "w2_lvl9", "XIX. TWO PATHS, ONE FLAME", "Two separate chambers: the Flame activates the light roots while the Shadow coordinates the dual switches."),
-                new LevelEntry(9, "w2_lvl10", "XX. HEART OF THE INVERTED FOREST", "Ascend to the core of the Great Tree. Overcome all forest mechanisms and reunite Flame and Shadow at the Ancient Arch.")
+                new LevelEntry(0, "w2_lvl1", "LEVEL 11: WHISPERS IN THE ROOTS", "Moving platforms carry the Flame across deep abysses. Switch between characters [TAB] to guide each other."),
+                new LevelEntry(1, "w2_lvl2", "LEVEL 12: THE RISING PATH", "The vertical elevator ascends through the ancient tree canopy. Step aboard and ride upward."),
+                new LevelEntry(2, "w2_lvl3", "LEVEL 13: ROOTS OF LIGHT", "Dormant roots bloom into solid bridges under the Torch's golden warmth. Light the way for your Shadow."),
+                new LevelEntry(3, "w2_lvl4", "LEVEL 14: FADING FOOTSTEPS", "Bioluminescent fungal platforms crumble shortly after being touched. Move swiftly with double jumps."),
+                new LevelEntry(4, "w2_lvl5", "LEVEL 15: THE HOLLOW CANOPY", "Dense shadow vines bar the Flame's passage, but your Shadow slips through freely to activate the lower mechanism."),
+                new LevelEntry(5, "w2_lvl6", "LEVEL 16: A BRIDGE OF EMBERS", "Mount the Torch on the ancient pedestal to awaken the shimmering Light Bridge across the chasm."),
+                new LevelEntry(6, "w2_lvl7", "LEVEL 17: THE SILENT THORNS", "Beware the toxic forest briars. Ride moving platforms carefully above the thorn beds."),
+                new LevelEntry(7, "w2_lvl8", "LEVEL 18: THE FRACTURED GROVE", "Synchronize temporary platforms, light roots, and shadow passages to unlock the triad seals."),
+                new LevelEntry(8, "w2_lvl9", "LEVEL 19: TWO PATHS, ONE FLAME", "Two separate chambers: the Flame activates the light roots while the Shadow coordinates the dual switches."),
+                new LevelEntry(9, "w2_lvl10", "LEVEL 20: HEART OF THE INVERTED FOREST", "Ascend to the core of the Great Tree. Overcome all forest mechanisms and reunite Flame and Shadow at the Ancient Arch.")
             };
         }
 

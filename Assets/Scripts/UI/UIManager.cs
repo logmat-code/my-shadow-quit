@@ -501,7 +501,7 @@ namespace MyShadowQuit.UI
             GameObject topBar = CreateImagePanel(_hudPanel.transform, "TopHUD", new Vector2(0f, 480f), new Vector2(1820f, 76f));
             topBar.GetComponent<Image>().color = new Color(0.05f, 0.06f, 0.12f, 0.85f);
 
-            _levelTitleText = CreateText(topBar.transform, "LevelTitle", "I. AWAKENING", 30, new Vector2(-560f, 0f), new Vector2(620f, 58f), new Color(1f, 0.82f, 0.35f, 1f), TextAnchor.MiddleLeft);
+            _levelTitleText = CreateText(topBar.transform, "LevelTitle", "LEVEL 1: AWAKENING", 30, new Vector2(-560f, 0f), new Vector2(620f, 58f), new Color(1f, 0.82f, 0.35f, 1f), TextAnchor.MiddleLeft);
             _activeControlText = CreateText(topBar.transform, "ActiveControl", "ACTIVE: PROTAGONIST [TAB to switch]", 25, new Vector2(430f, 0f), new Vector2(700f, 58f), new Color(0.85f, 0.78f, 1f, 1f), TextAnchor.MiddleRight);
 
             // In-Game Pause Button in the top right of TopHUD
@@ -1160,7 +1160,7 @@ namespace MyShadowQuit.UI
             GameObject inspector = CreateImagePanel(_levelSelectPanel.transform, "LevelInspectorPanel", new Vector2(695f, 8f), new Vector2(430f, 765f), _modalFrameSprite);
 
             CreateText(inspector.transform, "InspectorHeaderTag", "SELECTED SANCTUARY", 20, new Vector2(0f, 325f), new Vector2(360f, 32f), new Color(0.80f, 0.66f, 1f, 1f), TextAnchor.MiddleCenter);
-            _inspectorLevelNumberText = CreateStyledTitleText(inspector.transform, "InspectorLevelNumber", "LEVEL 01", 40, new Vector2(0f, 276f), new Vector2(370f, 52f), new Color(1f, 0.86f, 0.38f, 1f));
+            _inspectorLevelNumberText = CreateStyledTitleText(inspector.transform, "InspectorLevelNumber", "LEVEL 1", 40, new Vector2(0f, 276f), new Vector2(370f, 52f), new Color(1f, 0.86f, 0.38f, 1f));
             _inspectorLevelTitleText = CreateStyledTitleText(inspector.transform, "InspectorLevelTitle", "AWAKENING", 28, new Vector2(0f, 222f), new Vector2(380f, 44f), new Color(1f, 0.96f, 0.88f, 1f));
 
             CreateSpriteElement(inspector.transform, "InspectorDivider1", _stoneDividerSprite, new Vector2(0f, 180f), new Vector2(340f, 24f));
@@ -1334,12 +1334,12 @@ namespace MyShadowQuit.UI
             int displayNum = (_selectedMapWorldIndex == 0) ? (clamped + 1) : (clamped + 11);
             if (_inspectorLevelNumberText != null)
             {
-                _inspectorLevelNumberText.text = $"LEVEL {displayNum:D2}";
+                _inspectorLevelNumberText.text = $"LEVEL {displayNum}";
             }
             if (_inspectorLevelTitleText != null)
             {
                 string[] titles = _selectedMapWorldIndex == 0 ? CanonicalLevelShortNames : World2CanonicalLevelShortNames;
-                _inspectorLevelTitleText.text = (clamped < titles.Length) ? titles[clamped] : $"CHAMBER {displayNum:D2}";
+                _inspectorLevelTitleText.text = (clamped < titles.Length) ? titles[clamped] : $"CHAMBER {displayNum}";
             }
             if (_inspectorHintText != null)
             {
@@ -1379,7 +1379,7 @@ namespace MyShadowQuit.UI
             {
                 if (_inspectorStatusBadgeText != null)
                 {
-                    _inspectorStatusBadgeText.text = $"LOCKED (COMPLETE LEVEL {displayNum - 1:D2})";
+                    _inspectorStatusBadgeText.text = $"LOCKED (COMPLETE LEVEL {displayNum - 1})";
                     _inspectorStatusBadgeText.color = new Color(0.65f, 0.62f, 0.78f, 1f);
                 }
                 if (_inspectorPlayButtonLabel != null)
