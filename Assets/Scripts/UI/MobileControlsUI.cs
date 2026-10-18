@@ -149,14 +149,14 @@ namespace MyShadowQuit.UI
             if (forcePref == 1) return true;  // Manually forced on in Settings
             if (forcePref == -1) return false; // Manually forced off
 
-#if UNITY_EDITOR
-            // Enabled by default in Editor so developers can test touch controls directly
-            return true;
+#if UNITY_WEBGL
+            // Permanently disabled on WebGL itch.io desktop browser builds
+            return false;
 #elif UNITY_ANDROID || UNITY_IOS
             return true;
-#elif UNITY_WEBGL
-            // On WebGL, show if touch screen is supported, otherwise default to hidden on desktop
-            return Input.touchSupported;
+#elif UNITY_EDITOR
+            // Enabled by default in Editor so developers can test touch controls directly
+            return true;
 #else
             return false;
 #endif
@@ -236,8 +236,8 @@ namespace MyShadowQuit.UI
                     rt.anchorMin = Vector2.zero;
                     rt.anchorMax = Vector2.zero;
                     rt.pivot = new Vector2(0.5f, 0.5f);
-                    rt.sizeDelta = new Vector2(110f, 110f) * _currentScale;
-                    rt.anchoredPosition = new Vector2((95f + sideMarginOffset) * _currentScale, 100f * _currentScale);
+                    rt.sizeDelta = new Vector2(124f, 124f) * _currentScale;
+                    rt.anchoredPosition = new Vector2((105f + sideMarginOffset) * _currentScale, 105f * _currentScale);
                 }
                 leftButton.SetOpacity(_currentOpacity);
             }
@@ -250,8 +250,8 @@ namespace MyShadowQuit.UI
                     rt.anchorMin = Vector2.zero;
                     rt.anchorMax = Vector2.zero;
                     rt.pivot = new Vector2(0.5f, 0.5f);
-                    rt.sizeDelta = new Vector2(110f, 110f) * _currentScale;
-                    rt.anchoredPosition = new Vector2((230f + sideMarginOffset) * _currentScale, 100f * _currentScale);
+                    rt.sizeDelta = new Vector2(124f, 124f) * _currentScale;
+                    rt.anchoredPosition = new Vector2((250f + sideMarginOffset) * _currentScale, 105f * _currentScale);
                 }
                 rightButton.SetOpacity(_currentOpacity);
             }
@@ -265,8 +265,8 @@ namespace MyShadowQuit.UI
                     rt.anchorMin = new Vector2(1f, 0f);
                     rt.anchorMax = new Vector2(1f, 0f);
                     rt.pivot = new Vector2(0.5f, 0.5f);
-                    rt.sizeDelta = new Vector2(135f, 135f) * _currentScale;
-                    rt.anchoredPosition = new Vector2((-115f - sideMarginOffset) * _currentScale, 115f * _currentScale);
+                    rt.sizeDelta = new Vector2(150f, 150f) * _currentScale;
+                    rt.anchoredPosition = new Vector2((-125f - sideMarginOffset) * _currentScale, 125f * _currentScale);
                 }
                 jumpButton.SetOpacity(_currentOpacity);
             }
@@ -279,8 +279,8 @@ namespace MyShadowQuit.UI
                     rt.anchorMin = new Vector2(1f, 0f);
                     rt.anchorMax = new Vector2(1f, 0f);
                     rt.pivot = new Vector2(0.5f, 0.5f);
-                    rt.sizeDelta = new Vector2(105f, 105f) * _currentScale;
-                    rt.anchoredPosition = new Vector2((-265f - sideMarginOffset) * _currentScale, 95f * _currentScale);
+                    rt.sizeDelta = new Vector2(118f, 118f) * _currentScale;
+                    rt.anchoredPosition = new Vector2((-285f - sideMarginOffset) * _currentScale, 105f * _currentScale);
                 }
                 interactButton.SetOpacity(_currentOpacity);
             }
@@ -294,8 +294,8 @@ namespace MyShadowQuit.UI
                     rt.anchorMin = new Vector2(1f, 0.5f);
                     rt.anchorMax = new Vector2(1f, 0.5f);
                     rt.pivot = new Vector2(0.5f, 0.5f);
-                    rt.sizeDelta = new Vector2(100f, 100f) * _currentScale;
-                    rt.anchoredPosition = new Vector2((-95f - sideMarginOffset) * _currentScale, 30f * _currentScale);
+                    rt.sizeDelta = new Vector2(114f, 114f) * _currentScale;
+                    rt.anchoredPosition = new Vector2((-105f - sideMarginOffset) * _currentScale, 40f * _currentScale);
                 }
                 switchButton.SetOpacity(_currentOpacity);
             }
