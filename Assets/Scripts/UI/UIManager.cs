@@ -100,6 +100,7 @@ namespace MyShadowQuit.UI
         private Image _homeTorchFlameImage;
         private Image _homeTorchHaloOuter;
         private Image _homeTorchHaloInner;
+        private Color _homeTorchHaloBaseColor = new Color(1f, 0.64f, 0.18f, 1f);
         private Button _homeContinueButton;
         private Image _homeContinueBtnImage;
         private Text _homeContinueBtnLabel;
@@ -198,6 +199,8 @@ namespace MyShadowQuit.UI
         // Shop Preview Stage
         private Image _shopPreviewImage;
         private Image _shopPreviewHaloImage;
+        private Image _shopPreviewContactShadow;
+        private float _shopJumpTimer = 0f;
         private Text _shopPreviewTitleText;
         private Text _shopPreviewRarityText;
         private Text _shopPreviewLoreText;
@@ -485,6 +488,7 @@ namespace MyShadowQuit.UI
             BuildVictoryScreen(canvasObj.transform);
             BuildNewGameConfirmModal(canvasObj.transform);
             BuildFadeOverlay(canvasObj.transform);
+            RefreshHomeEquippedSkins();
         }
 
         // ====================================================================
@@ -1596,6 +1600,12 @@ namespace MyShadowQuit.UI
             // Pedestal on the stage
             CreateSpriteElement(stagePanel.transform, "StagePedestal", _shopPedestalSprite, new Vector2(0f, -30f), new Vector2(200f, 80f));
 
+            // Soft contact shadow on pedestal surface under character
+            GameObject shadowObj = CreateSpriteElement(stagePanel.transform, "StageContactShadow", _lightHaloSprite, new Vector2(0f, -8f), new Vector2(100f, 24f));
+            _shopPreviewContactShadow = shadowObj.GetComponent<Image>();
+            _shopPreviewContactShadow.color = new Color(0f, 0f, 0f, 0.45f);
+            _shopPreviewContactShadow.raycastTarget = false;
+
             // Animated character / flame preview sprite
             GameObject previewSpr = CreateSpriteElement(stagePanel.transform, "StagePreviewSprite", null, new Vector2(0f, 65f), new Vector2(160f, 160f));
             _shopPreviewImage = previewSpr.GetComponent<Image>();
@@ -1643,6 +1653,8 @@ namespace MyShadowQuit.UI
             _shopSelectedTab = Mathf.Clamp(tabIndex, 0, 2);
             _shopSelectedSkinIndex = 0;
             _shopPreviewMode = 0;
+            _shopJumpTimer = 0f;
+            ResetShopPreviewTransform();
 
             RefreshShopTabSelection();
             RefreshShopSkinList();
@@ -1752,6 +1764,8 @@ namespace MyShadowQuit.UI
         public void SelectShopSkin(int index)
         {
             _shopSelectedSkinIndex = Mathf.Clamp(index, 0, 4);
+            _shopJumpTimer = 0f;
+            ResetShopPreviewTransform();
             RefreshShopSkinList();
             UpdateShopSelectedPreview();
             PlayMenuHoverSound();
@@ -1760,8 +1774,24 @@ namespace MyShadowQuit.UI
         public void SetShopPreviewMode(int mode)
         {
             _shopPreviewMode = Mathf.Clamp(mode, 0, 2);
+            _shopJumpTimer = 0f;
+            ResetShopPreviewTransform();
             UpdateShopPreviewModeButtons();
             LoadCachedPreviewFrames();
+        }
+
+        private void ResetShopPreviewTransform()
+        {
+            if (_shopPreviewImage != null)
+            {
+                _shopPreviewImage.rectTransform.anchoredPosition = new Vector2(0f, 65f);
+                _shopPreviewImage.rectTransform.localScale = Vector3.one;
+            }
+            if (_shopPreviewContactShadow != null)
+            {
+                _shopPreviewContactShadow.rectTransform.localScale = Vector3.one;
+                _shopPreviewContactShadow.color = new Color(0f, 0f, 0f, 0.45f);
+            }
         }
 
         private void UpdateShopPreviewModeButtons()
@@ -1952,6 +1982,7 @@ namespace MyShadowQuit.UI
             RefreshShopCoinBalance();
             RefreshShopSkinList();
             UpdateShopSelectedPreview();
+            RefreshHomeEquippedSkins();
         }
 
         public void RefreshShopCoinBalance()
@@ -2500,7 +2531,8 @@ namespace MyShadowQuit.UI
             if (_homeTorchHaloOuter != null)
             {
                 _homeTorchHaloOuter.rectTransform.localScale = new Vector3(flicker, flicker, 1f);
-                _homeTorchHaloOuter.color = new Color(1f, 0.64f, 0.18f, 0.30f + 0.05f * Mathf.Sin(t * 6.5f));
+                float haloAlpha = 0.30f + 0.05f * Mathf.Sin(t * 6.5f);
+                _homeTorchHaloOuter.color = new Color(_homeTorchHaloBaseColor.r, _homeTorchHaloBaseColor.g, _homeTorchHaloBaseColor.b, haloAlpha * _homeTorchHaloBaseColor.a);
             }
             if (_homeTorchHaloInner != null)
             {
@@ -2562,13 +2594,212 @@ namespace MyShadowQuit.UI
 
         private void UpdateShopPreviewAnimations(float t)
         {
-            if (_shopCachedPreviewFrames != null && _shopCachedPreviewFrames.Length > 0 && _shopPreviewImage != null)
+            if (_shopPreviewImage == null) return;
+
+            bool isTorch = (_shopSelectedTab == 2);
+            bool isShadow = (_shopSelectedTab == 1);
+
+            if (isTorch)
             {
-                float fps = (_shopSelectedTab == 2) ? 10f : (_shopPreviewMode == 1) ? 8f : 5.5f;
-                int frame = Mathf.FloorToInt(t * fps) % _shopCachedPreviewFrames.Length;
-                if (_shopCachedPreviewFrames[frame] != null)
+                // Torch: Flame flicker animation in place
+                if (_shopCachedPreviewFrames != null && _shopCachedPreviewFrames.Length > 0)
                 {
-                    _shopPreviewImage.sprite = _shopCachedPreviewFrames[frame];
+                    int frame = Mathf.FloorToInt(t * 10f) % _shopCachedPreviewFrames.Length;
+                    if (_shopCachedPreviewFrames[frame] != null) _shopPreviewImage.sprite = _shopCachedPreviewFrames[frame];
+                }
+                _shopPreviewImage.rectTransform.anchoredPosition = new Vector2(0f, 65f);
+                _shopPreviewImage.rectTransform.localScale = Vector3.one;
+                if (_shopPreviewContactShadow != null)
+                {
+                    _shopPreviewContactShadow.rectTransform.localScale = Vector3.one;
+                    _shopPreviewContactShadow.color = new Color(0f, 0f, 0f, 0.45f);
+                }
+            }
+            else if (_shopPreviewMode == 0)
+            {
+                // IDLE: Soft gentle breathing oscillation
+                if (_shopCachedPreviewFrames != null && _shopCachedPreviewFrames.Length > 0)
+                {
+                    int frame = Mathf.FloorToInt(t * 5.5f) % _shopCachedPreviewFrames.Length;
+                    if (_shopCachedPreviewFrames[frame] != null) _shopPreviewImage.sprite = _shopCachedPreviewFrames[frame];
+                }
+                float breathe = Mathf.Sin(t * 3.5f) * 1.5f;
+                _shopPreviewImage.rectTransform.anchoredPosition = new Vector2(0f, 65f + breathe);
+                _shopPreviewImage.rectTransform.localScale = new Vector3(1f + breathe * 0.015f, 1f - breathe * 0.015f, 1f);
+                if (_shopPreviewContactShadow != null)
+                {
+                    _shopPreviewContactShadow.rectTransform.localScale = new Vector3(1f - breathe * 0.02f, 1f, 1f);
+                    _shopPreviewContactShadow.color = new Color(0f, 0f, 0f, 0.45f);
+                }
+            }
+            else if (_shopPreviewMode == 1)
+            {
+                // MOVE: Step rhythm bobbing and running frames
+                if (_shopCachedPreviewFrames != null && _shopCachedPreviewFrames.Length > 0)
+                {
+                    int frame = Mathf.FloorToInt(t * 8f) % _shopCachedPreviewFrames.Length;
+                    if (_shopCachedPreviewFrames[frame] != null) _shopPreviewImage.sprite = _shopCachedPreviewFrames[frame];
+                }
+                float runBob = Mathf.Abs(Mathf.Sin(t * 10f)) * 4.5f;
+                _shopPreviewImage.rectTransform.anchoredPosition = new Vector2(0f, 65f + runBob);
+                _shopPreviewImage.rectTransform.localScale = Vector3.one;
+                if (_shopPreviewContactShadow != null)
+                {
+                    float shadowScale = 1f - (runBob / 4.5f) * 0.12f;
+                    _shopPreviewContactShadow.rectTransform.localScale = new Vector3(shadowScale, shadowScale, 1f);
+                    _shopPreviewContactShadow.color = new Color(0f, 0f, 0f, 0.45f);
+                }
+            }
+            else // _shopPreviewMode == 2: JUMP
+            {
+                _shopJumpTimer += Time.unscaledDeltaTime;
+
+                float height = 0f;
+                Vector3 scale = Vector3.one;
+                int frameIdx = 0;
+
+                if (!isShadow)
+                {
+                    // Protagonist Jump trajectory (1.4s cycle)
+                    const float cycle = 1.4f;
+                    float prog = _shopJumpTimer % cycle;
+
+                    if (prog < 0.12f)
+                    {
+                        // Anticipation crouch
+                        height = 0f;
+                        scale = new Vector3(1.10f, 0.88f, 1f);
+                        frameIdx = 0;
+                    }
+                    else if (prog < 0.62f)
+                    {
+                        // Upward leap
+                        float p = (prog - 0.12f) / 0.50f;
+                        height = Mathf.Sin(p * Mathf.PI * 0.5f) * 82f;
+                        scale = new Vector3(0.92f, 1.08f, 1f);
+                        frameIdx = 0;
+                    }
+                    else if (prog < 0.74f)
+                    {
+                        // Apex hang
+                        height = 82f;
+                        scale = Vector3.one;
+                        frameIdx = 1;
+                    }
+                    else if (prog < 1.18f)
+                    {
+                        // Descent
+                        float p = (prog - 0.74f) / 0.44f;
+                        height = (1f - (p * p)) * 82f;
+                        scale = new Vector3(0.95f, 1.05f, 1f);
+                        frameIdx = 1;
+                    }
+                    else if (prog < 1.30f)
+                    {
+                        // Landing impact
+                        height = 0f;
+                        scale = new Vector3(1.14f, 0.86f, 1f);
+                        frameIdx = 0;
+                    }
+                    else
+                    {
+                        // Recovery
+                        height = 0f;
+                        scale = Vector3.one;
+                        frameIdx = 0;
+                    }
+                }
+                else
+                {
+                    // Shadow Double Jump trajectory (2.0s cycle)
+                    const float cycle = 2.0f;
+                    float prog = _shopJumpTimer % cycle;
+
+                    if (prog < 0.10f)
+                    {
+                        // Anticipation
+                        height = 0f;
+                        scale = new Vector3(1.10f, 0.88f, 1f);
+                        frameIdx = 0;
+                    }
+                    else if (prog < 0.50f)
+                    {
+                        // First jump ascent
+                        float p = (prog - 0.10f) / 0.40f;
+                        height = Mathf.Sin(p * Mathf.PI * 0.5f) * 50f;
+                        scale = new Vector3(0.92f, 1.08f, 1f);
+                        frameIdx = 0;
+                    }
+                    else if (prog < 0.62f)
+                    {
+                        // First apex
+                        height = 50f;
+                        scale = Vector3.one;
+                        frameIdx = 1;
+                    }
+                    else if (prog < 0.72f)
+                    {
+                        // Mid-air double jump impulse pop!
+                        height = 50f;
+                        scale = new Vector3(1.20f, 0.82f, 1f);
+                        frameIdx = 0;
+                    }
+                    else if (prog < 1.18f)
+                    {
+                        // Second jump ascent to high peak
+                        float p = (prog - 0.72f) / 0.46f;
+                        height = 50f + Mathf.Sin(p * Mathf.PI * 0.5f) * 54f; // 104f peak
+                        scale = new Vector3(0.90f, 1.10f, 1f);
+                        frameIdx = 0;
+                    }
+                    else if (prog < 1.35f)
+                    {
+                        // High floaty apex
+                        height = 104f;
+                        scale = Vector3.one;
+                        frameIdx = 1;
+                    }
+                    else if (prog < 1.80f)
+                    {
+                        // Floaty low-gravity descent
+                        float p = (prog - 1.35f) / 0.45f;
+                        height = (1f - (p * p)) * 104f;
+                        scale = new Vector3(0.95f, 1.05f, 1f);
+                        frameIdx = 1;
+                    }
+                    else if (prog < 1.92f)
+                    {
+                        // Soft landing
+                        height = 0f;
+                        scale = new Vector3(1.10f, 0.90f, 1f);
+                        frameIdx = 0;
+                    }
+                    else
+                    {
+                        height = 0f;
+                        scale = Vector3.one;
+                        frameIdx = 0;
+                    }
+                }
+
+                _shopPreviewImage.rectTransform.anchoredPosition = new Vector2(0f, 65f + height);
+                _shopPreviewImage.rectTransform.localScale = scale;
+
+                if (_shopCachedPreviewFrames != null && _shopCachedPreviewFrames.Length > 0)
+                {
+                    int clampedFrame = Mathf.Clamp(frameIdx, 0, _shopCachedPreviewFrames.Length - 1);
+                    if (_shopCachedPreviewFrames[clampedFrame] != null)
+                    {
+                        _shopPreviewImage.sprite = _shopCachedPreviewFrames[clampedFrame];
+                    }
+                }
+
+                if (_shopPreviewContactShadow != null)
+                {
+                    float shadowFactor = Mathf.Clamp01(height / 100f);
+                    float shadowScale = Mathf.Lerp(1.0f, 0.52f, shadowFactor);
+                    _shopPreviewContactShadow.rectTransform.localScale = new Vector3(shadowScale, shadowScale, 1f);
+                    _shopPreviewContactShadow.color = new Color(0f, 0f, 0f, Mathf.Lerp(0.48f, 0.12f, shadowFactor));
                 }
             }
 
@@ -2908,11 +3139,75 @@ namespace MyShadowQuit.UI
             }
         }
 
+        public void RefreshHomeEquippedSkins()
+        {
+            string playerSkinId = "player_original";
+            string shadowSkinId = "shadow_original";
+            string torchSkinId = "torch_original_flame";
+
+            if (SkinEquipmentService.Instance != null)
+            {
+                playerSkinId = SkinEquipmentService.Instance.EquippedPlayerSkinId;
+                shadowSkinId = SkinEquipmentService.Instance.EquippedShadowSkinId;
+                torchSkinId = SkinEquipmentService.Instance.EquippedTorchSkinId;
+            }
+            else
+            {
+                playerSkinId = PlayerPrefs.GetString(SkinEquipmentService.KeyEquippedPlayer, "player_original");
+                shadowSkinId = PlayerPrefs.GetString(SkinEquipmentService.KeyEquippedShadow, "shadow_original");
+                torchSkinId = PlayerPrefs.GetString(SkinEquipmentService.KeyEquippedTorch, "torch_original_flame");
+            }
+
+            // 1. Protagonist idle frames
+            bool isOrigPlayer = (playerSkinId == "player_original");
+            string pPrefix = isOrigPlayer ? "Characters/protagonist" : $"Skins/Player/{playerSkinId}";
+            string pSep = isOrigPlayer ? "_" : "/";
+            _protagonistIdleFrames = AssetRegistry.GetAnimationFrames(pPrefix + pSep + "idle", 4);
+            if (_homeProtagonistImage != null && _protagonistIdleFrames != null && _protagonistIdleFrames.Length > 0)
+            {
+                _homeProtagonistImage.sprite = _protagonistIdleFrames[0];
+            }
+
+            // 2. Shadow idle frames
+            bool isOrigShadow = (shadowSkinId == "shadow_original");
+            string sPrefix = isOrigShadow ? "Characters/shadow" : $"Skins/Shadow/{shadowSkinId}";
+            string sSep = isOrigShadow ? "_" : "/";
+            _shadowIdleFrames = AssetRegistry.GetAnimationFrames(sPrefix + sSep + "idle", 4);
+            if (_homeShadowImage != null && _shadowIdleFrames != null && _shadowIdleFrames.Length > 0)
+            {
+                _homeShadowImage.sprite = _shadowIdleFrames[0];
+            }
+
+            // 3. Torch flame frames & halo colors
+            bool isOrigTorch = (torchSkinId == "torch_original_flame");
+            string tPrefix = isOrigTorch ? "Torch/torch_item" : $"Skins/Torch/{torchSkinId}/flame";
+            _torchFlameFrames = AssetRegistry.GetAnimationFrames(tPrefix, 4);
+            if (_homeTorchFlameImage != null && _torchFlameFrames != null && _torchFlameFrames.Length > 0)
+            {
+                _homeTorchFlameImage.sprite = _torchFlameFrames[0];
+            }
+
+            SkinDefinition torchDef = SkinCatalog.GetSkin(torchSkinId);
+            if (torchDef != null)
+            {
+                _homeTorchHaloBaseColor = torchDef.HaloColor;
+                if (_homeTorchHaloInner != null)
+                {
+                    _homeTorchHaloInner.color = new Color(
+                        Mathf.Clamp01(torchDef.HaloColor.r * 1.2f),
+                        Mathf.Clamp01(torchDef.HaloColor.g * 1.2f),
+                        Mathf.Clamp01(torchDef.HaloColor.b * 1.2f),
+                        0.55f);
+                }
+            }
+        }
+
         public void ShowMainMenu()
         {
             _targetFadeAlpha = 0f;
             SetEndingQuoteAlpha(0f);
             HideAllMenuPanels();
+            RefreshHomeEquippedSkins();
             _mainMenuPanel.SetActive(true);
             _currentScreen = ActiveMenuScreen.Home;
             _homeSelectedBtnIndex = WorldProgressSave.HasSavedProgress("world_1") ? 0 : 1;
@@ -3097,6 +3392,7 @@ namespace MyShadowQuit.UI
             else
             {
                 _currentScreen = ActiveMenuScreen.Home;
+                RefreshHomeEquippedSkins();
             }
         }
 
