@@ -689,6 +689,7 @@ namespace MyShadowQuit.EditorTools
                 }
                 WorldDefinition world1Def = WorldCatalog.GetWorld(0);
                 WorldDefinition world2Def = WorldCatalog.GetWorld(1);
+                WorldDefinition world3Def = WorldCatalog.GetWorld(2);
                 if (world1Def == null || world1Def.LevelCount != 10 || !world1Def.IsUnlocked || !world1Def.IsImplemented)
                 {
                     throw new Exception("[Verification Failed] World 1 definition invalid or not 10 levels!");
@@ -696,6 +697,10 @@ namespace MyShadowQuit.EditorTools
                 if (world2Def == null || !world2Def.IsImplemented || world2Def.LevelCount != 10)
                 {
                     throw new Exception("[Verification Failed] World 2 definition should be present and implemented with 10 levels!");
+                }
+                if (world3Def == null || !world3Def.IsImplemented || world3Def.LevelCount != 10)
+                {
+                    throw new Exception("[Verification Failed] World 3 definition should be present and implemented with 10 levels!");
                 }
 
                 // =====================================================================
@@ -1031,6 +1036,19 @@ namespace MyShadowQuit.EditorTools
                 }
                 uiTest.SetSelectedMapWorld(0);
 
+                // Verify World 3 Map Switching & World 3 Complete Screen
+                uiTest.SetSelectedMapWorld(2);
+                if (uiTest.SelectedMapWorldIndex != 2)
+                {
+                    throw new Exception("[Verification Failed] SetSelectedMapWorld(2) failed to switch map world index to 2!");
+                }
+                uiTest.ShowWorld3CompleteScreen();
+                if (!uiTest.IsWorld3CompleteScreenVisible)
+                {
+                    throw new Exception("[Verification Failed] ShowWorld3CompleteScreen failed to display World 3 Complete panel!");
+                }
+                uiTest.SetSelectedMapWorld(0);
+
                 // =====================================================================
                 // Verify World 2 (Levels 11 to 20) and 7 New Mechanics
                 // =====================================================================
@@ -1095,6 +1113,60 @@ namespace MyShadowQuit.EditorTools
                 if (UnityEngine.Object.FindFirstObjectByType<CooperativeSwitch>() == null)
                 {
                     throw new Exception("[Verification Failed] Level 18 missing CooperativeSwitch component!");
+                }
+
+                // =====================================================================
+                // Verify World 3 (Levels 21 to 30) and 5 Clockwork Mechanics
+                // =====================================================================
+                lm.SetActiveWorld(world3Def);
+                if (lm.TotalLevels != 10)
+                {
+                    throw new Exception($"[Verification Failed] Expected World 3 to have 10 levels, got {lm.TotalLevels}!");
+                }
+
+                for (int lvlIdx = 0; lvlIdx < 10; lvlIdx++)
+                {
+                    lm.BuildLevel(lvlIdx, null);
+                    if (lm.Player == null || lm.Shadow == null || lm.Torch == null)
+                    {
+                        throw new Exception($"[Verification Failed] World 3 Level {lvlIdx + 21} missing core player/shadow/torch entities!");
+                    }
+                    LevelExitPortal exit = UnityEngine.Object.FindFirstObjectByType<LevelExitPortal>();
+                    if (exit == null)
+                    {
+                        throw new Exception($"[Verification Failed] World 3 Level {lvlIdx + 21} missing LevelExitPortal!");
+                    }
+                }
+
+                // Verify specific mechanic types exist across World 3 levels
+                lm.BuildLevel(0, null); // Level 21: RotatingGearPlatform
+                if (UnityEngine.Object.FindFirstObjectByType<RotatingGearPlatform>() == null)
+                {
+                    throw new Exception("[Verification Failed] Level 21 missing RotatingGearPlatform component!");
+                }
+
+                lm.BuildLevel(2, null); // Level 23: PendulumObstacle
+                if (UnityEngine.Object.FindFirstObjectByType<PendulumObstacle>() == null)
+                {
+                    throw new Exception("[Verification Failed] Level 23 missing PendulumObstacle component!");
+                }
+
+                lm.BuildLevel(3, null); // Level 24: ClockworkSwitch
+                if (UnityEngine.Object.FindFirstObjectByType<ClockworkSwitch>() == null)
+                {
+                    throw new Exception("[Verification Failed] Level 24 missing ClockworkSwitch component!");
+                }
+
+                lm.BuildLevel(4, null); // Level 25: TorchPoweredClockwork
+                if (UnityEngine.Object.FindFirstObjectByType<TorchPoweredClockwork>() == null)
+                {
+                    throw new Exception("[Verification Failed] Level 25 missing TorchPoweredClockwork component!");
+                }
+
+                lm.BuildLevel(5, null); // Level 26: ShadowClockworkPassage
+                if (UnityEngine.Object.FindFirstObjectByType<ShadowClockworkPassage>() == null)
+                {
+                    throw new Exception("[Verification Failed] Level 26 missing ShadowClockworkPassage component!");
                 }
 
                 // Switch back to World 1 for subsequent tests
@@ -1472,18 +1544,28 @@ namespace MyShadowQuit.EditorTools
                     throw new Exception($"[Verification Failed] Multiworld continue failed for World 2 Level 19: got W={contWId3}, Lvl={contDisp3}");
                 }
 
-                // Simulate fallback when KeyLastPlayedWorld is deleted but World 2 has progress
-                PlayerPrefs.DeleteKey(WorldProgressSave.KeyLastPlayedWorld);
-                WorldProgressSave.GetGlobalContinuePoint(out string contWIdFallback, out int contWIdxFallback, out int contLvlFallback, out int contDispFallback);
-                if (contWIdFallback != "world_2" || contWIdxFallback != 1 || contDispFallback != 19)
+                // Simulate completing World 2 and continuing in World 3 Level 21
+                WorldProgressSave.MarkWorldCompleted("world_2", 10);
+                WorldProgressSave.SaveLevelProgress("world_3", 0, 10);
+                WorldProgressSave.SetLastPlayedWorld("world_3");
+                WorldProgressSave.GetGlobalContinuePoint(out string contWIdW3, out int contWIdxW3, out int contLvlW3, out int contDispW3);
+                if (contWIdW3 != "world_3" || contWIdxW3 != 2 || contLvlW3 != 0 || contDispW3 != 21)
                 {
-                    throw new Exception($"[Verification Failed] Multiworld fallback failed: expected World 2 Level 19, got W={contWIdFallback}, Lvl={contDispFallback}");
+                    throw new Exception($"[Verification Failed] Multiworld continue failed for World 3 Level 21: got W={contWIdW3}, Lvl={contDispW3}");
                 }
 
-                // 14. Comprehensive Reachability & Playability Verification (All 20 Levels: World 1 & World 2)
-                for (int wIdx = 0; wIdx < 2; wIdx++)
+                // Simulate fallback when KeyLastPlayedWorld is deleted but World 3 has progress
+                PlayerPrefs.DeleteKey(WorldProgressSave.KeyLastPlayedWorld);
+                WorldProgressSave.GetGlobalContinuePoint(out string contWIdFallback, out int contWIdxFallback, out int contLvlFallback, out int contDispFallback);
+                if (contWIdFallback != "world_3" || contWIdxFallback != 2 || contDispFallback != 21)
                 {
-                    WorldDefinition wDef = (wIdx == 0) ? world1Def : world2Def;
+                    throw new Exception($"[Verification Failed] Multiworld fallback failed: expected World 3 Level 21, got W={contWIdFallback}, Lvl={contDispFallback}");
+                }
+
+                // 14. Comprehensive Reachability & Playability Verification (All 30 Levels: World 1, World 2 & World 3)
+                for (int wIdx = 0; wIdx < 3; wIdx++)
+                {
+                    WorldDefinition wDef = (wIdx == 0) ? world1Def : ((wIdx == 1) ? world2Def : world3Def);
                     lm.SetActiveWorld(wDef);
 
                     for (int lIdx = 0; lIdx < 10; lIdx++)
@@ -1495,6 +1577,7 @@ namespace MyShadowQuit.EditorTools
 
                 WorldProgressSave.ClearWorldProgress("world_1");
                 WorldProgressSave.ClearWorldProgress("world_2");
+                WorldProgressSave.ClearWorldProgress("world_3");
                 PlayerPrefs.DeleteKey(WorldProgressSave.KeyLastPlayedWorld);
             }
             finally
@@ -1513,7 +1596,7 @@ namespace MyShadowQuit.EditorTools
                 throw new Exception($"[Verification Failed] Leaked entities remain in EditMode scene: Players={leakedPlayers}, Shadows={leakedShadows}, Torches={leakedTorches}!");
             }
 
-            Debug.Log("[Verification Passed] HOME + WORLD SELECT + LEVEL SELECT Maps (World 1 & World 2, 20 Levels: I. Awakening to XX. Heart of the Inverted Forest), 7 New Physical Mechanics, Shop 3-Zone Cards, Branding Icons, Zero Duplicated Objects, Shadow Double Jump, Audio dB Mix, and 16:9 Landscape verified!");
+            Debug.Log("[Verification Passed] HOME + WORLD SELECT (3 Worlds) + LEVEL SELECT Maps (World 1, World 2 & World 3, 30 Levels: LEVEL 1 to LEVEL 30), 5 Clockwork Mechanics, 7 Forest Mechanics, Shop 3-Zone Cards, Zero Duplicated Objects, State-Based Audio Architecture, and 16:9 Landscape verified!");
         }
 
         private static void ValidateLevelPlayability(LevelManager lm, int worldIdx, int levelLocalIdx)
@@ -1580,7 +1663,44 @@ namespace MyShadowQuit.EditorTools
                 }
             }
 
-            // 5. Special Verification for Level 19 ("Two Paths, One Flame")
+            // 5. Verify World 3 Clockwork Mechanics (Gear Platforms, Pendulum Blades, Clockwork Switches)
+            RotatingGearPlatform[] gearPlatforms = UnityEngine.Object.FindObjectsByType<RotatingGearPlatform>(FindObjectsSortMode.None);
+            foreach (var gp in gearPlatforms)
+            {
+                if (gp.GetComponent<Collider2D>() == null)
+                {
+                    throw new Exception($"[Playability Failed] Level {globalLevel}: RotatingGearPlatform missing Collider2D!");
+                }
+            }
+
+            PendulumObstacle[] pendulums = UnityEngine.Object.FindObjectsByType<PendulumObstacle>(FindObjectsSortMode.None);
+            foreach (var po in pendulums)
+            {
+                Collider2D bladeCol = po.GetComponentInChildren<Collider2D>();
+                if (bladeCol != null)
+                {
+                    if (bladeCol.OverlapPoint(lm.Player.transform.position))
+                    {
+                        throw new Exception($"[Playability Failed] Level {globalLevel}: Pendulum blade overlaps Player spawn!");
+                    }
+                    if (bladeCol.OverlapPoint(lm.Shadow.transform.position))
+                    {
+                        throw new Exception($"[Playability Failed] Level {globalLevel}: Pendulum blade overlaps Shadow spawn!");
+                    }
+                }
+            }
+
+            ClockworkSwitch[] clockworkSwitches = UnityEngine.Object.FindObjectsByType<ClockworkSwitch>(FindObjectsSortMode.None);
+            foreach (var cs in clockworkSwitches)
+            {
+                Collider2D ground = Physics2D.OverlapCircle((Vector2)cs.transform.position + Vector2.down * 0.5f, 0.4f);
+                if (ground == null || ground.isTrigger)
+                {
+                    throw new Exception($"[Playability Failed] Level {globalLevel}: ClockworkSwitch at {cs.transform.position} has no solid floor!");
+                }
+            }
+
+            // 6. Special Verification for Level 19 ("Two Paths, One Flame")
             if (globalLevel == 19)
             {
                 // Verify Shadow path is NOT sealed by an impassable wall column
