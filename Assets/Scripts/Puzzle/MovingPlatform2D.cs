@@ -161,9 +161,34 @@ namespace MyShadowQuit.Puzzle
                 if (riderRb != null && riderRb != _rb && !_activeRiders.Contains(riderRb))
                 {
                     _activeRiders.Add(riderRb);
-                    riderRb.position += deltaPos;
+                    Vector2 riderDelta = deltaPos;
+                    // If rider is jumping upwards away from the platform, don't drag them downward
+                    if (riderRb.linearVelocity.y > 0.15f && deltaPos.y < 0f)
+                    {
+                        riderDelta.y = 0f;
+                    }
+                    riderRb.position += riderDelta;
                 }
             }
+        }
+
+        public void ResetPlatform()
+        {
+            _currentWaypointIndex = 0;
+            _direction = 1;
+            _waitTimer = 0f;
+            _activeRiders.Clear();
+            if (waypoints != null && waypoints.Length > 0)
+            {
+                transform.position = waypoints[0];
+                if (_rb != null) _rb.position = waypoints[0];
+                _previousPosition = waypoints[0];
+            }
+        }
+
+        private void OnDisable()
+        {
+            _activeRiders.Clear();
         }
 
         private void OnCollisionEnter2D(Collision2D collision)

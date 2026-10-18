@@ -60,6 +60,8 @@ namespace MyShadowQuit.Puzzle
             EnsureShadowCollisionIgnored();
         }
 
+        private Collider2D _lastShadowCollider;
+
         public void EnsureShadowCollisionIgnored()
         {
             if (_col == null) return;
@@ -71,9 +73,10 @@ namespace MyShadowQuit.Puzzle
             if (shadow != null)
             {
                 Collider2D shadowCol = shadow.GetComponent<Collider2D>();
-                if (shadowCol != null)
+                if (shadowCol != null && shadowCol != _lastShadowCollider)
                 {
                     Physics2D.IgnoreCollision(_col, shadowCol, true);
+                    _lastShadowCollider = shadowCol;
                     _shadowIgnored = true;
                 }
             }
@@ -81,12 +84,16 @@ namespace MyShadowQuit.Puzzle
 
         private void Update()
         {
-            if (!_shadowIgnored)
-            {
-                EnsureShadowCollisionIgnored();
-            }
-
+            EnsureShadowCollisionIgnored();
             EvaluateUnlockConditions();
+        }
+
+        public void ResetPassage()
+        {
+            _lastShadowCollider = null;
+            _shadowIgnored = false;
+            SetOpen(false);
+            EnsureShadowCollisionIgnored();
         }
 
         private void EvaluateUnlockConditions()

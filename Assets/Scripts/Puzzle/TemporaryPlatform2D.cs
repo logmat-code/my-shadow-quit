@@ -67,6 +67,7 @@ namespace MyShadowQuit.Puzzle
 
         private void Update()
         {
+            if (Time.timeScale <= 0f) return;
             if (!_isCollapsing || _isCollapsed) return;
 
             _collapseTimer -= Time.deltaTime;
@@ -170,6 +171,32 @@ namespace MyShadowQuit.Puzzle
             {
                 AudioManager.Instance.PlaySFX("crystal_resonate", 0.45f, 1.35f);
             }
+        }
+
+        public void ResetPlatform()
+        {
+            StopAllCoroutines();
+            _isCollapsed = false;
+            _isCollapsing = false;
+            _collapseTimer = 0f;
+            transform.localPosition = _baseLocalPosition;
+
+            if (_sr != null)
+            {
+                _sr.sprite = _normalSprite;
+                _sr.color = Color.white;
+                _sr.enabled = true;
+            }
+
+            if (_col != null)
+            {
+                _col.enabled = true;
+            }
+        }
+
+        private void OnDisable()
+        {
+            ResetPlatform();
         }
     }
 }

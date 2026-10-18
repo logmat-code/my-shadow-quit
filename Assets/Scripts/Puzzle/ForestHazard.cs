@@ -12,6 +12,9 @@ namespace MyShadowQuit.Puzzle
     [RequireComponent(typeof(SpriteRenderer), typeof(BoxCollider2D))]
     public class ForestHazard : MonoBehaviour
     {
+        private static float s_lastHazardRestartTime = -10f;
+        private const float DebounceDuration = 0.85f;
+
         private SpriteRenderer _sr;
         private BoxCollider2D _col;
         private bool _hasTriggered;
@@ -21,7 +24,8 @@ namespace MyShadowQuit.Puzzle
             EnsureInitialized();
             if (_col != null)
             {
-                _col.size = size;
+                _col.size = new Vector2(size.x * 0.82f, size.y * 0.65f);
+                _col.offset = new Vector2(0f, -size.y * 0.12f);
             }
         }
 
@@ -47,8 +51,8 @@ namespace MyShadowQuit.Puzzle
             if (_col != null)
             {
                 _col.isTrigger = true;
-                _col.size = new Vector2(1.0f, 0.55f);
-                _col.offset = new Vector2(0f, -0.05f);
+                _col.size = new Vector2(0.82f, 0.40f);
+                _col.offset = new Vector2(0f, -0.08f);
             }
         }
 
@@ -78,6 +82,9 @@ namespace MyShadowQuit.Puzzle
 
         private void TriggerHazardReset()
         {
+            if (Time.unscaledTime - s_lastHazardRestartTime < DebounceDuration) return;
+            s_lastHazardRestartTime = Time.unscaledTime;
+
             if (AudioManager.Instance != null)
             {
                 AudioManager.Instance.PlaySFX("web_burn", 0.75f, 0.85f);

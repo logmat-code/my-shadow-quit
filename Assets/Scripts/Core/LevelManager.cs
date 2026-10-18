@@ -1090,8 +1090,8 @@ namespace MyShadowQuit.Core
             // Cooperative Switches at the end of both paths
             CooperativeSwitch upperCoop = CreateCooperativeSwitch(new Vector2(6.5f, 3.3f));
             CooperativeSwitch lowerCoop = CreateCooperativeSwitch(new Vector2(6.5f, -1.7f));
-            upperCoop.Configure(lowerCoop, simultaneous: true);
-            lowerCoop.Configure(upperCoop, simultaneous: true);
+            upperCoop.Configure(lowerCoop, CooperativeMode.TimedActivation, timer: 5.0f, stayActivated: true);
+            lowerCoop.Configure(upperCoop, CooperativeMode.TimedActivation, timer: 5.0f, stayActivated: true);
 
             CreatePlatformRow(10, 13, 0.0f, true);
             AncientDoor door = CreateAncientDoor(new Vector2(10.5f, 1.0f), new List<PuzzleNode> { upperCoop });
@@ -1124,8 +1124,8 @@ namespace MyShadowQuit.Core
 
             CooperativeSwitch coopUpper = CreateCooperativeSwitch(new Vector2(19.0f, 1.8f));
             CooperativeSwitch coopLower = CreateCooperativeSwitch(new Vector2(19.0f, -0.7f));
-            coopUpper.Configure(coopLower, simultaneous: true);
-            coopLower.Configure(coopUpper, simultaneous: true);
+            coopUpper.Configure(coopLower, CooperativeMode.TimedActivation, timer: 6.0f, stayActivated: true);
+            coopLower.Configure(coopUpper, CooperativeMode.TimedActivation, timer: 6.0f, stayActivated: true);
 
             // Phase 5: Sacred Grove Arch (requires both Flame and Shadow united!)
             CreatePlatformRow(22, 27, 0.5f, true);
@@ -1188,13 +1188,13 @@ namespace MyShadowQuit.Core
             return lb;
         }
 
-        private CooperativeSwitch CreateCooperativeSwitch(Vector2 pos, CooperativeSwitch partner = null, bool simultaneous = true)
+        private CooperativeSwitch CreateCooperativeSwitch(Vector2 pos, CooperativeSwitch partner = null, CooperativeMode mode = CooperativeMode.BothPresent, float timer = 5.0f)
         {
             GameObject go = new GameObject("CooperativeSwitch");
             go.transform.SetParent(_levelRoot.transform, false);
             go.transform.position = pos;
             CooperativeSwitch cs = go.AddComponent<CooperativeSwitch>();
-            cs.Configure(partner, simultaneous);
+            cs.Configure(partner, mode, timer);
             return cs;
         }
 
