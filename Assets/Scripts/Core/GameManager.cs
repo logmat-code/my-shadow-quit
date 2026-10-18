@@ -349,7 +349,12 @@ namespace MyShadowQuit.Core
         public void ContinueToWorld2FromWorldComplete()
         {
             StopEndingSequenceIfNeeded();
-            SelectWorldAndStart(1, continueSavedProgress: true);
+            int nextWorldIdx = 1;
+            if (ActiveWorldId == "world_2")
+            {
+                nextWorldIdx = 2;
+            }
+            SelectWorldAndStart(nextWorldIdx, continueSavedProgress: true);
         }
 
         public void StartNewGameWithReset()
@@ -606,7 +611,11 @@ namespace MyShadowQuit.Core
             }
             else
             {
-                if (ActiveWorldId == "world_2")
+                if (ActiveWorldId == "world_3")
+                {
+                    BeginWorld3CompleteSequence();
+                }
+                else if (ActiveWorldId == "world_2")
                 {
                     BeginWorld2CompleteSequence();
                 }
@@ -975,6 +984,184 @@ namespace MyShadowQuit.Core
             yield return new WaitForSeconds(1.15f);
 
             CompleteWorld2SequenceImmediate();
+            _endingCoroutine = null;
+        }
+
+        /// <summary>
+        /// Triggers the World 3 Complete narrative sequence at the end of Level 10 of World 3 ("The Eternal Spire").
+        /// Clocktower resonance pulses, bronze gear halo awakens at the exit portal,
+        /// and the World 3 Complete screen opens.
+        /// </summary>
+        public void BeginWorld3CompleteSequence()
+        {
+            if (_isEndingSequenceActive) return;
+
+            _isEndingSequenceActive = true;
+            _isControllingShadow = false;
+
+            WorldProgressSave.MarkWorldCompleted(ActiveWorldId, _levelManager.TotalLevels);
+
+            if (RewardService.Instance != null)
+            {
+                int worldEarned = RewardService.Instance.EvaluateAndClaimWorldClearReward(ActiveWorldId, out string worldSummary);
+                if (worldEarned > 0 && _uiManager != null)
+                {
+                    _uiManager.ShowTemporaryRewardNotification(worldSummary);
+                }
+            }
+
+            if (_levelManager.Player != null) _levelManager.Player.SetControlActive(false);
+            if (_levelManager.Shadow != null) _levelManager.Shadow.SetControlActive(false);
+
+            LevelExitPortal exitPortal = FindFirstObjectByType<LevelExitPortal>();
+            if (_cameraController != null)
+            {
+                Transform focus = exitPortal != null
+                    ? exitPortal.transform
+                    : (_levelManager.Player != null ? _levelManager.Player.transform : null);
+                _cameraController.SetTarget(focus);
+                _cameraController.SetTargetZoom(3.35f, 0.95f);
+                _cameraController.TriggerShake(0.35f, 0.07f);
+            }
+
+            if (_audioManager != null)
+            {
+                _audioManager.PlaySFX("stone_door", 0.75f, 0.92f);
+            }
+
+            if (_levelManager.Torch != null && _levelManager.Player != null)
+            {
+                if (!_levelManager.Player.HasTorch)
+                {
+                    _levelManager.Player.ForceEquipTorch(_levelManager.Torch);
+                }
+                _levelManager.Torch.SetEndingGlow(1.50f, 1.40f);
+            }
+
+            if (_uiManager != null)
+            {
+                _uiManager.SetEndingQuoteText(UIManager.World3CompleteQuote);
+                _uiManager.UpdateHUDText(
+                    _levelManager.GetLevelTitle(_currentLevelIndex),
+                    UIManager.World3CompleteQuote,
+                    false
+                );
+            }
+
+            if (Application.isPlaying)
+            {
+                _endingCoroutine = StartCoroutine(PlayWorld3CompleteSequenceCoroutine(exitPortal));
+            }
+            else
+            {
+                CompleteWorld3SequenceImmediate();
+            }
+        }
+
+        public void CompleteWorld3SequenceImmediate()
+        {
+            if (_levelManager.Shadow != null)
+            {
+                _levelManager.Shadow.ReconnectToProtagonist();
+            }
+            if (_levelManager.Torch != null)
+            {
+                _levelManager.Torch.SetEndingGlow(1.35f, 1.25f);
+            }
+            if (_audioManager != null)
+            {
+                _audioManager.SetEndingMixDucking(0.72f, 0f);
+            }
+            if (_uiManager != null)
+            {
+                _uiManager.SetEndingQuoteText(UIManager.World3CompleteQuote);
+                _uiManager.SetEndingFade(0.45f, 2.5f);
+                _uiManager.ShowWorld3CompleteScreen();
+            }
+            _isInMainMenu = true;
+            _isEndingSequenceActive = false;
+        }
+
+        private IEnumerator PlayWorld3CompleteSequenceCoroutine(LevelExitPortal exitPortal)
+        {
+            PlayerController player = _levelManager.Player;
+            ShadowController shadow = _levelManager.Shadow;
+            TorchController torch = _levelManager.Torch;
+
+            Transform dawnHalo = exitPortal != null ? exitPortal.transform.Find("DawnThresholdLight") : null;
+            SpriteRenderer dawnSr = dawnHalo != null ? dawnHalo.GetComponent<SpriteRenderer>() : null;
+
+            Vector2 portalPos = exitPortal != null
+                ? (Vector2)exitPortal.transform.position
+                : (player != null ? (Vector2)player.transform.position : Vector2.zero);
+
+            float stepDuration = 1.3f;
+            float elapsed = 0f;
+            while (elapsed < stepDuration)
+            {
+                elapsed += Time.deltaTime;
+                float t = Mathf.Clamp01(elapsed / stepDuration);
+                float smoothT = Mathf.SmoothStep(0f, 1f, t);
+
+                if (player != null)
+                {
+                    Vector2 targetPlayerPos = new Vector2(portalPos.x + 0.15f, player.transform.position.y);
+                    player.transform.position = Vector2.MoveTowards(player.transform.position, targetPlayerPos, 2.2f * Time.deltaTime);
+                }
+                if (shadow != null)
+                {
+                    Vector2 targetShadowPos = new Vector2(portalPos.x - 0.32f, shadow.transform.position.y);
+                    shadow.StepEndingApproach(targetShadowPos, 2.6f);
+                }
+                if (torch != null)
+                {
+                    torch.SetEndingGlow(Mathf.Lerp(1.25f, 1.65f, smoothT), Mathf.Lerp(1.15f, 1.50f, smoothT));
+                }
+                if (dawnHalo != null)
+                {
+                    float scale = Mathf.Lerp(1.85f, 3.60f, smoothT);
+                    dawnHalo.localScale = new Vector3(scale, scale, 1f);
+                }
+                if (dawnSr != null)
+                {
+                    dawnSr.color = new Color(0.96f, 0.82f, 0.44f, Mathf.Lerp(0.32f, 0.82f, smoothT));
+                }
+                yield return null;
+            }
+
+            if (shadow != null)
+            {
+                shadow.ReconnectToProtagonist();
+            }
+
+            if (_uiManager != null)
+            {
+                _uiManager.SetEndingQuoteText(UIManager.World3CompleteQuote);
+                _uiManager.SetEndingFade(0.45f, 0.65f);
+            }
+
+            float fadeDuration = 1.8f;
+            elapsed = 0f;
+            while (elapsed < fadeDuration)
+            {
+                elapsed += Time.deltaTime;
+                float t = Mathf.Clamp01(elapsed / fadeDuration);
+                float smoothT = Mathf.SmoothStep(0f, 1f, t);
+
+                if (_audioManager != null)
+                {
+                    _audioManager.SetEndingMixDucking(Mathf.Lerp(1.0f, 0.72f, smoothT), Mathf.Lerp(0.85f, 0.0f, smoothT));
+                }
+                if (_uiManager != null)
+                {
+                    _uiManager.SetEndingQuoteAlpha(smoothT);
+                }
+                yield return null;
+            }
+
+            yield return new WaitForSeconds(1.15f);
+
+            CompleteWorld3SequenceImmediate();
             _endingCoroutine = null;
         }
 
