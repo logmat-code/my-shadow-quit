@@ -18,6 +18,79 @@ namespace MyShadowQuit.Core
     /// </summary>
     public static class GameInput
     {
+        // Virtual Mobile / Touch input state
+        private static float s_touchHorizontal = 0f;
+        private static bool s_touchJumpHeld = false;
+        private static bool s_touchJumpDownPending = false;
+        private static bool s_touchInteractDownPending = false;
+        private static bool s_touchSwitchDownPending = false;
+        private static bool s_touchRestartDownPending = false;
+        private static bool s_touchPauseDownPending = false;
+
+        public static float TouchHorizontal => s_touchHorizontal;
+        public static bool TouchJumpHeld => s_touchJumpHeld;
+
+        public static void SetTouchHorizontal(float value)
+        {
+            s_touchHorizontal = Mathf.Clamp(value, -1f, 1f);
+        }
+
+        public static void SetTouchJumpState(bool isHeld)
+        {
+            if (isHeld && !s_touchJumpHeld)
+            {
+                s_touchJumpDownPending = true;
+            }
+            s_touchJumpHeld = isHeld;
+        }
+
+        public static void TriggerTouchJump()
+        {
+            s_touchJumpDownPending = true;
+            s_touchJumpHeld = true;
+        }
+
+        public static void ReleaseTouchJump()
+        {
+            s_touchJumpHeld = false;
+        }
+
+        public static void TriggerTouchInteract()
+        {
+            s_touchInteractDownPending = true;
+        }
+
+        public static void TriggerTouchSwitchCharacter()
+        {
+            s_touchSwitchDownPending = true;
+        }
+
+        public static void TriggerTouchRestart()
+        {
+            s_touchRestartDownPending = true;
+        }
+
+        public static void TriggerTouchPause()
+        {
+            s_touchPauseDownPending = true;
+        }
+
+        public static void ClearFrameTriggers()
+        {
+            s_touchJumpDownPending = false;
+            s_touchInteractDownPending = false;
+            s_touchSwitchDownPending = false;
+            s_touchRestartDownPending = false;
+            s_touchPauseDownPending = false;
+        }
+
+        public static void ResetTouchInputs()
+        {
+            s_touchHorizontal = 0f;
+            s_touchJumpHeld = false;
+            ClearFrameTriggers();
+        }
+
         public static float GetHorizontal()
         {
             float val = 0f;
@@ -35,11 +108,15 @@ namespace MyShadowQuit.Core
                 if (Input.GetKey(KeyCode.D) || Input.GetKey(KeyCode.RightArrow)) val += 1f;
             }
             catch { }
-            return Mathf.Clamp(val, -1f, 1f);
+
+            if (Mathf.Abs(val) > 0.01f) return Mathf.Clamp(val, -1f, 1f);
+            return Mathf.Clamp(s_touchHorizontal, -1f, 1f);
         }
 
         public static bool GetJumpDown()
         {
+            if (s_touchJumpDownPending) return true;
+
 #if ENABLE_INPUT_SYSTEM
             if (Keyboard.current != null &&
                 (Keyboard.current.spaceKey.wasPressedThisFrame ||
@@ -58,6 +135,8 @@ namespace MyShadowQuit.Core
 
         public static bool GetJumpHeld()
         {
+            if (s_touchJumpHeld) return true;
+
 #if ENABLE_INPUT_SYSTEM
             if (Keyboard.current != null &&
                 (Keyboard.current.spaceKey.isPressed ||
@@ -76,6 +155,8 @@ namespace MyShadowQuit.Core
 
         public static bool GetInteractDown()
         {
+            if (s_touchInteractDownPending) return true;
+
 #if ENABLE_INPUT_SYSTEM
             if (Keyboard.current != null && Keyboard.current.eKey.wasPressedThisFrame)
             {
@@ -91,6 +172,8 @@ namespace MyShadowQuit.Core
 
         public static bool GetSwitchCharacterDown()
         {
+            if (s_touchSwitchDownPending) return true;
+
 #if ENABLE_INPUT_SYSTEM
             if (Keyboard.current != null && Keyboard.current.tabKey.wasPressedThisFrame)
             {
@@ -106,6 +189,8 @@ namespace MyShadowQuit.Core
 
         public static bool GetRestartDown()
         {
+            if (s_touchRestartDownPending) return true;
+
 #if ENABLE_INPUT_SYSTEM
             if (Keyboard.current != null && Keyboard.current.rKey.wasPressedThisFrame)
             {
@@ -121,6 +206,8 @@ namespace MyShadowQuit.Core
 
         public static bool GetPauseDown()
         {
+            if (s_touchPauseDownPending) return true;
+
 #if ENABLE_INPUT_SYSTEM
             if (Keyboard.current != null &&
                 (Keyboard.current.escapeKey.wasPressedThisFrame || Keyboard.current.pKey.wasPressedThisFrame))

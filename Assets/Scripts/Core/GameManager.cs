@@ -401,6 +401,7 @@ namespace MyShadowQuit.Core
             _isControllingShadow = false;
             _isPaused = false;
             Time.timeScale = 1f;
+            GameInput.ResetTouchInputs();
 
             if (!isRestart)
             {
@@ -518,6 +519,7 @@ namespace MyShadowQuit.Core
             if (_isInMainMenu || _isEndingSequenceActive || _isPaused) return;
             _isPaused = true;
             Time.timeScale = 0f;
+            GameInput.ResetTouchInputs();
             if (_levelManager.Player != null) _levelManager.Player.SetControlActive(false);
             if (_levelManager.Shadow != null) _levelManager.Shadow.SetControlActive(false);
             if (_audioManager != null) _audioManager.SetPauseDucking(true);
@@ -529,6 +531,7 @@ namespace MyShadowQuit.Core
             if (!_isPaused) return;
             _isPaused = false;
             Time.timeScale = 1f;
+            GameInput.ResetTouchInputs();
             ApplyActiveCharacterControl();
             if (_audioManager != null) _audioManager.SetPauseDucking(false);
             if (_uiManager != null) _uiManager.SetPauseMenuVisible(false);
