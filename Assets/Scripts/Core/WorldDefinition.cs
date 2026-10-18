@@ -245,8 +245,8 @@ namespace MyShadowQuit.Core
                 WallSpritePath = "World2/forest_wall",
                 PlatformLeftSpritePath = "World2/forest_platform_left",
                 PlatformRightSpritePath = "World2/forest_platform_right",
-                AmbientColor = new Color(0.04f, 0.12f, 0.09f, 1f),
-                SporeParticleColor = new Color(0.32f, 0.92f, 0.68f, 0.60f),
+                AmbientColor = new Color(0.015f, 0.028f, 0.035f, 1f),
+                SporeParticleColor = new Color(0.18f, 0.70f, 0.55f, 0.28f),
                 HasSporeParticles = true,
                 MusicTrackPath = "Music/forest_ambient_theme"
             };

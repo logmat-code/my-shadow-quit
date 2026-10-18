@@ -175,9 +175,14 @@ namespace MyShadowQuit.Core
             Sprite nearSp = AssetRegistry.GetSprite(profile.NearParallaxSpritePath, 16f) ?? AssetRegistry.GetSprite("Environment/parallax_near", 16f);
 
             bool isForest = profile.FarParallaxSpritePath.Contains("forest") || profile.FarParallaxSpritePath.Contains("World2");
-            Color farColor = isForest ? new Color(0.70f, 0.95f, 0.85f, 1f) : new Color(0.85f, 0.85f, 0.95f, 1f);
-            Color midColor = isForest ? new Color(0.80f, 1.0f, 0.90f, 0.92f) : new Color(0.9f, 0.85f, 1f, 0.92f);
-            Color nearColor = isForest ? new Color(0.90f, 1.0f, 0.95f, 0.65f) : new Color(1f, 1f, 1f, 0.65f);
+            Color farColor = isForest ? new Color(0.40f, 0.48f, 0.58f, 1f) : new Color(0.85f, 0.85f, 0.95f, 1f);
+            Color midColor = isForest ? new Color(0.35f, 0.45f, 0.42f, 0.88f) : new Color(0.9f, 0.85f, 1f, 0.92f);
+            Color nearColor = isForest ? new Color(0.30f, 0.40f, 0.38f, 0.65f) : new Color(1f, 1f, 1f, 0.65f);
+
+            if (_cam != null)
+            {
+                _cam.backgroundColor = isForest ? new Color(0.012f, 0.020f, 0.030f, 1f) : new Color(0.031f, 0.039f, 0.071f, 1f);
+            }
 
             for (int i = -1; i <= 3; i++)
             {

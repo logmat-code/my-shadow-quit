@@ -1254,15 +1254,15 @@ namespace MyShadowQuit.Core
             var main = ps.main;
             main.loop = true;
             main.duration = 5f;
-            main.startLifetime = 6f;
-            main.startSpeed = 0.45f;
-            main.startSize = 0.14f;
+            main.startLifetime = 7f;
+            main.startSpeed = 0.22f;
+            main.startSize = 0.08f;
             main.startColor = color;
-            main.maxParticles = 65;
+            main.maxParticles = 20;
             main.simulationSpace = ParticleSystemSimulationSpace.World;
 
             var emission = ps.emission;
-            emission.rateOverTime = 12f;
+            emission.rateOverTime = 3.5f;
 
             var shape = ps.shape;
             shape.shapeType = ParticleSystemShapeType.Box;
@@ -1270,8 +1270,8 @@ namespace MyShadowQuit.Core
 
             var vel = ps.velocityOverLifetime;
             vel.enabled = true;
-            vel.x = new ParticleSystem.MinMaxCurve(-0.25f, 0.25f);
-            vel.y = new ParticleSystem.MinMaxCurve(-0.15f, 0.35f);
+            vel.x = new ParticleSystem.MinMaxCurve(-0.15f, 0.15f);
+            vel.y = new ParticleSystem.MinMaxCurve(-0.08f, 0.18f);
 
             ParticleSystemRenderer psr = sporeObj.GetComponent<ParticleSystemRenderer>();
             if (psr != null)
