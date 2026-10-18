@@ -941,8 +941,7 @@ namespace MyShadowQuit.Core
             CreatePlatformRow(5, 12, -2, true);
             CreatePlatformRow(1, 4, 1.5f, true);
 
-            CreateProp("World2/forest_thorns", new Vector2(0.5f, -3.2f), 1);
-            CreateProp("World2/forest_thorns", new Vector2(3.5f, -3.2f), 1);
+            CreateForestHazard(new Vector2(1.5f, -3.2f), new Vector2(7.0f, 0.8f));
 
             CreateMovingPlatform(new[] { new Vector2(-0.5f, -2.0f), new Vector2(4.5f, -2.0f) }, speed: 2.4f, wait: 0.6f);
 
