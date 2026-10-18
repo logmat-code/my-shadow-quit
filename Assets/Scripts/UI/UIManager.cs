@@ -619,7 +619,7 @@ namespace MyShadowQuit.UI
 
             _homeContinueButton = CreateMenuButton(menuColumn.transform, "CONTINUE", new Vector2(0f, 215f), () =>
             {
-                if (!WorldProgressSave.HasSavedProgress("world_1")) return;
+                if (!WorldProgressSave.HasAnySavedProgress()) return;
                 TransitionToAction(() => OnContinueRequested?.Invoke());
             }, new Vector2(380f, 56f));
             _homeContinueBtnImage = _homeContinueButton.GetComponent<Image>();
@@ -3239,8 +3239,9 @@ namespace MyShadowQuit.UI
             RefreshHomeEquippedSkins();
             _mainMenuPanel.SetActive(true);
             _currentScreen = ActiveMenuScreen.Home;
-            _homeSelectedBtnIndex = WorldProgressSave.HasSavedProgress("world_1") ? 0 : 1;
+            _homeSelectedBtnIndex = WorldProgressSave.HasAnySavedProgress() ? 0 : 1;
             RefreshHomeButtonSelectionVisuals();
+            AudioManager.Instance?.PlayMenuMusic();
         }
 
         public void ShowWorldSelectScreen()
@@ -3251,6 +3252,7 @@ namespace MyShadowQuit.UI
             HideAllMenuPanels();
             _worldSelectPanel.SetActive(true);
             _currentScreen = ActiveMenuScreen.WorldSelect;
+            AudioManager.Instance?.PlayMenuMusic();
         }
 
         public void ShowLevelSelectScreen()
@@ -3260,6 +3262,7 @@ namespace MyShadowQuit.UI
             HideAllMenuPanels();
             _levelSelectPanel.SetActive(true);
             _currentScreen = ActiveMenuScreen.LevelSelect;
+            AudioManager.Instance?.PlayMenuMusic();
         }
 
         public void ShowWorld1CompleteScreen()
@@ -3288,6 +3291,7 @@ namespace MyShadowQuit.UI
             HideAllMenuPanels();
             _world2ComingSoonPanel.SetActive(true);
             _currentScreen = ActiveMenuScreen.World2ComingSoon;
+            AudioManager.Instance?.PlayMenuMusic();
         }
 
         public void ShowShopScreen()
@@ -3296,6 +3300,7 @@ namespace MyShadowQuit.UI
             HideAllMenuPanels();
             _shopPanel.SetActive(true);
             _currentScreen = ActiveMenuScreen.Shop;
+            AudioManager.Instance?.PlayMenuMusic();
 
             RefreshShopCoinBalance();
             SwitchShopCategory(_shopSelectedTab);

@@ -2,14 +2,20 @@ using UnityEngine;
 
 namespace MyShadowQuit.Core
 {
+    public enum AudioMusicState
+    {
+        None,
+        Menu,
+        Gameplay_World1,
+        Gameplay_World2,
+        Gameplay_World3,
+        Paused
+    }
+
     /// <summary>
     /// Manages original procedural dark ambient music, torch crackling loop, and gameplay sound effects.
-    /// Implements a dB-calibrated 4-bus mix architecture (MASTER, MUSIC, SFX, AMBIENCE/FIRE):
-    /// - Music: 0 dB (reference dominant layer)
-    /// - SFX: -8 dB
-    /// - Ambience: -12 dB
-    /// - Fire crackle: -18 dB relative to Music (soft, secondary texture that never masks music)
-    /// Prevents duplicate AudioSources and persists independent user Music/SFX preferences via PlayerPrefs.
+    /// Implements a state-based music architecture separating Menu from World Gameplay (Worlds 1, 2, 3),
+    /// with unscaled crossfading, uninterrupted menu navigation, and a dB-calibrated 4-bus mix architecture.
     /// </summary>
     public class AudioManager : MonoBehaviour
     {
@@ -21,10 +27,6 @@ namespace MyShadowQuit.Core
         private const string PrefAmbienceVol = "MSQ_AmbienceVolume";
 
         // Calibrated Reference Mix Bus Gains (dB -> Linear)
-        // Music: 0 dB -> 1.00f (scaled by headroom 0.72f so summed output never clips)
-        // SFX: -8 dB -> 10^(-8/20) = 0.3981f
-        // Ambience: -12 dB -> 10^(-12/20) = 0.2512f
-        // Fire Crackle: -18 dB relative to Music -> 10^(-18/20) = 0.1259f
         private const float HeadroomScale = 0.72f;
         public const float MusicBusDb = 0f;
         public const float SfxBusDb = -8f;
@@ -40,6 +42,12 @@ namespace MyShadowQuit.Core
         private float _sfxVolume = 0.85f;
         private float _ambienceVolume = 0.80f;
         private float _torchProximityFactor = 0.65f;
+
+        private AudioMusicState _currentMusicState = AudioMusicState.None;
+        private Coroutine _fadeCoroutine;
+        private float _musicFadeMultiplier = 1f;
+
+        public AudioMusicState CurrentMusicState => _currentMusicState;
 
         public float MasterVolume
         {
@@ -169,7 +177,7 @@ namespace MyShadowQuit.Core
 
         public void ApplyBusVolumes()
         {
-            float musicLinear = HeadroomScale * DbToLinear(MusicBusDb) * _musicVolume * _endingMusicScale * _pauseMusicScale;
+            float musicLinear = HeadroomScale * DbToLinear(MusicBusDb) * _musicVolume * _endingMusicScale * _pauseMusicScale * _musicFadeMultiplier;
             float sfxLinear = HeadroomScale * DbToLinear(SfxBusDb) * _sfxVolume * _endingSfxScale;
             // Fire crackle is -18 dB below Music reference, modulated by Ambience & SFX settings, torch proximity, and pause state
             float fireLinear = HeadroomScale * DbToLinear(FireRelativeToMusicDb) * _ambienceVolume * _sfxVolume * _torchProximityFactor * _endingSfxScale * _pauseSfxScale;
@@ -217,49 +225,171 @@ namespace MyShadowQuit.Core
 
         private void Start()
         {
-            StartAmbience();
+            // Default to menu music on initialization if started at MainMenu
+            if (_currentMusicState == AudioMusicState.None)
+            {
+                PlayMenuMusic(fadeDuration: 0.5f);
+            }
         }
 
-        public void StartAmbience(string musicTrackPath = null)
+        /// <summary>
+        /// Plays or maintains the dark fantasy Menu Theme.
+        /// Does NOT restart the track or recreate AudioSources when navigating between HOME, SHOP, WORLD SELECT, etc.
+        /// </summary>
+        public void PlayMenuMusic(float fadeDuration = 1.0f)
+        {
+            if (_currentMusicState == AudioMusicState.Menu && _musicSource != null && _musicSource.isPlaying && _musicSource.clip != null && _musicSource.clip.name == "menu_theme")
+            {
+                return;
+            }
+
+            TransitionToTrack("Music/menu_theme", AudioMusicState.Menu, fadeDuration, playFireCrackle: false);
+        }
+
+        /// <summary>
+        /// Smoothly transitions to the distinct gameplay ambient music for the specified world (0: World 1, 1: World 2, 2: World 3).
+        /// World 1: The Ruins of the Last Flame ("Music/dark_ambient_theme")
+        /// World 2: The Inverted Forest ("Music/forest_ambient_theme")
+        /// World 3: The Hollow Clocktower ("Music/clocktower_ambient_theme")
+        /// </summary>
+        public void PlayGameplayMusic(int worldIndex, float fadeDuration = 1.0f)
+        {
+            AudioMusicState targetState;
+            string trackPath;
+
+            switch (worldIndex)
+            {
+                case 1:
+                    targetState = AudioMusicState.Gameplay_World2;
+                    trackPath = "Music/forest_ambient_theme";
+                    break;
+                case 2:
+                    targetState = AudioMusicState.Gameplay_World3;
+                    trackPath = "Music/clocktower_ambient_theme";
+                    break;
+                default:
+                    targetState = AudioMusicState.Gameplay_World1;
+                    trackPath = "Music/dark_ambient_theme";
+                    break;
+            }
+
+            if (_currentMusicState == targetState && _musicSource != null && _musicSource.isPlaying)
+            {
+                return;
+            }
+
+            TransitionToTrack(trackPath, targetState, fadeDuration, playFireCrackle: true);
+        }
+
+        private void TransitionToTrack(string trackPath, AudioMusicState newState, float fadeDuration, bool playFireCrackle)
         {
             if (_musicSource == null || _crackleSource == null)
             {
                 SetupAudioSourcesSingleLifecycle();
             }
 
-            if (string.IsNullOrEmpty(musicTrackPath))
-            {
-                musicTrackPath = "Music/dark_ambient_theme";
-            }
+            _currentMusicState = newState;
 
-            AudioClip music = AssetRegistry.GetAudio(musicTrackPath) ?? AssetRegistry.GetAudio("Music/dark_ambient_theme");
-            if (music != null)
+            if (!playFireCrackle && _crackleSource != null && _crackleSource.isPlaying)
             {
-                if (_musicSource.clip != music)
+                _crackleSource.Stop();
+            }
+            else if (playFireCrackle && _crackleSource != null)
+            {
+                AudioClip crackle = AssetRegistry.GetAudio("SFX/fire_crackle_loop");
+                if (crackle != null)
                 {
-                    _musicSource.clip = music;
-                    _musicSource.Play();
-                }
-                else if (!_musicSource.isPlaying)
-                {
-                    _musicSource.Play();
+                    if (_crackleSource.clip != crackle) _crackleSource.clip = crackle;
+                    if (!_crackleSource.isPlaying) _crackleSource.Play();
                 }
             }
 
-            AudioClip crackle = AssetRegistry.GetAudio("SFX/fire_crackle_loop");
-            if (crackle != null)
+            AudioClip nextClip = AssetRegistry.GetAudio(trackPath) ?? AssetRegistry.GetAudio("Music/dark_ambient_theme");
+
+            if (!Application.isPlaying)
             {
-                if (_crackleSource.clip != crackle)
+                _musicSource.clip = nextClip;
+                _musicFadeMultiplier = 1f;
+                ApplyBusVolumes();
+                return;
+            }
+
+            if (_fadeCoroutine != null)
+            {
+                StopCoroutine(_fadeCoroutine);
+            }
+
+            _fadeCoroutine = StartCoroutine(FadeToTrackCoroutine(nextClip, fadeDuration));
+        }
+
+        private System.Collections.IEnumerator FadeToTrackCoroutine(AudioClip targetClip, float duration)
+        {
+            float halfDuration = Mathf.Max(0.12f, duration * 0.5f);
+
+            // Phase 1: Fade out current track if active
+            if (_musicSource.isPlaying && _musicSource.clip != null)
+            {
+                float elapsed = 0f;
+                float startMult = _musicFadeMultiplier;
+                while (elapsed < halfDuration)
                 {
-                    _crackleSource.clip = crackle;
-                }
-                if (!_crackleSource.isPlaying)
-                {
-                    _crackleSource.Play();
+                    elapsed += Time.unscaledDeltaTime;
+                    _musicFadeMultiplier = Mathf.Lerp(startMult, 0f, elapsed / halfDuration);
+                    ApplyBusVolumes();
+                    yield return null;
                 }
             }
 
+            _musicFadeMultiplier = 0f;
             ApplyBusVolumes();
+
+            // Phase 2: Switch clip and begin playing
+            _musicSource.clip = targetClip;
+            if (targetClip != null)
+            {
+                _musicSource.Play();
+            }
+            else
+            {
+                _musicSource.Stop();
+            }
+
+            // Phase 3: Fade in target track
+            if (targetClip != null)
+            {
+                float elapsed = 0f;
+                while (elapsed < halfDuration)
+                {
+                    elapsed += Time.unscaledDeltaTime;
+                    _musicFadeMultiplier = Mathf.Lerp(0f, 1f, elapsed / halfDuration);
+                    ApplyBusVolumes();
+                    yield return null;
+                }
+            }
+
+            _musicFadeMultiplier = 1f;
+            ApplyBusVolumes();
+            _fadeCoroutine = null;
+        }
+
+        public void StartAmbience(string musicTrackPath = null)
+        {
+            if (string.IsNullOrEmpty(musicTrackPath) || musicTrackPath == "Music/menu_theme")
+            {
+                PlayMenuMusic(0.8f);
+            }
+            else if (musicTrackPath.Contains("forest"))
+            {
+                PlayGameplayMusic(1, 0.8f);
+            }
+            else if (musicTrackPath.Contains("clocktower"))
+            {
+                PlayGameplayMusic(2, 0.8f);
+            }
+            else
+            {
+                PlayGameplayMusic(0, 0.8f);
+            }
         }
 
         public void SetTorchCrackleIntensity(float normalizedIntensity)

@@ -253,7 +253,11 @@ namespace MyShadowQuit.Core
             _isWorld1Completed = false;
             _isGameCompleted = false;
             Time.timeScale = 1f;
-            if (_audioManager != null) _audioManager.SetPauseDucking(false);
+            if (_audioManager != null)
+            {
+                _audioManager.SetPauseDucking(false);
+                _audioManager.PlayMenuMusic();
+            }
             if (_uiManager != null) _uiManager.SetPauseMenuVisible(false);
             LoadLevel(0);
             if (_levelManager.Player != null) _levelManager.Player.SetControlActive(false);
@@ -267,7 +271,11 @@ namespace MyShadowQuit.Core
             _isInMainMenu = true;
             _isPaused = false;
             Time.timeScale = 1f;
-            if (_audioManager != null) _audioManager.SetPauseDucking(false);
+            if (_audioManager != null)
+            {
+                _audioManager.SetPauseDucking(false);
+                _audioManager.PlayMenuMusic();
+            }
             if (_uiManager != null) _uiManager.SetPauseMenuVisible(false);
             if (_levelManager.Player != null) _levelManager.Player.SetControlActive(false);
             if (_levelManager.Shadow != null) _levelManager.Shadow.SetControlActive(false);
@@ -283,7 +291,11 @@ namespace MyShadowQuit.Core
             _isInMainMenu = true;
             _isPaused = false;
             Time.timeScale = 1f;
-            if (_audioManager != null) _audioManager.SetPauseDucking(false);
+            if (_audioManager != null)
+            {
+                _audioManager.SetPauseDucking(false);
+                _audioManager.PlayMenuMusic();
+            }
             if (_uiManager != null) _uiManager.SetPauseMenuVisible(false);
             if (_levelManager.Player != null) _levelManager.Player.SetControlActive(false);
             if (_levelManager.Shadow != null) _levelManager.Shadow.SetControlActive(false);
@@ -299,6 +311,7 @@ namespace MyShadowQuit.Core
             _isInMainMenu = true;
             _isPaused = false;
             Time.timeScale = 1f;
+            if (_audioManager != null) _audioManager.PlayMenuMusic();
             if (_levelManager.Player != null) _levelManager.Player.SetControlActive(false);
             if (_levelManager.Shadow != null) _levelManager.Shadow.SetControlActive(false);
             if (_uiManager != null)
@@ -313,7 +326,11 @@ namespace MyShadowQuit.Core
             _isInMainMenu = true;
             _isPaused = false;
             Time.timeScale = 1f;
-            if (_audioManager != null) _audioManager.SetPauseDucking(false);
+            if (_audioManager != null)
+            {
+                _audioManager.SetPauseDucking(false);
+                _audioManager.PlayMenuMusic();
+            }
             if (_uiManager != null) _uiManager.SetPauseMenuVisible(false);
             if (_levelManager.Player != null) _levelManager.Player.SetControlActive(false);
             if (_levelManager.Shadow != null) _levelManager.Shadow.SetControlActive(false);
@@ -440,9 +457,15 @@ namespace MyShadowQuit.Core
 
             if (_audioManager != null)
             {
-                WorldEnvironmentProfile env = _levelManager != null ? _levelManager.GetActiveEnvironmentProfile() : null;
-                string track = (_isInMainMenu) ? "Music/dark_ambient_theme" : (env?.MusicTrackPath ?? "Music/dark_ambient_theme");
-                _audioManager.StartAmbience(track);
+                if (_isInMainMenu)
+                {
+                    _audioManager.PlayMenuMusic();
+                }
+                else
+                {
+                    int wIdx = (_levelManager != null && _levelManager.ActiveWorld != null) ? _levelManager.ActiveWorld.WorldIndex : 0;
+                    _audioManager.PlayGameplayMusic(wIdx);
+                }
             }
 
             if (!_isInMainMenu && _uiManager != null)
