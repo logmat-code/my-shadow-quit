@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
 using UnityEditor;
+using UnityEditor.Build;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -1436,7 +1437,7 @@ namespace MyShadowQuit.EditorTools
                 // 13. Verify all 20 Levels Build Cleanly (Levels 1 to 20)
                 for (int lvlIdx = 0; lvlIdx < 20; lvlIdx++)
                 {
-                    lm.BuildLevel(lvlIdx, cam);
+                    lm.BuildLevel(lvlIdx, null);
                     if (lm.Player == null || lm.Shadow == null || lm.Torch == null)
                     {
                         throw new Exception($"[Verification Failed] Level {lvlIdx + 1} did not spawn core entities properly!");

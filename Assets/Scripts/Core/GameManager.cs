@@ -334,7 +334,7 @@ namespace MyShadowQuit.Core
         public void StartLevelFromMap(int levelIndex)
         {
             int worldIdx = _levelManager != null && _levelManager.ActiveWorld != null
-                ? (_levelManager.ActiveWorld.WorldNumber - 1)
+                ? _levelManager.ActiveWorld.WorldIndex
                 : 0;
             StartLevelFromMap(worldIdx, levelIndex);
         }

@@ -21,6 +21,8 @@ namespace MyShadowQuit.Entities
     {
         public static event Action<TorchController, TorchState> OnTorchStateChanged;
 
+        public static TorchController Instance { get; private set; }
+
         [Header("Torch Settings")]
         [SerializeField] private float lightRadius = 4.6f;
         [SerializeField] private float pickupRadius = 1.35f;
@@ -47,6 +49,8 @@ namespace MyShadowQuit.Entities
 
         private void Awake()
         {
+            Instance = this;
+
             _torchRenderer = GetComponent<SpriteRenderer>();
             if (_torchRenderer == null)
             {
@@ -282,6 +286,14 @@ namespace MyShadowQuit.Entities
         public bool IsPointIlluminated(Vector2 worldPoint)
         {
             return Vector2.Distance(transform.position, worldPoint) <= lightRadius;
+        }
+
+        private void OnDestroy()
+        {
+            if (Instance == this)
+            {
+                Instance = null;
+            }
         }
     }
 }

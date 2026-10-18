@@ -93,13 +93,15 @@ namespace MyShadowQuit.Puzzle
         {
             TorchController torch = TorchController.Instance != null
                 ? TorchController.Instance
-                : FindFirstObjectByType<TorchController>();
+                : (GameManager.Instance != null && GameManager.Instance.Levels != null
+                    ? GameManager.Instance.Levels.Torch
+                    : FindAnyObjectByType<TorchController>());
 
             if (torch == null) return false;
 
             // Distance check to Torch
             float dist = Vector2.Distance(transform.position, torch.transform.position);
-            return dist <= lightDetectionRadius;
+            return dist <= lightDetectionRadius || torch.IsPointIlluminated(transform.position);
         }
 
         public void SetBloomedState(bool bloomed)

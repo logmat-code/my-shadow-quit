@@ -52,6 +52,7 @@ namespace MyShadowQuit.Core
         public List<LevelEntry> levels = new List<LevelEntry>();
 
         public string WorldId => worldId;
+        public int WorldNumber => worldNumber;
         public int WorldIndex => Mathf.Max(0, worldNumber - 1);
         public string WorldTitle => worldName;
         public string WorldSubtitle => worldSubtitle;
