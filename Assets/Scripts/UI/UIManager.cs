@@ -83,8 +83,15 @@ namespace MyShadowQuit.UI
         private Text _activeControlText;
         private Text _musicVolumeText;
         private Text _sfxVolumeText;
+        private Text _mobileSizeText;
+        private Text _mobileOpacityText;
+        private Text _mobilePositionText;
+        private Text _mobileToggleText;
+        private MobileControlsUI _mobileControlsUI;
         private Text _endingQuoteText;
         private Image _fadeOverlay;
+
+        public MobileControlsUI MobileControls => _mobileControlsUI;
 
         // Home diorama & buttons
         private RectTransform _homeBgRect;
@@ -518,6 +525,9 @@ namespace MyShadowQuit.UI
             }
             _rewardToastText = CreateText(_rewardToastBanner.transform, "RewardToastText", "+100 SOUL COINS", 22, new Vector2(20f, 0f), new Vector2(460f, 50f), new Color(1f, 0.86f, 0.35f, 1f), TextAnchor.MiddleCenter);
             _rewardToastBanner.SetActive(false);
+
+            // Multitouch Mobile Controls UI
+            _mobileControlsUI = MobileControlsUI.Create(_hudPanel.transform);
         }
 
         // ====================================================================
@@ -2043,15 +2053,16 @@ namespace MyShadowQuit.UI
 
         private void BuildSettingsMenu(Transform parent)
         {
-            _settingsPanel = CreateImagePanel(parent, "SettingsPanel", Vector2.zero, new Vector2(780f, 580f), _modalFrameSprite);
-            CreateStyledTitleText(_settingsPanel.transform, "SettingsHeader", "AUDIO & CONTROLS", 38, new Vector2(0f, 210f), new Vector2(620f, 52f), new Color(1f, 0.84f, 0.35f, 1f));
-            CreateSpriteElement(_settingsPanel.transform, "SettingsDivider", _stoneDividerSprite, new Vector2(0f, 165f), new Vector2(460f, 24f));
+            _settingsPanel = CreateImagePanel(parent, "SettingsPanel", Vector2.zero, new Vector2(860f, 660f), _modalFrameSprite);
+            CreateStyledTitleText(_settingsPanel.transform, "SettingsHeader", "AUDIO & CONTROLS", 36, new Vector2(0f, 265f), new Vector2(620f, 48f), new Color(1f, 0.84f, 0.35f, 1f));
+            CreateSpriteElement(_settingsPanel.transform, "SettingsDivider", _stoneDividerSprite, new Vector2(0f, 225f), new Vector2(520f, 22f));
 
             float initMusic = AudioManager.Instance != null ? AudioManager.Instance.MusicVolume : 1.0f;
             float initSfx = AudioManager.Instance != null ? AudioManager.Instance.SfxVolume : 0.85f;
 
-            _musicVolumeText = CreateText(_settingsPanel.transform, "MusicVolumeText", $"MUSIC VOLUME: {Mathf.RoundToInt(initMusic * 100f)}%", 24, new Vector2(-150f, 105f), new Vector2(360f, 44f), new Color(1f, 0.90f, 0.55f, 1f), TextAnchor.MiddleLeft);
-            CreateMenuButton(_settingsPanel.transform, "MUSIC + / -", new Vector2(175f, 105f), () =>
+            // Audio Controls
+            _musicVolumeText = CreateText(_settingsPanel.transform, "MusicVolumeText", $"MUSIC VOLUME: {Mathf.RoundToInt(initMusic * 100f)}%", 22, new Vector2(-160f, 175f), new Vector2(340f, 42f), new Color(1f, 0.90f, 0.55f, 1f), TextAnchor.MiddleLeft);
+            CreateMenuButton(_settingsPanel.transform, "MUSIC + / -", new Vector2(175f, 175f), () =>
             {
                 if (AudioManager.Instance != null)
                 {
@@ -2061,10 +2072,10 @@ namespace MyShadowQuit.UI
                     RefreshAudioSettingsLabels();
                     AudioManager.Instance.PlaySFX("switch_activate", 0.65f, 1.05f);
                 }
-            }, new Vector2(260f, 54f));
+            }, new Vector2(250f, 46f));
 
-            _sfxVolumeText = CreateText(_settingsPanel.transform, "SfxVolumeText", $"SFX VOLUME: {Mathf.RoundToInt(initSfx * 100f)}%", 24, new Vector2(-150f, 25f), new Vector2(360f, 44f), new Color(0.85f, 0.80f, 1f, 1f), TextAnchor.MiddleLeft);
-            CreateMenuButton(_settingsPanel.transform, "SFX + / -", new Vector2(175f, 25f), () =>
+            _sfxVolumeText = CreateText(_settingsPanel.transform, "SfxVolumeText", $"SFX VOLUME: {Mathf.RoundToInt(initSfx * 100f)}%", 22, new Vector2(-160f, 120f), new Vector2(340f, 42f), new Color(0.85f, 0.80f, 1f, 1f), TextAnchor.MiddleLeft);
+            CreateMenuButton(_settingsPanel.transform, "SFX + / -", new Vector2(175f, 120f), () =>
             {
                 if (AudioManager.Instance != null)
                 {
@@ -2074,36 +2085,120 @@ namespace MyShadowQuit.UI
                     RefreshAudioSettingsLabels();
                     AudioManager.Instance.PlaySFX("switch_activate", 0.75f, 1.0f);
                 }
-            }, new Vector2(260f, 54f));
+            }, new Vector2(250f, 46f));
+
+            // Mobile Controls Section Divider
+            CreateSpriteElement(_settingsPanel.transform, "SettingsMobileDivider", _stoneDividerSprite, new Vector2(0f, 65f), new Vector2(460f, 18f));
+            CreateText(_settingsPanel.transform, "MobileSectionHeader", "MOBILE TOUCH CONTROLS", 20, new Vector2(0f, 85f), new Vector2(400f, 32f), new Color(0.92f, 0.78f, 1f, 1f), TextAnchor.MiddleCenter);
+
+            // Row 1: Size & Opacity
+            _mobileSizeText = CreateText(_settingsPanel.transform, "MobileSizeText", "SIZE: 100%", 21, new Vector2(-160f, 15f), new Vector2(340f, 40f), new Color(1f, 0.92f, 0.65f, 1f), TextAnchor.MiddleLeft);
+            CreateMenuButton(_settingsPanel.transform, "CYCLE SIZE", new Vector2(175f, 15f), () =>
+            {
+                if (_mobileControlsUI != null) _mobileControlsUI.CycleSize();
+                else
+                {
+                    float cur = PlayerPrefs.GetFloat(MobileControlsUI.PrefKeySize, 1.0f);
+                    float next = (cur < 0.9f) ? 1.0f : ((cur < 1.1f) ? 1.2f : 0.8f);
+                    PlayerPrefs.SetFloat(MobileControlsUI.PrefKeySize, next);
+                    PlayerPrefs.Save();
+                }
+                RefreshMobileSettingsLabels();
+                if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX("switch_activate", 0.65f, 1.1f);
+            }, new Vector2(250f, 44f));
+
+            _mobileOpacityText = CreateText(_settingsPanel.transform, "MobileOpacityText", "OPACITY: 75%", 21, new Vector2(-160f, -38f), new Vector2(340f, 40f), new Color(1f, 0.92f, 0.65f, 1f), TextAnchor.MiddleLeft);
+            CreateMenuButton(_settingsPanel.transform, "CYCLE OPACITY", new Vector2(175f, -38f), () =>
+            {
+                if (_mobileControlsUI != null) _mobileControlsUI.CycleOpacity();
+                else
+                {
+                    float cur = PlayerPrefs.GetFloat(MobileControlsUI.PrefKeyOpacity, 0.75f);
+                    float next = (cur < 0.6f) ? 0.75f : ((cur < 0.9f) ? 1.0f : 0.5f);
+                    PlayerPrefs.SetFloat(MobileControlsUI.PrefKeyOpacity, next);
+                    PlayerPrefs.Save();
+                }
+                RefreshMobileSettingsLabels();
+                if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX("switch_activate", 0.65f, 1.1f);
+            }, new Vector2(250f, 44f));
+
+            // Row 2: Margins / Notches & Touch UI Mode
+            _mobilePositionText = CreateText(_settingsPanel.transform, "MobilePositionText", "MARGINS: DEFAULT", 21, new Vector2(-160f, -90f), new Vector2(340f, 40f), new Color(0.85f, 0.88f, 1f, 1f), TextAnchor.MiddleLeft);
+            CreateMenuButton(_settingsPanel.transform, "CYCLE MARGINS", new Vector2(175f, -90f), () =>
+            {
+                if (_mobileControlsUI != null) _mobileControlsUI.CyclePosition();
+                else
+                {
+                    int cur = PlayerPrefs.GetInt(MobileControlsUI.PrefKeyPosition, 0);
+                    PlayerPrefs.SetInt(MobileControlsUI.PrefKeyPosition, (cur == 0) ? 1 : 0);
+                    PlayerPrefs.Save();
+                }
+                RefreshMobileSettingsLabels();
+                if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX("switch_activate", 0.65f, 1.1f);
+            }, new Vector2(250f, 44f));
+
+            _mobileToggleText = CreateText(_settingsPanel.transform, "MobileToggleText", "TOUCH UI: AUTO", 21, new Vector2(-160f, -142f), new Vector2(340f, 40f), new Color(0.85f, 0.88f, 1f, 1f), TextAnchor.MiddleLeft);
+            CreateMenuButton(_settingsPanel.transform, "TOGGLE TOUCH", new Vector2(175f, -142f), () =>
+            {
+                int cur = PlayerPrefs.GetInt(MobileControlsUI.PrefKeyEnabled, 0);
+                int next = (cur == 0) ? 1 : ((cur == 1) ? -1 : 0);
+                PlayerPrefs.SetInt(MobileControlsUI.PrefKeyEnabled, next);
+                PlayerPrefs.Save();
+                _mobileControlsUI?.UpdateVisibility();
+                RefreshMobileSettingsLabels();
+                if (AudioManager.Instance != null) AudioManager.Instance.PlaySFX("switch_activate", 0.65f, 1.1f);
+            }, new Vector2(250f, 44f));
 
             CreateText(
                 _settingsPanel.transform,
                 "ControlsGuide",
-                "A / D : Move     SPACE : Jump (Shadow Double Jump)     E : Torch / Activate\nTAB : Switch Protagonist & Shadow     R : Restart Level     ESC : Pause / Back",
-                20,
-                new Vector2(0f, -75f),
-                new Vector2(680f, 84f),
-                new Color(0.82f, 0.86f, 0.96f, 1f),
+                "KEYBOARD: A/D (Move)  SPACE (Jump/Double Jump)  E (Torch/Action)  TAB (Switch)  ESC (Pause)",
+                18,
+                new Vector2(0f, -195f),
+                new Vector2(760f, 40f),
+                new Color(0.75f, 0.82f, 0.95f, 0.85f),
                 TextAnchor.MiddleCenter
             );
 
-            CreateMenuButton(_settingsPanel.transform, "RETURN", new Vector2(0f, -195f), () =>
+            CreateMenuButton(_settingsPanel.transform, "RETURN", new Vector2(0f, -255f), () =>
             {
                 CloseSubPanelAndReturn();
-            });
+            }, new Vector2(240f, 48f));
             _settingsPanel.SetActive(false);
         }
 
         public void RefreshAudioSettingsLabels()
         {
-            if (AudioManager.Instance == null) return;
-            if (_musicVolumeText != null)
+            if (AudioManager.Instance != null)
             {
-                _musicVolumeText.text = $"MUSIC VOLUME: {Mathf.RoundToInt(AudioManager.Instance.MusicVolume * 100f)}%";
+                if (_musicVolumeText != null)
+                {
+                    _musicVolumeText.text = $"MUSIC VOLUME: {Mathf.RoundToInt(AudioManager.Instance.MusicVolume * 100f)}%";
+                }
+                if (_sfxVolumeText != null)
+                {
+                    _sfxVolumeText.text = $"SFX VOLUME: {Mathf.RoundToInt(AudioManager.Instance.SfxVolume * 100f)}%";
+                }
             }
-            if (_sfxVolumeText != null)
+            RefreshMobileSettingsLabels();
+        }
+
+        public void RefreshMobileSettingsLabels()
+        {
+            float size = PlayerPrefs.GetFloat(MobileControlsUI.PrefKeySize, 1.0f);
+            float opacity = PlayerPrefs.GetFloat(MobileControlsUI.PrefKeyOpacity, 0.75f);
+            int pos = PlayerPrefs.GetInt(MobileControlsUI.PrefKeyPosition, 0);
+            int enabledPref = PlayerPrefs.GetInt(MobileControlsUI.PrefKeyEnabled, 0);
+
+            if (_mobileSizeText != null) _mobileSizeText.text = $"SIZE: {Mathf.RoundToInt(size * 100f)}%";
+            if (_mobileOpacityText != null) _mobileOpacityText.text = $"OPACITY: {Mathf.RoundToInt(opacity * 100f)}%";
+            if (_mobilePositionText != null) _mobilePositionText.text = (pos == 1) ? "MARGINS: WIDE" : "MARGINS: DEFAULT";
+            if (_mobileToggleText != null)
             {
-                _sfxVolumeText.text = $"SFX VOLUME: {Mathf.RoundToInt(AudioManager.Instance.SfxVolume * 100f)}%";
+                string modeStr = "AUTO";
+                if (enabledPref == 1) modeStr = "ALWAYS ON";
+                else if (enabledPref == -1) modeStr = "OFF";
+                _mobileToggleText.text = $"TOUCH UI: {modeStr}";
             }
         }
 
@@ -2805,6 +2900,12 @@ namespace MyShadowQuit.UI
             if (_victoryPanel != null) _victoryPanel.SetActive(false);
             if (_hudPanel != null) _hudPanel.SetActive(false);
             if (_shopPanel != null) _shopPanel.SetActive(false);
+
+            if (_mobileControlsUI != null)
+            {
+                _mobileControlsUI.SetGameplayActive(false);
+                _mobileControlsUI.ReleaseAll();
+            }
         }
 
         public void ShowMainMenu()
@@ -2906,6 +3007,10 @@ namespace MyShadowQuit.UI
             _currentScreen = ActiveMenuScreen.None;
 
             UpdateHUDText(levelTitle, hint, isControllingShadow);
+            if (_mobileControlsUI != null)
+            {
+                _mobileControlsUI.SetGameplayActive(true);
+            }
         }
 
         public void UpdateHUDText(string levelTitle, string hint, bool isControllingShadow)
@@ -2915,8 +3020,8 @@ namespace MyShadowQuit.UI
             if (_activeControlText != null)
             {
                 _activeControlText.text = isControllingShadow
-                    ? "ACTIVE: SHADOW [TAB to switch]"
-                    : "ACTIVE: PROTAGONIST [TAB to switch]";
+                    ? "ACTIVE: SHADOW [TAB / SWITCH]"
+                    : "ACTIVE: PROTAGONIST [TAB / SWITCH]";
                 _activeControlText.color = isControllingShadow
                     ? new Color(0.76f, 0.56f, 1f, 1f)
                     : new Color(1f, 0.82f, 0.38f, 1f);
@@ -2935,12 +3040,21 @@ namespace MyShadowQuit.UI
                 {
                     _currentScreen = ActiveMenuScreen.None;
                 }
+                if (_hudPanel != null && _hudPanel.activeSelf && _mobileControlsUI != null)
+                {
+                    _mobileControlsUI.SetGameplayActive(true);
+                }
             }
             else
             {
                 _currentScreen = ActiveMenuScreen.Pause;
                 _pauseSelectedBtnIndex = 0;
                 RefreshPauseButtonSelectionVisuals();
+                if (_mobileControlsUI != null)
+                {
+                    _mobileControlsUI.SetGameplayActive(false);
+                    _mobileControlsUI.ReleaseAll();
+                }
             }
         }
 
