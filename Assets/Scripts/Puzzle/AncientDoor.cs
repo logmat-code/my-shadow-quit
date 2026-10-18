@@ -215,5 +215,8 @@ namespace MyShadowQuit.Puzzle
                 AudioManager.Instance.PlaySFX("stone_door", 0.9f, _isOpen ? 1.0f : 0.85f);
             }
         }
+
+        public void Open() => SetOpen(true);
+        public void Close() => SetOpen(false);
     }
 }

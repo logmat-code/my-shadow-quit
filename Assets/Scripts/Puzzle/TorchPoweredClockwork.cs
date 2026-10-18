@@ -142,5 +142,13 @@ namespace MyShadowQuit.Puzzle
                 if (go != null) go.SetActive(active);
             }
         }
+
+        protected override void OnVisualStateUpdated(bool active)
+        {
+            if (_sr != null)
+            {
+                _sr.sprite = active ? _spriteLit : _spriteOff;
+            }
+        }
     }
 }
