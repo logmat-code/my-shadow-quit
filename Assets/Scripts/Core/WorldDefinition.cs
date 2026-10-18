@@ -77,7 +77,9 @@ namespace MyShadowQuit.Core
         public bool IsUnlocked => unlockedByDefault ||
             (worldNumber == 2 && WorldProgressSave.IsWorldCompleted("world_1")) ||
             (worldNumber == 3 && WorldProgressSave.IsWorldCompleted("world_2"));
+        public bool IsImplemented => isImplemented;
         public int LevelCount => levels != null ? levels.Count : 0;
+        public List<LevelEntry> Levels => levels;
         public WorldEnvironmentProfile EnvironmentProfile => environmentProfile ?? (environmentProfile = new WorldEnvironmentProfile());
 
         public void Configure(
