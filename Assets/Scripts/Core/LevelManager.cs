@@ -1099,34 +1099,55 @@ namespace MyShadowQuit.Core
             SpawnCharactersAndTorch(new Vector2(-6.0f, -1.0f), new Vector2(-7.0f, -1.0f), new Vector2(-6.0f, -1.0f), true);
         }
 
-        // Level 19: Two Paths, One Flame (Parallel paths + Cooperative Switch)
+        // Level 19: Two Paths, One Flame (Parallel paths + Moving Platform + Cooperative Switch)
         private void BuildLevel19_TwoPathsOneFlame()
         {
-            // Upper path
-            CreatePlatformRow(-8, 9, 2.5f, true);
-            // Lower path
-            CreatePlatformRow(-8, 9, -2.5f, true);
+            // === UPPER PATH (The Flame's Route) ===
+            // Upper Spawn ledge
+            CreatePlatformRow(-8, -4, 2.0f, true);
+            // Light Root blooming bridge over chasm
+            CreateLightRoot(new Vector2(-2.0f, 2.0f), radius: 4.2f);
+            // Central Upper Platform
+            CreatePlatformRow(0, 3, 2.0f, true);
+            // Upper Switch Platform
+            CreatePlatformRow(5, 8, 2.0f, true);
+            // Upper Cooperative Switch
+            CooperativeSwitch upperCoop = CreateCooperativeSwitch(new Vector2(7.0f, 2.8f));
 
-            // Dividing barrier
-            CreateWallColumn(0, -2, 2);
+            // === LOWER PATH (The Shadow's Route) ===
+            // Lower Spawn ledge
+            CreatePlatformRow(-8, -4, -1.5f, true);
+            // Small thorn hazard under first shadow jump
+            CreateForestHazard(new Vector2(-2.5f, -3.2f), new Vector2(2.5f, 0.8f));
+            // Shadow Vine lattice permeable only by Shadow
+            CreateShadowVine(new Vector2(-2.5f, -0.5f));
+            // Mid Shadow stepping platform
+            CreatePlatformRow(-1, 1, -1.5f, true);
+            // Thorn pit across lower chasm
+            CreateForestHazard(new Vector2(3.5f, -3.2f), new Vector2(4.5f, 0.8f));
+            // Kinematic Moving Platform crossing the thorn pit
+            CreateMovingPlatform(new[] { new Vector2(1.8f, -1.5f), new Vector2(5.2f, -1.5f) }, speed: 2.0f, wait: 0.6f);
+            // Lower Switch Platform
+            CreatePlatformRow(6, 8, -1.5f, true);
+            // Lower Cooperative Switch
+            CooperativeSwitch lowerCoop = CreateCooperativeSwitch(new Vector2(7.0f, -0.7f));
 
-            // Lower path has shadow vines
-            CreateShadowVine(new Vector2(-3.0f, -1.5f));
+            // Configure Dual Cooperative Switches with generous 6.0s timed activation
+            upperCoop.Configure(lowerCoop, CooperativeMode.TimedActivation, timer: 6.0f, stayActivated: true);
+            lowerCoop.Configure(upperCoop, CooperativeMode.TimedActivation, timer: 6.0f, stayActivated: true);
 
-            // Upper path has light root
-            CreateLightRoot(new Vector2(3.0f, 2.5f), radius: 4.0f);
+            // === CONVERGENCE & EXIT SANCTUM ===
+            // Intermediate ascending step for lower path to join sanctum
+            CreatePlatformRow(9, 9, -0.6f, true);
+            // Sanctum Platform
+            CreatePlatformRow(10, 14, 0.2f, true);
+            // Ancient Door unlocked by the cooperative switches
+            AncientDoor door = CreateAncientDoor(new Vector2(10.5f, 1.2f), new List<PuzzleNode> { upperCoop });
+            // Exit Sanctuary Portal
+            CreateExitPortal(new Vector2(12.8f, 1.2f), door, false);
 
-            // Cooperative Switches at the end of both paths
-            CooperativeSwitch upperCoop = CreateCooperativeSwitch(new Vector2(6.5f, 3.3f));
-            CooperativeSwitch lowerCoop = CreateCooperativeSwitch(new Vector2(6.5f, -1.7f));
-            upperCoop.Configure(lowerCoop, CooperativeMode.TimedActivation, timer: 5.0f, stayActivated: true);
-            lowerCoop.Configure(upperCoop, CooperativeMode.TimedActivation, timer: 5.0f, stayActivated: true);
-
-            CreatePlatformRow(10, 13, 0.0f, true);
-            AncientDoor door = CreateAncientDoor(new Vector2(10.5f, 1.0f), new List<PuzzleNode> { upperCoop });
-            CreateExitPortal(new Vector2(12.0f, 1.0f), door, false);
-
-            SpawnCharactersAndTorch(new Vector2(-6.0f, 3.5f), new Vector2(-6.0f, -1.5f), new Vector2(-6.0f, 3.5f), true);
+            // Spawn Protagonist on Upper Ledge with Torch; Spawn Shadow on Lower Ledge separated
+            SpawnCharactersAndTorch(new Vector2(-6.0f, 3.0f), new Vector2(-6.0f, -0.5f), new Vector2(-6.0f, 3.0f), true);
         }
 
         // Level 20: Heart of the Inverted Forest (5-Phase Grand Climax)
