@@ -734,6 +734,11 @@ namespace MyShadowQuit.Core
 
         private void CreatePlatformRow(int startX, int endX, int y, bool useBevelEdges)
         {
+            CreatePlatformRow(startX, endX, (float)y, useBevelEdges);
+        }
+
+        private void CreatePlatformRow(int startX, int endX, float y, bool useBevelEdges)
+        {
             Sprite midSp = AssetRegistry.GetSprite("Environment/stone_floor");
             Sprite leftSp = AssetRegistry.GetSprite("Environment/platform_edge_left");
             Sprite rightSp = AssetRegistry.GetSprite("Environment/platform_edge_right");
@@ -751,7 +756,17 @@ namespace MyShadowQuit.Core
             CreateBoxCollider($"PlatCol_{startX}_{y}", new Vector2(centerX, y + 0.08f), new Vector2(width, 0.78f));
         }
 
+        private void CreatePlatformRow(float startX, float endX, float y, bool useBevelEdges)
+        {
+            CreatePlatformRow(Mathf.RoundToInt(startX), Mathf.RoundToInt(endX), y, useBevelEdges);
+        }
+
         private void CreateWallColumn(int x, int startY, int endY)
+        {
+            CreateWallColumn((float)x, startY, endY);
+        }
+
+        private void CreateWallColumn(float x, int startY, int endY)
         {
             Sprite wallSp = AssetRegistry.GetSprite("Environment/stone_wall");
             for (int y = startY; y <= endY; y++)
@@ -761,6 +776,11 @@ namespace MyShadowQuit.Core
             float height = (endY - startY + 1);
             float centerY = (startY + endY) * 0.5f;
             CreateBoxCollider($"WallColCollider_{x}", new Vector2(x, centerY), new Vector2(0.95f, height));
+        }
+
+        private void CreateWallColumn(float x, float startY, float endY)
+        {
+            CreateWallColumn(x, Mathf.RoundToInt(startY), Mathf.RoundToInt(endY));
         }
 
         private void CreateTileSprite(string name, Sprite sp, Vector2 pos, int sortOrder)

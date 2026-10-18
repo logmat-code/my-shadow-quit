@@ -24,6 +24,7 @@ namespace MyShadowQuit.Puzzle
 
         public bool IsOpen => _isOpen;
         public bool IsBlockingProtagonist => _col != null && _col.enabled && !_isOpen;
+        public bool IsShadowIgnored => _shadowIgnored;
 
         public void Configure(List<PuzzleNode> nodes = null, bool stayOpen = true)
         {
