@@ -159,8 +159,8 @@ namespace MyShadowQuit.Core
             _uiManager.OnStartWorldRequested += SelectWorldAndStart;
             _uiManager.OnLevelSelectedFromMap -= StartLevelFromMap;
             _uiManager.OnLevelSelectedFromMap += StartLevelFromMap;
-            _uiManager.OnWorldCompleteContinueRequested -= OpenWorld2ComingSoon;
-            _uiManager.OnWorldCompleteContinueRequested += OpenWorld2ComingSoon;
+            _uiManager.OnWorldCompleteContinueRequested -= ContinueToWorld2FromWorldComplete;
+            _uiManager.OnWorldCompleteContinueRequested += ContinueToWorld2FromWorldComplete;
             _uiManager.OnPauseRequested -= TogglePause;
             _uiManager.OnPauseRequested += TogglePause;
             _uiManager.OnResumeRequested -= TogglePause;
@@ -325,7 +325,14 @@ namespace MyShadowQuit.Core
 
         public void ContinueSavedGame()
         {
-            SelectWorldAndStart(0, continueSavedProgress: true);
+            WorldProgressSave.GetGlobalContinuePoint(out string worldId, out int worldIndex, out int levelIndex, out int displayLevelNumber);
+            SelectWorldAndStart(worldIndex, continueSavedProgress: true);
+        }
+
+        public void ContinueToWorld2FromWorldComplete()
+        {
+            StopEndingSequenceIfNeeded();
+            SelectWorldAndStart(1, continueSavedProgress: true);
         }
 
         public void StartNewGameWithReset()
@@ -355,6 +362,8 @@ namespace MyShadowQuit.Core
                 return;
             }
 
+            WorldProgressSave.SetLastPlayedWorld(world.WorldId);
+
             StopEndingSequenceIfNeeded();
             _levelManager.SetActiveWorld(world);
             _isInMainMenu = false;
@@ -374,6 +383,8 @@ namespace MyShadowQuit.Core
                 OpenWorld2ComingSoon();
                 return;
             }
+
+            WorldProgressSave.SetLastPlayedWorld(world.WorldId);
 
             StopEndingSequenceIfNeeded();
             _levelManager.SetActiveWorld(world);

@@ -3022,18 +3022,19 @@ namespace MyShadowQuit.UI
 
         private void RefreshHomeButtonSelectionVisuals()
         {
-            bool hasSave = WorldProgressSave.HasSavedProgress("world_1");
-            WorldDefinition w1 = WorldCatalog.GetWorld(0);
-            int total = w1 != null ? w1.LevelCount : 10;
-            int contLvl = WorldProgressSave.GetContinueLevelIndex("world_1", total);
+            bool hasSave = WorldProgressSave.HasAnySavedProgress();
+            WorldProgressSave.GetGlobalContinuePoint(out string worldId, out int worldIndex, out int levelIndex, out int displayLevelNumber);
 
             if (_homeContinueButton != null)
             {
                 SetButtonVisualDisabled(_homeContinueButton, !hasSave);
                 if (_homeContinueBtnLabel != null)
                 {
+                    _homeContinueBtnLabel.resizeTextForBestFit = true;
+                    _homeContinueBtnLabel.resizeTextMinSize = 14;
+                    _homeContinueBtnLabel.resizeTextMaxSize = 22;
                     _homeContinueBtnLabel.text = hasSave
-                        ? $"CONTINUE (LVL {contLvl + 1:D2})"
+                        ? $"CONTINUE (W{worldIndex + 1} · LVL {displayLevelNumber:D2})"
                         : "CONTINUE";
                 }
             }

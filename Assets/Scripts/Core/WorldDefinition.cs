@@ -298,6 +298,60 @@ namespace MyShadowQuit.Core
         private const string KeyPrefixCompletedMask = "MSQ_CompletedMask_";
         private const string KeyPrefixWorldComplete = "MSQ_WorldComplete_";
         private const string KeyHasAnySave = "MSQ_HasSavedProgress_";
+        public const string KeyLastPlayedWorld = "MSQ_LastPlayedWorld";
+
+        public static void SetLastPlayedWorld(string worldId)
+        {
+            if (string.IsNullOrEmpty(worldId)) return;
+            PlayerPrefs.SetString(KeyLastPlayedWorld, worldId);
+            PlayerPrefs.Save();
+        }
+
+        public static string GetLastPlayedWorldId()
+        {
+            string saved = PlayerPrefs.GetString(KeyLastPlayedWorld, string.Empty);
+            if (!string.IsNullOrEmpty(saved))
+            {
+                return saved;
+            }
+
+            // Fallback for previous saves that don't have KeyLastPlayedWorld:
+            // Check if World 2 has any progress recorded
+            if (HasSavedProgress("world_2"))
+            {
+                return "world_2";
+            }
+
+            // Otherwise default to World 1
+            return "world_1";
+        }
+
+        public static bool HasAnySavedProgress()
+        {
+            return HasSavedProgress("world_2") || HasSavedProgress("world_1");
+        }
+
+        public static void GetGlobalContinuePoint(out string worldId, out int worldIndex, out int levelIndex, out int displayLevelNumber)
+        {
+            worldId = GetLastPlayedWorldId();
+            if (worldId == "world_2")
+            {
+                worldIndex = 1;
+                WorldDefinition w2 = WorldCatalog.GetWorld(1);
+                int total = w2 != null && w2.LevelCount > 0 ? w2.LevelCount : 10;
+                levelIndex = GetContinueLevelIndex("world_2", total);
+                displayLevelNumber = 10 + levelIndex + 1; // 11 to 20
+            }
+            else
+            {
+                worldId = "world_1";
+                worldIndex = 0;
+                WorldDefinition w1 = WorldCatalog.GetWorld(0);
+                int total = w1 != null && w1.LevelCount > 0 ? w1.LevelCount : 10;
+                levelIndex = GetContinueLevelIndex("world_1", total);
+                displayLevelNumber = levelIndex + 1; // 1 to 10
+            }
+        }
 
         public static bool HasSavedProgress(string worldId)
         {
@@ -383,6 +437,7 @@ namespace MyShadowQuit.Core
                 PlayerPrefs.SetInt(KeyPrefixHighestLevel + worldId, clamped);
             }
             PlayerPrefs.SetInt(KeyHasAnySave + worldId, 1);
+            SetLastPlayedWorld(worldId);
             PlayerPrefs.Save();
         }
 
@@ -411,6 +466,7 @@ namespace MyShadowQuit.Core
                 PlayerPrefs.SetInt(KeyPrefixWorldComplete + worldId, 1);
             }
 
+            SetLastPlayedWorld(worldId);
             PlayerPrefs.Save();
         }
 
@@ -424,6 +480,7 @@ namespace MyShadowQuit.Core
             PlayerPrefs.SetInt(KeyPrefixHighestLevel + worldId, maxIdx);
             PlayerPrefs.SetInt(KeyPrefixLastLevel + worldId, maxIdx);
             PlayerPrefs.SetInt(KeyHasAnySave + worldId, 1);
+            SetLastPlayedWorld(worldId);
             PlayerPrefs.Save();
         }
 
