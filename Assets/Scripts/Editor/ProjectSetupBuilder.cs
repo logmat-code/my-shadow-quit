@@ -1332,7 +1332,119 @@ namespace MyShadowQuit.EditorTools
                 UnityEngine.Object.DestroyImmediate(rewTest);
                 UnityEngine.Object.DestroyImmediate(equipTest);
 
+                // 10. Verify GameInput Touch Abstraction Layer
+                GameInput.ResetTouchInputs();
+                GameInput.SetTouchHorizontal(1.0f);
+                if (Mathf.Abs(GameInput.GetHorizontal() - 1.0f) > 0.01f)
+                {
+                    throw new Exception("[Verification Failed] GameInput.GetHorizontal did not reflect touch right horizontal!");
+                }
+                GameInput.SetTouchHorizontal(-1.0f);
+                if (Mathf.Abs(GameInput.GetHorizontal() - (-1.0f)) > 0.01f)
+                {
+                    throw new Exception("[Verification Failed] GameInput.GetHorizontal did not reflect touch left horizontal!");
+                }
+                GameInput.TriggerTouchJump();
+                if (!GameInput.GetJumpDown() || !GameInput.GetJumpHeld())
+                {
+                    throw new Exception("[Verification Failed] GameInput.TriggerTouchJump did not set JumpDown and JumpHeld!");
+                }
+                GameInput.ClearFrameTriggers();
+                if (GameInput.GetJumpDown() || !GameInput.GetJumpHeld())
+                {
+                    throw new Exception("[Verification Failed] GameInput.ClearFrameTriggers should clear JumpDown while preserving JumpHeld!");
+                }
+                GameInput.ReleaseTouchJump();
+                if (GameInput.GetJumpHeld())
+                {
+                    throw new Exception("[Verification Failed] GameInput.ReleaseTouchJump did not clear JumpHeld!");
+                }
+                GameInput.TriggerTouchInteract();
+                if (!GameInput.GetInteractDown())
+                {
+                    throw new Exception("[Verification Failed] GameInput.TriggerTouchInteract did not set InteractDown!");
+                }
+                GameInput.TriggerTouchSwitchCharacter();
+                if (!GameInput.GetSwitchCharacterDown())
+                {
+                    throw new Exception("[Verification Failed] GameInput.TriggerTouchSwitchCharacter did not set SwitchCharacterDown!");
+                }
+                GameInput.ResetTouchInputs();
+
+                // 11. Verify MobileControlsUI and Multitouch Virtual Buttons
+                MobileControlsUI mobileUI = uiTest.MobileControls;
+                if (mobileUI == null)
+                {
+                    throw new Exception("[Verification Failed] UIManager does not contain MobileControlsUI instance!");
+                }
+                if (mobileUI.LeftButton == null || mobileUI.RightButton == null ||
+                    mobileUI.JumpButton == null || mobileUI.InteractButton == null ||
+                    mobileUI.SwitchButton == null)
+                {
+                    throw new Exception("[Verification Failed] MobileControlsUI is missing one or more required virtual buttons!");
+                }
+
+                // Simulate Multitouch: Right Button (finger 0) + Jump Button (finger 1)
+                mobileUI.ReleaseAll();
+                mobileUI.RightButton.SimulatePointerDown(0);
+                if (Mathf.Abs(GameInput.GetHorizontal() - 1.0f) > 0.01f)
+                {
+                    throw new Exception("[Verification Failed] Mobile RightButton press failed to update horizontal input!");
+                }
+                mobileUI.JumpButton.SimulatePointerDown(1);
+                if (!GameInput.GetJumpDown() || Mathf.Abs(GameInput.GetHorizontal() - 1.0f) > 0.01f)
+                {
+                    throw new Exception("[Verification Failed] Multitouch failed: Jump did not fire or cancelled RightButton horizontal movement!");
+                }
+                mobileUI.JumpButton.SimulatePointerUp(1);
+                if (Mathf.Abs(GameInput.GetHorizontal() - 1.0f) > 0.01f || !mobileUI.RightButton.IsPressed)
+                {
+                    throw new Exception("[Verification Failed] Releasing Jump cancelled concurrent RightButton press!");
+                }
+                mobileUI.RightButton.SimulatePointerUp(0);
+                if (Mathf.Abs(GameInput.GetHorizontal()) > 0.01f)
+                {
+                    throw new Exception("[Verification Failed] Releasing RightButton did not return horizontal to zero!");
+                }
+                mobileUI.ReleaseAll();
+
+                // Verify Mobile Settings cycling
+                float initScale = mobileUI.CurrentScale;
+                mobileUI.CycleSize();
+                if (Mathf.Abs(mobileUI.CurrentScale - initScale) < 0.01f)
+                {
+                    throw new Exception("[Verification Failed] MobileControlsUI.CycleSize did not change scale!");
+                }
+                mobileUI.SetScale(1.0f);
+                mobileUI.SetOpacity(0.75f);
+                mobileUI.SetPositionMode(0);
+
+                // 12. Verify CooperativeSwitch Modes (BothPresent, Latched, Timed)
+                GameObject coopObjA = new GameObject("CoopA_Test");
+                GameObject coopObjB = new GameObject("CoopB_Test");
+                CooperativeSwitch csA = coopObjA.AddComponent<CooperativeSwitch>();
+                CooperativeSwitch csB = coopObjB.AddComponent<CooperativeSwitch>();
+                csA.Configure(csB, CooperativeMode.TimedActivation, timer: 4.5f, stayActivated: true);
+                csB.Configure(csA, CooperativeMode.TimedActivation, timer: 4.5f, stayActivated: true);
+                if (csA.Mode != CooperativeMode.TimedActivation || csA.RemainingTimer > 0.01f)
+                {
+                    throw new Exception("[Verification Failed] CooperativeSwitch TimedActivation initialization error!");
+                }
+                UnityEngine.Object.DestroyImmediate(coopObjA);
+                UnityEngine.Object.DestroyImmediate(coopObjB);
+
+                // 13. Verify all 20 Levels Build Cleanly (Levels 1 to 20)
+                for (int lvlIdx = 0; lvlIdx < 20; lvlIdx++)
+                {
+                    lm.BuildLevel(lvlIdx, cam);
+                    if (lm.Player == null || lm.Shadow == null || lm.Torch == null)
+                    {
+                        throw new Exception($"[Verification Failed] Level {lvlIdx + 1} did not spawn core entities properly!");
+                    }
+                }
+
                 WorldProgressSave.ClearWorldProgress("world_1");
+                WorldProgressSave.ClearWorldProgress("world_2");
             }
             finally
             {
