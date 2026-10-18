@@ -21,6 +21,22 @@ namespace MyShadowQuit.Core
         }
     }
 
+    [Serializable]
+    public class WorldEnvironmentProfile
+    {
+        public string FarParallaxSpritePath = "Environment/parallax_far";
+        public string MidParallaxSpritePath = "Environment/parallax_mid";
+        public string NearParallaxSpritePath = "Environment/parallax_near";
+        public string FloorSpritePath = "Environment/stone_floor";
+        public string WallSpritePath = "Environment/stone_wall";
+        public string PlatformLeftSpritePath = "Environment/platform_edge_left";
+        public string PlatformRightSpritePath = "Environment/platform_edge_right";
+        public Color AmbientColor = new Color(0.08f, 0.08f, 0.14f, 1f);
+        public Color SporeParticleColor = new Color(0.32f, 0.92f, 0.68f, 0.60f);
+        public bool HasSporeParticles = false;
+        public string MusicTrackPath = "Music/dark_ambient_theme";
+    }
+
     /// <summary>
     /// ScriptableObject defining a World in MY SHADOW QUIT: THE LAST FLAME.
     /// Encapsulates world identity, level list, initial scene, art direction, music track,
@@ -50,6 +66,7 @@ namespace MyShadowQuit.Core
         public bool isImplemented = true;
         public bool unlockedByDefault = true;
         public List<LevelEntry> levels = new List<LevelEntry>();
+        public WorldEnvironmentProfile environmentProfile = new WorldEnvironmentProfile();
 
         public string WorldId => worldId;
         public int WorldNumber => worldNumber;
@@ -61,6 +78,7 @@ namespace MyShadowQuit.Core
         public bool IsUnlocked => unlockedByDefault || (worldNumber == 2 && WorldProgressSave.IsWorldCompleted("world_1"));
         public IReadOnlyList<LevelEntry> Levels => levels;
         public int LevelCount => levels != null ? levels.Count : 0;
+        public WorldEnvironmentProfile EnvironmentProfile => environmentProfile ?? (environmentProfile = new WorldEnvironmentProfile());
 
         public void Configure(
             int worldIdx,
@@ -179,6 +197,20 @@ namespace MyShadowQuit.Core
             };
             w1.isImplemented = true;
             w1.unlockedByDefault = true;
+            w1.environmentProfile = new WorldEnvironmentProfile
+            {
+                FarParallaxSpritePath = "Environment/parallax_far",
+                MidParallaxSpritePath = "Environment/parallax_mid",
+                NearParallaxSpritePath = "Environment/parallax_near",
+                FloorSpritePath = "Environment/stone_floor",
+                WallSpritePath = "Environment/stone_wall",
+                PlatformLeftSpritePath = "Environment/platform_edge_left",
+                PlatformRightSpritePath = "Environment/platform_edge_right",
+                AmbientColor = new Color(0.08f, 0.08f, 0.14f, 1f),
+                SporeParticleColor = new Color(0.78f, 0.65f, 1f, 0.35f),
+                HasSporeParticles = false,
+                MusicTrackPath = "Music/dark_ambient_theme"
+            };
             w1.levels = new List<LevelEntry>
             {
                 new LevelEntry(0, "w1_lvl1", "I. AWAKENING", "A/D: Move   SPACE: Jump   E: Pick up / Place Torch   TAB: Control Shadow"),
@@ -202,8 +234,22 @@ namespace MyShadowQuit.Core
             w2.worldSubtitle = "WORLD 2";
             w2.initialSceneName = "Level1_Awakening";
             w2.artDirection = "Dark petroleum green, jade and deep turquoise bioluminescent forest, ancient twisted roots, mist, glowing flora.";
-            w2.musicTrackPath = "Music/dark_ambient_theme";
+            w2.musicTrackPath = "Music/forest_ambient_theme";
             w2.completionQuote = "\"The roots remember the first spark. Light and Shadow breathe as one.\"";
+            w2.environmentProfile = new WorldEnvironmentProfile
+            {
+                FarParallaxSpritePath = "World2/forest_parallax_far",
+                MidParallaxSpritePath = "World2/forest_parallax_mid",
+                NearParallaxSpritePath = "World2/forest_parallax_near",
+                FloorSpritePath = "World2/forest_floor",
+                WallSpritePath = "World2/forest_wall",
+                PlatformLeftSpritePath = "World2/forest_platform_left",
+                PlatformRightSpritePath = "World2/forest_platform_right",
+                AmbientColor = new Color(0.04f, 0.12f, 0.09f, 1f),
+                SporeParticleColor = new Color(0.32f, 0.92f, 0.68f, 0.60f),
+                HasSporeParticles = true,
+                MusicTrackPath = "Music/forest_ambient_theme"
+            };
             w2.availableMechanics = new[]
             {
                 "Kinematic Moving Platforms (Horizontal & Elevators)",

@@ -51,6 +51,9 @@ namespace MyShadowQuit.Core
         public string ActiveWorldId => _levelManager != null && _levelManager.ActiveWorld != null
             ? _levelManager.ActiveWorld.WorldId
             : "world_1";
+        public int CurrentWorldIndex => _levelManager != null && _levelManager.ActiveWorld != null
+            ? _levelManager.ActiveWorld.WorldIndex
+            : 0;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         private static void ResetStaticState()
@@ -423,6 +426,13 @@ namespace MyShadowQuit.Core
                 _levelManager.Torch.ResetEndingGlow();
             }
             ApplyActiveCharacterControl();
+
+            if (_audioManager != null)
+            {
+                WorldEnvironmentProfile env = _levelManager != null ? _levelManager.GetActiveEnvironmentProfile() : null;
+                string track = (_isInMainMenu) ? "Music/dark_ambient_theme" : (env?.MusicTrackPath ?? "Music/dark_ambient_theme");
+                _audioManager.StartAmbience(track);
+            }
 
             if (!_isInMainMenu && _uiManager != null)
             {

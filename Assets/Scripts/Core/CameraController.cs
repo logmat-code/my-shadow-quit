@@ -152,7 +152,7 @@ namespace MyShadowQuit.Core
 
         private GameObject _parallaxRoot;
 
-        public void BuildParallaxLayers()
+        public void BuildParallaxLayers(WorldEnvironmentProfile profile = null)
         {
             ClearParallaxLayers();
 
@@ -161,18 +161,30 @@ namespace MyShadowQuit.Core
                 return;
             }
 
+            if (profile == null)
+            {
+                int worldIdx = (GameManager.Instance != null) ? GameManager.Instance.CurrentWorldIndex : 0;
+                WorldDefinition wDef = WorldCatalog.GetWorld(worldIdx);
+                profile = wDef?.EnvironmentProfile ?? new WorldEnvironmentProfile();
+            }
+
             _parallaxRoot = new GameObject("ParallaxBackground");
 
-            Sprite farSp = AssetRegistry.GetSprite("Environment/parallax_far", 16f);
-            Sprite midSp = AssetRegistry.GetSprite("Environment/parallax_mid", 16f);
-            Sprite nearSp = AssetRegistry.GetSprite("Environment/parallax_near", 16f);
+            Sprite farSp = AssetRegistry.GetSprite(profile.FarParallaxSpritePath, 16f) ?? AssetRegistry.GetSprite("Environment/parallax_far", 16f);
+            Sprite midSp = AssetRegistry.GetSprite(profile.MidParallaxSpritePath, 16f) ?? AssetRegistry.GetSprite("Environment/parallax_mid", 16f);
+            Sprite nearSp = AssetRegistry.GetSprite(profile.NearParallaxSpritePath, 16f) ?? AssetRegistry.GetSprite("Environment/parallax_near", 16f);
+
+            bool isForest = profile.FarParallaxSpritePath.Contains("forest") || profile.FarParallaxSpritePath.Contains("World2");
+            Color farColor = isForest ? new Color(0.70f, 0.95f, 0.85f, 1f) : new Color(0.85f, 0.85f, 0.95f, 1f);
+            Color midColor = isForest ? new Color(0.80f, 1.0f, 0.90f, 0.92f) : new Color(0.9f, 0.85f, 1f, 0.92f);
+            Color nearColor = isForest ? new Color(0.90f, 1.0f, 0.95f, 0.65f) : new Color(1f, 1f, 1f, 0.65f);
 
             for (int i = -1; i <= 3; i++)
             {
                 float xPos = i * 16f;
-                _farLayer.Add(CreateLayerTile("ParallaxFar_" + i, farSp, new Vector3(xPos, 1.5f, 10f), -30, new Color(0.85f, 0.85f, 0.95f, 1f)));
-                _midLayer.Add(CreateLayerTile("ParallaxMid_" + i, midSp, new Vector3(xPos, 1.2f, 10f), -20, new Color(0.9f, 0.85f, 1f, 0.92f)));
-                _nearLayer.Add(CreateLayerTile("ParallaxNear_" + i, nearSp, new Vector3(xPos, 1.0f, 10f), -10, new Color(1f, 1f, 1f, 0.65f)));
+                _farLayer.Add(CreateLayerTile("ParallaxFar_" + i, farSp, new Vector3(xPos, 1.5f, 10f), -30, farColor));
+                _midLayer.Add(CreateLayerTile("ParallaxMid_" + i, midSp, new Vector3(xPos, 1.2f, 10f), -20, midColor));
+                _nearLayer.Add(CreateLayerTile("ParallaxNear_" + i, nearSp, new Vector3(xPos, 1.0f, 10f), -10, nearColor));
             }
         }
 

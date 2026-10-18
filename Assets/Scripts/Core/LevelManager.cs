@@ -137,15 +137,22 @@ namespace MyShadowQuit.Core
             bool isExtendedChamber = (worldIdx == 0 && localIndex == 9) || (worldIdx == 1 && localIndex == 9);
             int maxChamberX = isExtendedChamber ? 29 : 23;
 
+            WorldEnvironmentProfile env = GetActiveEnvironmentProfile();
+
             if (cam != null)
             {
                 cam.ResetZoom();
-                cam.BuildParallaxLayers();
+                cam.BuildParallaxLayers(env);
                 float maxCamX = isExtendedChamber ? 20.8f : 14.8f;
                 cam.SetBounds(new Vector2(-1.2f, 0.2f), new Vector2(maxCamX, 2.8f));
             }
 
             BuildChamberFrame(-9, maxChamberX, -4, 8);
+
+            if (env.HasSporeParticles)
+            {
+                CreateSporeParticles(env.SporeParticleColor);
+            }
 
             if (worldIdx == 0)
             {
@@ -704,8 +711,9 @@ namespace MyShadowQuit.Core
         // =========================================================================
         private void BuildChamberFrame(int minX, int maxX, int minY, int maxY)
         {
-            Sprite floorSp = AssetRegistry.GetSprite("Environment/stone_floor");
-            Sprite wallSp = AssetRegistry.GetSprite("Environment/stone_wall");
+            WorldEnvironmentProfile env = GetActiveEnvironmentProfile();
+            Sprite floorSp = AssetRegistry.GetSprite(env.FloorSpritePath);
+            Sprite wallSp = AssetRegistry.GetSprite(env.WallSpritePath);
 
             // Solid Floor (2 tiles thick)
             for (int x = minX; x <= maxX; x++)
@@ -739,9 +747,10 @@ namespace MyShadowQuit.Core
 
         private void CreatePlatformRow(int startX, int endX, float y, bool useBevelEdges)
         {
-            Sprite midSp = AssetRegistry.GetSprite("Environment/stone_floor");
-            Sprite leftSp = AssetRegistry.GetSprite("Environment/platform_edge_left");
-            Sprite rightSp = AssetRegistry.GetSprite("Environment/platform_edge_right");
+            WorldEnvironmentProfile env = GetActiveEnvironmentProfile();
+            Sprite midSp = AssetRegistry.GetSprite(env.FloorSpritePath);
+            Sprite leftSp = AssetRegistry.GetSprite(env.PlatformLeftSpritePath) ?? AssetRegistry.GetSprite("Environment/platform_edge_left");
+            Sprite rightSp = AssetRegistry.GetSprite(env.PlatformRightSpritePath) ?? AssetRegistry.GetSprite("Environment/platform_edge_right");
 
             for (int x = startX; x <= endX; x++)
             {
@@ -768,7 +777,8 @@ namespace MyShadowQuit.Core
 
         private void CreateWallColumn(float x, int startY, int endY)
         {
-            Sprite wallSp = AssetRegistry.GetSprite("Environment/stone_wall");
+            WorldEnvironmentProfile env = GetActiveEnvironmentProfile();
+            Sprite wallSp = AssetRegistry.GetSprite(env.WallSpritePath);
             for (int y = startY; y <= endY; y++)
             {
                 CreateTileSprite($"WallCol_{x}_{y}", wallSp, new Vector2(x, y), 2);
@@ -1225,6 +1235,51 @@ namespace MyShadowQuit.Core
             ForestHazard fh = go.AddComponent<ForestHazard>();
             fh.Configure(size);
             return fh;
+        }
+
+        public WorldEnvironmentProfile GetActiveEnvironmentProfile()
+        {
+            int worldIdx = (ActiveWorld != null) ? ActiveWorld.WorldIndex : 0;
+            WorldDefinition wDef = WorldCatalog.GetWorld(worldIdx);
+            return wDef?.EnvironmentProfile ?? new WorldEnvironmentProfile();
+        }
+
+        private void CreateSporeParticles(Color color)
+        {
+            GameObject sporeObj = new GameObject("ForestSporeParticles");
+            sporeObj.transform.SetParent(_levelRoot.transform, false);
+            sporeObj.transform.position = new Vector3(6f, 1f, 0f);
+
+            ParticleSystem ps = sporeObj.AddComponent<ParticleSystem>();
+            var main = ps.main;
+            main.loop = true;
+            main.duration = 5f;
+            main.startLifetime = 6f;
+            main.startSpeed = 0.45f;
+            main.startSize = 0.14f;
+            main.startColor = color;
+            main.maxParticles = 65;
+            main.simulationSpace = ParticleSystemSimulationSpace.World;
+
+            var emission = ps.emission;
+            emission.rateOverTime = 12f;
+
+            var shape = ps.shape;
+            shape.shapeType = ParticleSystemShapeType.Box;
+            shape.scale = new Vector3(32f, 10f, 1f);
+
+            var vel = ps.velocityOverLifetime;
+            vel.enabled = true;
+            vel.x = new ParticleSystem.MinMaxCurve(-0.25f, 0.25f);
+            vel.y = new ParticleSystem.MinMaxCurve(-0.15f, 0.35f);
+
+            ParticleSystemRenderer psr = sporeObj.GetComponent<ParticleSystemRenderer>();
+            if (psr != null)
+            {
+                Shader shader = Shader.Find("Universal Render Pipeline/2D/Sprite-Unlit-Default") ?? Shader.Find("Sprites/Default");
+                if (shader != null) psr.material = new Material(shader);
+                psr.sortingOrder = 8;
+            }
         }
     }
 }

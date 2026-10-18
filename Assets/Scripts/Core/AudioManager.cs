@@ -220,21 +220,27 @@ namespace MyShadowQuit.Core
             StartAmbience();
         }
 
-        public void StartAmbience()
+        public void StartAmbience(string musicTrackPath = null)
         {
             if (_musicSource == null || _crackleSource == null)
             {
                 SetupAudioSourcesSingleLifecycle();
             }
 
-            AudioClip music = AssetRegistry.GetAudio("Music/dark_ambient_theme");
+            if (string.IsNullOrEmpty(musicTrackPath))
+            {
+                musicTrackPath = "Music/dark_ambient_theme";
+            }
+
+            AudioClip music = AssetRegistry.GetAudio(musicTrackPath) ?? AssetRegistry.GetAudio("Music/dark_ambient_theme");
             if (music != null)
             {
                 if (_musicSource.clip != music)
                 {
                     _musicSource.clip = music;
+                    _musicSource.Play();
                 }
-                if (!_musicSource.isPlaying)
+                else if (!_musicSource.isPlaying)
                 {
                     _musicSource.Play();
                 }
