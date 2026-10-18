@@ -1434,18 +1434,65 @@ namespace MyShadowQuit.EditorTools
                 UnityEngine.Object.DestroyImmediate(coopObjA);
                 UnityEngine.Object.DestroyImmediate(coopObjB);
 
-                // 13. Verify all 20 Levels Build Cleanly (Levels 1 to 20)
-                for (int lvlIdx = 0; lvlIdx < 20; lvlIdx++)
+                // 13. Verify Multiworld Continue Persistence Logic
+                WorldProgressSave.ClearWorldProgress("world_1");
+                WorldProgressSave.ClearWorldProgress("world_2");
+                PlayerPrefs.DeleteKey(WorldProgressSave.KeyLastPlayedWorld);
+
+                if (WorldProgressSave.HasAnySavedProgress())
                 {
-                    lm.BuildLevel(lvlIdx, null);
-                    if (lm.Player == null || lm.Shadow == null || lm.Torch == null)
+                    throw new Exception("[Verification Failed] HasAnySavedProgress should be false after clearing both worlds!");
+                }
+
+                // Simulate playing World 1 Level 5
+                WorldProgressSave.SaveLevelProgress("world_1", 4, 10);
+                WorldProgressSave.GetGlobalContinuePoint(out string contWId1, out int contWIdx1, out int contLvl1, out int contDisp1);
+                if (contWId1 != "world_1" || contWIdx1 != 0 || contLvl1 != 4 || contDisp1 != 5)
+                {
+                    throw new Exception($"[Verification Failed] Multiworld continue failed for World 1 Level 5: got W={contWId1}, Lvl={contDisp1}");
+                }
+
+                // Simulate completing World 1 and entering World 2 Level 11
+                WorldProgressSave.MarkWorldCompleted("world_1", 10);
+                WorldProgressSave.SaveLevelProgress("world_2", 0, 10);
+                WorldProgressSave.GetGlobalContinuePoint(out string contWId2, out int contWIdx2, out int contLvl2, out int contDisp2);
+                if (contWId2 != "world_2" || contWIdx2 != 1 || contLvl2 != 0 || contDisp2 != 11)
+                {
+                    throw new Exception($"[Verification Failed] Multiworld continue failed for World 2 Level 11: got W={contWId2}, Lvl={contDisp2}");
+                }
+
+                // Simulate advancing to World 2 Level 19 (index 8)
+                WorldProgressSave.SaveLevelProgress("world_2", 8, 10);
+                WorldProgressSave.GetGlobalContinuePoint(out string contWId3, out int contWIdx3, out int contLvl3, out int contDisp3);
+                if (contWId3 != "world_2" || contWIdx3 != 1 || contLvl3 != 8 || contDisp3 != 19)
+                {
+                    throw new Exception($"[Verification Failed] Multiworld continue failed for World 2 Level 19: got W={contWId3}, Lvl={contDisp3}");
+                }
+
+                // Simulate fallback when KeyLastPlayedWorld is deleted but World 2 has progress
+                PlayerPrefs.DeleteKey(WorldProgressSave.KeyLastPlayedWorld);
+                WorldProgressSave.GetGlobalContinuePoint(out string contWIdFallback, out int contWIdxFallback, out int contLvlFallback, out int contDispFallback);
+                if (contWIdFallback != "world_2" || contWIdxFallback != 1 || contDispFallback != 19)
+                {
+                    throw new Exception($"[Verification Failed] Multiworld fallback failed: expected World 2 Level 19, got W={contWIdFallback}, Lvl={contDispFallback}");
+                }
+
+                // 14. Comprehensive Reachability & Playability Verification (All 20 Levels: World 1 & World 2)
+                for (int wIdx = 0; wIdx < 2; wIdx++)
+                {
+                    WorldDefinition wDef = (wIdx == 0) ? world1Def : world2Def;
+                    lm.SetActiveWorld(wDef);
+
+                    for (int lIdx = 0; lIdx < 10; lIdx++)
                     {
-                        throw new Exception($"[Verification Failed] Level {lvlIdx + 1} did not spawn core entities properly!");
+                        lm.BuildLevel(lIdx, null);
+                        ValidateLevelPlayability(lm, wIdx, lIdx);
                     }
                 }
 
                 WorldProgressSave.ClearWorldProgress("world_1");
                 WorldProgressSave.ClearWorldProgress("world_2");
+                PlayerPrefs.DeleteKey(WorldProgressSave.KeyLastPlayedWorld);
             }
             finally
             {
@@ -1464,6 +1511,93 @@ namespace MyShadowQuit.EditorTools
             }
 
             Debug.Log("[Verification Passed] HOME + WORLD SELECT + LEVEL SELECT Maps (World 1 & World 2, 20 Levels: I. Awakening to XX. Heart of the Inverted Forest), 7 New Physical Mechanics, Shop 3-Zone Cards, Branding Icons, Zero Duplicated Objects, Shadow Double Jump, Audio dB Mix, and 16:9 Landscape verified!");
+        }
+
+        private static void ValidateLevelPlayability(LevelManager lm, int worldIdx, int levelLocalIdx)
+        {
+            int globalLevel = worldIdx * 10 + levelLocalIdx + 1;
+            if (lm.Player == null) throw new Exception($"[Playability Failed] Level {globalLevel}: Player missing!");
+            if (lm.Shadow == null) throw new Exception($"[Playability Failed] Level {globalLevel}: Shadow missing!");
+            if (lm.Torch == null) throw new Exception($"[Playability Failed] Level {globalLevel}: Torch missing!");
+
+            LevelExitPortal exit = UnityEngine.Object.FindFirstObjectByType<LevelExitPortal>();
+            if (exit == null) throw new Exception($"[Playability Failed] Level {globalLevel}: LevelExitPortal missing!");
+
+            Physics2D.SyncTransforms();
+
+            // 1. Verify Player and Shadow spawn over safe colliders (within 2.2m below feet)
+            Collider2D playerGround = Physics2D.OverlapCircle((Vector2)lm.Player.transform.position + Vector2.down * 0.8f, 0.45f);
+            if (playerGround == null || playerGround.isTrigger)
+            {
+                throw new Exception($"[Playability Failed] Level {globalLevel}: Player spawned over empty pit at {lm.Player.transform.position}!");
+            }
+
+            Collider2D shadowGround = Physics2D.OverlapCircle((Vector2)lm.Shadow.transform.position + Vector2.down * 0.8f, 0.45f);
+            if (shadowGround == null || shadowGround.isTrigger)
+            {
+                throw new Exception($"[Playability Failed] Level {globalLevel}: Shadow spawned over empty pit at {lm.Shadow.transform.position}!");
+            }
+
+            // 2. Verify all Cooperative Switches have partners and solid ground
+            CooperativeSwitch[] coopSwitches = UnityEngine.Object.FindObjectsByType<CooperativeSwitch>(FindObjectsSortMode.None);
+            foreach (var cs in coopSwitches)
+            {
+                Collider2D ground = Physics2D.OverlapCircle((Vector2)cs.transform.position + Vector2.down * 0.5f, 0.4f);
+                if (ground == null || ground.isTrigger)
+                {
+                    throw new Exception($"[Playability Failed] Level {globalLevel}: CooperativeSwitch at {cs.transform.position} has no solid floor!");
+                }
+            }
+
+            // 3. Verify Moving Platforms have safe travel ranges and colliders
+            MovingPlatform2D[] movingPlats = UnityEngine.Object.FindObjectsByType<MovingPlatform2D>(FindObjectsSortMode.None);
+            foreach (var mp in movingPlats)
+            {
+                if (mp.GetComponent<BoxCollider2D>() == null)
+                {
+                    throw new Exception($"[Playability Failed] Level {globalLevel}: MovingPlatform missing BoxCollider2D!");
+                }
+            }
+
+            // 4. Verify Hazards do not overlap Player or Shadow spawn
+            ForestHazard[] hazards = UnityEngine.Object.FindObjectsByType<ForestHazard>(FindObjectsSortMode.None);
+            foreach (var hz in hazards)
+            {
+                Collider2D hzCol = hz.GetComponent<Collider2D>();
+                if (hzCol != null)
+                {
+                    if (hzCol.OverlapPoint(lm.Player.transform.position))
+                    {
+                        throw new Exception($"[Playability Failed] Level {globalLevel}: Hazard overlaps Player spawn!");
+                    }
+                    if (hzCol.OverlapPoint(lm.Shadow.transform.position))
+                    {
+                        throw new Exception($"[Playability Failed] Level {globalLevel}: Hazard overlaps Shadow spawn!");
+                    }
+                }
+            }
+
+            // 5. Special Verification for Level 19 ("Two Paths, One Flame")
+            if (globalLevel == 19)
+            {
+                // Verify Shadow path is NOT sealed by an impassable wall column
+                BoxCollider2D[] allColliders = UnityEngine.Object.FindObjectsByType<BoxCollider2D>(FindObjectsSortMode.None);
+                foreach (var col in allColliders)
+                {
+                    if (col.gameObject.name.StartsWith("WallColCollider_0"))
+                    {
+                        if (col.size.y > 4.0f && Mathf.Abs(col.offset.y) < 0.5f)
+                        {
+                            throw new Exception("[Playability Failed] Level 19: Unpassable dividing wall column detected at x=0 blocking the Shadow!");
+                        }
+                    }
+                }
+
+                if (coopSwitches.Length < 2)
+                {
+                    throw new Exception("[Playability Failed] Level 19 requires at least 2 CooperativeSwitches!");
+                }
+            }
         }
 
         [MenuItem("MyShadowQuit/Build WebGL Release")]
