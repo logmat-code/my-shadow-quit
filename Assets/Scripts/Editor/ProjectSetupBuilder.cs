@@ -74,6 +74,9 @@ namespace MyShadowQuit.EditorTools
             WorldDefinition w2 = WorldCatalog.CreateDefaultWorld2();
             SaveOrUpdateWorldAsset(w2, "Assets/Resources/Worlds/World2_TheInvertedForest.asset");
 
+            WorldDefinition w3 = WorldCatalog.CreateDefaultWorld3();
+            SaveOrUpdateWorldAsset(w3, "Assets/Resources/Worlds/World3_TheHollowClocktower.asset");
+
             Debug.Log("[ProjectSetupBuilder] Created/Updated WorldDefinition ScriptableObjects in Assets/Resources/Worlds/.");
         }
 

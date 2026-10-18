@@ -74,9 +74,9 @@ namespace MyShadowQuit.Core
         public string WorldTitle => worldName;
         public string WorldSubtitle => worldSubtitle;
         public string CompletionQuote => completionQuote;
-        public bool IsImplemented => isImplemented;
-        public bool IsUnlocked => unlockedByDefault || (worldNumber == 2 && WorldProgressSave.IsWorldCompleted("world_1"));
-        public IReadOnlyList<LevelEntry> Levels => levels;
+        public bool IsUnlocked => unlockedByDefault ||
+            (worldNumber == 2 && WorldProgressSave.IsWorldCompleted("world_1")) ||
+            (worldNumber == 3 && WorldProgressSave.IsWorldCompleted("world_2"));
         public int LevelCount => levels != null ? levels.Count : 0;
         public WorldEnvironmentProfile EnvironmentProfile => environmentProfile ?? (environmentProfile = new WorldEnvironmentProfile());
 
@@ -165,8 +165,19 @@ namespace MyShadowQuit.Core
                 EnsureWorld2HasTenLevels(w2);
             }
 
+            WorldDefinition w3 = Resources.Load<WorldDefinition>("Worlds/World3_TheHollowClocktower");
+            if (w3 == null || w3.LevelCount < 10)
+            {
+                w3 = CreateDefaultWorld3();
+            }
+            else
+            {
+                EnsureWorld3HasTenLevels(w3);
+            }
+
             _worlds.Add(w1);
             _worlds.Add(w2);
+            _worlds.Add(w3);
         }
 
         public static WorldDefinition CreateDefaultWorld1()
@@ -284,6 +295,63 @@ namespace MyShadowQuit.Core
             EnsureWorld2HasTenLevels(w2);
             return w2;
         }
+
+        public static void EnsureWorld3HasTenLevels(WorldDefinition w3)
+        {
+            w3.worldId = "world_3";
+            w3.worldNumber = 3;
+            w3.worldName = "THE HOLLOW CLOCKTOWER";
+            w3.worldSubtitle = "WORLD 3";
+            w3.initialSceneName = "Level1_Awakening";
+            w3.artDirection = "Dark steel blue, charcoal grey, aged bronze, gothic machinery, rotating gears, and pendulum clockworks.";
+            w3.musicTrackPath = "Music/clocktower_ambient_theme";
+            w3.completionQuote = "\"Time stood still, but our flames kept moving. The clocktower yields its secret.\"";
+            w3.environmentProfile = new WorldEnvironmentProfile
+            {
+                FarParallaxSpritePath = "World3/clocktower_parallax_far",
+                MidParallaxSpritePath = "World3/clocktower_parallax_mid",
+                NearParallaxSpritePath = "World3/clocktower_parallax_near",
+                FloorSpritePath = "World3/clocktower_floor",
+                WallSpritePath = "World3/clocktower_wall",
+                PlatformLeftSpritePath = "World3/clocktower_platform_left",
+                PlatformRightSpritePath = "World3/clocktower_platform_right",
+                AmbientColor = new Color(0.016f, 0.020f, 0.035f, 1f),
+                SporeParticleColor = new Color(0.92f, 0.78f, 0.38f, 0.32f),
+                HasSporeParticles = true,
+                MusicTrackPath = "Music/clocktower_ambient_theme"
+            };
+            w3.availableMechanics = new[]
+            {
+                "Rotating Gear Platforms",
+                "Swinging Pendulum Obstacles",
+                "Timed Clockwork Switches",
+                "Torch-Powered Clockwork Lenses",
+                "Spectral Shadow Grate Passages"
+            };
+            w3.isImplemented = true;
+            w3.unlockedByDefault = false;
+            w3.levels = new List<LevelEntry>
+            {
+                new LevelEntry(0, "w3_lvl1", "LEVEL 21: THE SILENT HANDS", "Step aboard the slow-turning gear platform to traverse the clocktower vestibule."),
+                new LevelEntry(1, "w3_lvl2", "LEVEL 22: THE FIRST TICK", "The clockwork switch winds the ancient spring, opening the timed gate for a brief interval."),
+                new LevelEntry(2, "w3_lvl3", "LEVEL 23: BROKEN GEARS", "Gear platforms rotate at differing cadences. Use your Shadow's double jump [SPACE x2] to bridge the high gap."),
+                new LevelEntry(3, "w3_lvl4", "LEVEL 24: THE SWINGING HALL", "Observe the pendulum's rhythmic swing. Wait for the apex before dashing through the hazard zone."),
+                new LevelEntry(4, "w3_lvl5", "LEVEL 25: THE FROZEN MINUTE", "Hit the clockwork switch to temporarily lock the swinging pendulums in place."),
+                new LevelEntry(5, "w3_lvl6", "LEVEL 26: THE LENS OF EMBERS", "Focus the Torch's golden flame upon the ancient lens to activate the dormant clockwork bridge."),
+                new LevelEntry(6, "w3_lvl7", "LEVEL 27: BETWEEN TWO TICKS", "Your Shadow slips through the spectral iron grate while the Flame operates the mechanical lever."),
+                new LevelEntry(7, "w3_lvl8", "LEVEL 28: THE FALLEN BELLS", "Ascend the vertical belfry. Coordinate moving gear platforms and evade the resonant pendulum weights."),
+                new LevelEntry(8, "w3_lvl9", "LEVEL 29: THE LAST HOUR", "Synchronize gear elevators, clockwork levers, and the solar lens to unseal the high sanctuary."),
+                new LevelEntry(9, "w3_lvl10", "LEVEL 30: HEART OF THE CLOCKTOWER", "The Heart of the Clocktower. Unwind all five ancient celestial clockworks to open the Grand Chrono Portal.")
+            };
+        }
+
+        public static WorldDefinition CreateDefaultWorld3()
+        {
+            WorldDefinition w3 = ScriptableObject.CreateInstance<WorldDefinition>();
+            w3.name = "World3_TheHollowClocktower";
+            EnsureWorld3HasTenLevels(w3);
+            return w3;
+        }
     }
 
     /// <summary>
@@ -316,6 +384,11 @@ namespace MyShadowQuit.Core
             }
 
             // Fallback for previous saves that don't have KeyLastPlayedWorld:
+            // Check if World 3 has any progress recorded
+            if (HasSavedProgress("world_3"))
+            {
+                return "world_3";
+            }
             // Check if World 2 has any progress recorded
             if (HasSavedProgress("world_2"))
             {
@@ -328,13 +401,21 @@ namespace MyShadowQuit.Core
 
         public static bool HasAnySavedProgress()
         {
-            return HasSavedProgress("world_2") || HasSavedProgress("world_1");
+            return HasSavedProgress("world_3") || HasSavedProgress("world_2") || HasSavedProgress("world_1");
         }
 
         public static void GetGlobalContinuePoint(out string worldId, out int worldIndex, out int levelIndex, out int displayLevelNumber)
         {
             worldId = GetLastPlayedWorldId();
-            if (worldId == "world_2")
+            if (worldId == "world_3")
+            {
+                worldIndex = 2;
+                WorldDefinition w3 = WorldCatalog.GetWorld(2);
+                int total = w3 != null && w3.LevelCount > 0 ? w3.LevelCount : 10;
+                levelIndex = GetContinueLevelIndex("world_3", total);
+                displayLevelNumber = 20 + levelIndex + 1; // 21 to 30
+            }
+            else if (worldId == "world_2")
             {
                 worldIndex = 1;
                 WorldDefinition w2 = WorldCatalog.GetWorld(1);
