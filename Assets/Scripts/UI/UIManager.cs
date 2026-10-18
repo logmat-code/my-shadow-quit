@@ -2260,6 +2260,20 @@ namespace MyShadowQuit.UI
         private void BuildWorld1CompleteScreen(Transform parent)
         {
             _worldCompletePanel = CreateImagePanel(parent, "World1CompletePanel", Vector2.zero, new Vector2(880f, 700f), _modalFrameSprite);
+            Image panelImg = _worldCompletePanel.GetComponent<Image>();
+            if (panelImg != null)
+            {
+                panelImg.color = new Color(0.12f, 0.10f, 0.16f, 0.95f);
+            }
+
+            // Warm amber flame halo behind the torch
+            GameObject haloDeco = CreateSpriteElement(_worldCompletePanel.transform, "WorldCompleteHalo", _lightHaloSprite, new Vector2(0f, 268f), new Vector2(160f, 160f));
+            Image haloImg = haloDeco.GetComponent<Image>();
+            if (haloImg != null)
+            {
+                haloImg.color = new Color(1f, 0.72f, 0.28f, 0.35f);
+                haloImg.raycastTarget = false;
+            }
 
             GameObject torchDeco = CreateSpriteElement(_worldCompletePanel.transform, "WorldCompleteTorchIcon", AssetRegistry.GetSprite("Torch/torch_item_0", 32f), new Vector2(0f, 268f), new Vector2(68f, 88f));
             torchDeco.GetComponent<Image>().raycastTarget = false;
@@ -2306,12 +2320,26 @@ namespace MyShadowQuit.UI
         private void BuildWorld2CompleteScreen(Transform parent)
         {
             _world2CompletePanel = CreateImagePanel(parent, "World2CompletePanel", Vector2.zero, new Vector2(880f, 700f), _modalFrameSprite);
+            Image panelImg = _world2CompletePanel.GetComponent<Image>();
+            if (panelImg != null)
+            {
+                panelImg.color = new Color(0.06f, 0.18f, 0.14f, 0.95f);
+            }
+
+            // Bioluminescent emerald/jade halo behind the torch
+            GameObject haloDeco = CreateSpriteElement(_world2CompletePanel.transform, "World2CompleteHalo", _lightHaloSprite, new Vector2(0f, 268f), new Vector2(160f, 160f));
+            Image haloImg = haloDeco.GetComponent<Image>();
+            if (haloImg != null)
+            {
+                haloImg.color = new Color(0.24f, 0.92f, 0.70f, 0.40f);
+                haloImg.raycastTarget = false;
+            }
 
             GameObject torchDeco = CreateSpriteElement(_world2CompletePanel.transform, "World2CompleteTorchIcon", AssetRegistry.GetSprite("Torch/torch_item_0", 32f), new Vector2(0f, 268f), new Vector2(68f, 88f));
             torchDeco.GetComponent<Image>().raycastTarget = false;
 
-            CreateStyledTitleText(_world2CompletePanel.transform, "World2CompleteTitle", "WORLD 2 COMPLETE", 46, new Vector2(0f, 192f), new Vector2(760f, 60f), new Color(0.42f, 0.95f, 0.72f, 1f));
-            CreateStyledTitleText(_world2CompletePanel.transform, "World2CompleteSub", "THE INVERTED FOREST", 28, new Vector2(0f, 140f), new Vector2(740f, 44f), new Color(0.78f, 0.62f, 0.98f, 1f));
+            CreateStyledTitleText(_world2CompletePanel.transform, "World2CompleteTitle", "WORLD 2 CONQUERED", 46, new Vector2(0f, 192f), new Vector2(760f, 60f), new Color(0.35f, 0.98f, 0.75f, 1f));
+            CreateStyledTitleText(_world2CompletePanel.transform, "World2CompleteSub", "THE INVERTED FOREST", 28, new Vector2(0f, 140f), new Vector2(740f, 44f), new Color(0.55f, 0.88f, 1f, 1f));
             CreateSpriteElement(_world2CompletePanel.transform, "World2CompleteDivider", _stoneDividerSprite, new Vector2(0f, 102f), new Vector2(520f, 24f));
 
             CreateText(
@@ -2321,7 +2349,7 @@ namespace MyShadowQuit.UI
                 24,
                 new Vector2(0f, 48f),
                 new Vector2(760f, 64f),
-                new Color(1f, 0.94f, 0.80f, 1f),
+                new Color(0.85f, 1f, 0.92f, 1f),
                 TextAnchor.MiddleCenter
             );
 

@@ -663,7 +663,7 @@ namespace MyShadowQuit.Core
             if (_uiManager != null)
             {
                 _uiManager.SetEndingQuoteText(UIManager.World1CompleteQuote);
-                _uiManager.SetEndingFade(0.90f, 2.5f);
+                _uiManager.SetEndingFade(0.45f, 2.5f);
                 _uiManager.ShowWorld1CompleteScreen();
             }
             _isInMainMenu = true;
@@ -728,7 +728,7 @@ namespace MyShadowQuit.Core
             if (_uiManager != null)
             {
                 _uiManager.SetEndingQuoteText(UIManager.World1CompleteQuote);
-                _uiManager.SetEndingFade(0.90f, 0.65f);
+                _uiManager.SetEndingFade(0.45f, 0.65f);
             }
 
             float fadeDuration = 1.8f;
@@ -844,7 +844,7 @@ namespace MyShadowQuit.Core
             if (_uiManager != null)
             {
                 _uiManager.SetEndingQuoteText(UIManager.World2CompleteQuote);
-                _uiManager.SetEndingFade(0.90f, 2.5f);
+                _uiManager.SetEndingFade(0.45f, 2.5f);
                 _uiManager.ShowWorld2CompleteScreen();
             }
             _isInMainMenu = true;
@@ -906,7 +906,7 @@ namespace MyShadowQuit.Core
             if (_uiManager != null)
             {
                 _uiManager.SetEndingQuoteText(UIManager.World2CompleteQuote);
-                _uiManager.SetEndingFade(0.90f, 0.65f);
+                _uiManager.SetEndingFade(0.45f, 0.65f);
             }
 
             float fadeDuration = 1.8f;
