@@ -168,7 +168,7 @@ namespace MyShadowQuit.Core
             int displayLevelNumber = (worldIdx * 10) + localIndex + 1;
             _levelRoot = new GameObject($"Level_{displayLevelNumber}");
 
-            bool isExtendedChamber = (worldIdx == 0 && localIndex == 9) || (worldIdx == 1 && localIndex == 9);
+            bool isExtendedChamber = (worldIdx == 0 && localIndex == 9) || (worldIdx == 1 && localIndex == 9) || (worldIdx == 2 && localIndex == 9);
             int maxChamberX = isExtendedChamber ? 29 : 23;
 
             WorldEnvironmentProfile env = GetActiveEnvironmentProfile();
@@ -204,7 +204,7 @@ namespace MyShadowQuit.Core
                     default: BuildLevel10_TheFirstDawn(); break;
                 }
             }
-            else
+            else if (worldIdx == 1)
             {
                 switch (localIndex)
                 {
@@ -218,6 +218,22 @@ namespace MyShadowQuit.Core
                     case 7: BuildLevel18_TheFracturedGrove(); break;
                     case 8: BuildLevel19_TwoPathsOneFlame(); break;
                     default: BuildLevel20_HeartOfTheInvertedForest(); break;
+                }
+            }
+            else
+            {
+                switch (localIndex)
+                {
+                    case 0: BuildLevel21_TheSilentHands(); break;
+                    case 1: BuildLevel22_TheFirstTick(); break;
+                    case 2: BuildLevel23_BrokenGears(); break;
+                    case 3: BuildLevel24_TheSwingingHall(); break;
+                    case 4: BuildLevel25_TheFrozenMinute(); break;
+                    case 5: BuildLevel26_TheLensOfEmbers(); break;
+                    case 6: BuildLevel27_BetweenTwoTicks(); break;
+                    case 7: BuildLevel28_TheFallenBells(); break;
+                    case 8: BuildLevel29_TheLastHour(); break;
+                    default: BuildLevel30_HeartOfTheClocktower(); break;
                 }
             }
         }
@@ -1220,6 +1236,237 @@ namespace MyShadowQuit.Core
         }
 
         // =========================================================================
+        // WORLD 3: THE HOLLOW CLOCKTOWER (Levels 21–30)
+        // Dark steel blue, aged bronze, midnight indigo, ticking clockwork mechanisms
+        // =========================================================================
+
+        // Level 21: The Silent Hands (Horizontal Gear Platform introduction)
+        private void BuildLevel21_TheSilentHands()
+        {
+            CreatePlatformRow(-8, -3, -2.0f, true);
+            CreatePlatformRow(4, 12, -2.0f, true);
+
+            CreateGearPlatform(GearMotionType.HorizontalOscillation, new Vector2(0.5f, -2.0f), radius: 2.2f, speed: 1.8f, angle: 0f);
+
+            PressurePlate plate = CreatePressurePlate(new Vector2(6.5f, -1.2f), latch: true);
+            AncientDoor door = CreateAncientDoor(new Vector2(8.5f, -1.0f), new List<PuzzleNode> { plate });
+            CreateExitPortal(new Vector2(10.5f, -1.0f), door, false);
+
+            SpawnCharactersAndTorch(new Vector2(-6.0f, -1.0f), new Vector2(-7.0f, -1.0f), new Vector2(-6.0f, -1.0f), true);
+        }
+
+        // Level 22: The First Tick (Pendulum Obstacle introduction)
+        private void BuildLevel22_TheFirstTick()
+        {
+            CreatePlatformRow(-8, -3, -2.0f, true);
+            CreatePlatformRow(0, 1, -2.0f, true);
+            CreatePlatformRow(4, 12, -2.0f, true);
+
+            CreatePendulumObstacle(new Vector2(0.5f, 2.5f), length: 3.2f, angle: 50f, speed: 1.8f, phase: 0f);
+
+            LightSwitch ls = CreateLightSwitch(new Vector2(6.5f, -1.2f), latch: true);
+            AncientDoor door = CreateAncientDoor(new Vector2(8.5f, -1.0f), new List<PuzzleNode> { ls });
+            CreateExitPortal(new Vector2(10.5f, -1.0f), door, false);
+
+            SpawnCharactersAndTorch(new Vector2(-6.0f, -1.0f), new Vector2(-7.0f, -1.0f), new Vector2(-6.0f, -1.0f), true);
+        }
+
+        // Level 23: Broken Gears (Vertical Gear Platform climb)
+        private void BuildLevel23_BrokenGears()
+        {
+            CreatePlatformRow(-8, -3, -2.0f, true);
+            CreatePlatformRow(1, 3, 0.5f, true);
+            CreatePlatformRow(7, 13, 2.8f, true);
+
+            CreateGearPlatform(GearMotionType.VerticalOscillation, new Vector2(-1.0f, 0.0f), radius: 1.6f, speed: 1.5f, angle: 0f);
+            CreateGearPlatform(GearMotionType.VerticalOscillation, new Vector2(5.0f, 1.8f), radius: 1.5f, speed: 1.5f, angle: 180f);
+
+            PressurePlate plate = CreatePressurePlate(new Vector2(8.5f, 3.6f), latch: true);
+            AncientDoor door = CreateAncientDoor(new Vector2(10.0f, 3.8f), new List<PuzzleNode> { plate });
+            CreateExitPortal(new Vector2(11.5f, 3.8f), door, false);
+
+            SpawnCharactersAndTorch(new Vector2(-6.0f, -1.0f), new Vector2(-7.0f, -1.0f), new Vector2(-6.0f, -1.0f), true);
+        }
+
+        // Level 24: The Swinging Hall (Double Pendulums out of phase + Shadow Switch)
+        private void BuildLevel24_TheSwingingHall()
+        {
+            CreatePlatformRow(-8, -4, -2.0f, true);
+            CreatePlatformRow(-1, 1, -2.0f, true);
+            CreatePlatformRow(4, 6, -2.0f, true);
+            CreatePlatformRow(9, 14, -2.0f, true);
+
+            CreatePendulumObstacle(new Vector2(-2.5f, 2.4f), length: 3.2f, angle: 45f, speed: 1.9f, phase: 0f);
+            CreatePendulumObstacle(new Vector2(2.5f, 2.4f), length: 3.2f, angle: 45f, speed: 1.9f, phase: 180f);
+
+            ShadowSwitch ss = CreateShadowSwitch(new Vector2(5.0f, 0.8f));
+            AncientDoor door = CreateAncientDoor(new Vector2(10.5f, -1.0f), new List<PuzzleNode> { ss });
+            CreateExitPortal(new Vector2(12.5f, -1.0f), door, false);
+
+            SpawnCharactersAndTorch(new Vector2(-6.0f, -1.0f), new Vector2(-7.0f, -1.0f), new Vector2(-6.0f, -1.0f), true);
+        }
+
+        // Level 25: The Frozen Minute (Clockwork Switch freezing fast pendulum)
+        private void BuildLevel25_TheFrozenMinute()
+        {
+            CreatePlatformRow(-8, -3, -2.0f, true);
+            CreatePlatformRow(-1, 6, -2.0f, true);
+            CreatePlatformRow(8, 13, -2.0f, true);
+
+            PendulumObstacle fastPendulum = CreatePendulumObstacle(new Vector2(2.5f, 2.4f), length: 3.2f, angle: 55f, speed: 3.6f, phase: 0f);
+            CreateClockworkSwitch(new Vector2(-4.0f, -1.2f), timed: true, duration: 6.5f, pendulums: new List<PendulumObstacle> { fastPendulum });
+
+            PressurePlate plate = CreatePressurePlate(new Vector2(9.5f, -1.2f), latch: true);
+            AncientDoor door = CreateAncientDoor(new Vector2(11.0f, -1.0f), new List<PuzzleNode> { plate });
+            CreateExitPortal(new Vector2(12.5f, -1.0f), door, false);
+
+            SpawnCharactersAndTorch(new Vector2(-6.0f, -1.0f), new Vector2(-7.0f, -1.0f), new Vector2(-6.0f, -1.0f), true);
+        }
+
+        // Level 26: The Lens of Embers (TorchPoweredClockwork activating gear platform)
+        private void BuildLevel26_TheLensOfEmbers()
+        {
+            CreatePlatformRow(-8, -3, -2.0f, true);
+            CreatePlatformRow(-5, -3, 0.5f, true);
+            CreatePlatformRow(6, 12, -2.0f, true);
+
+            RotatingGearPlatform gear = CreateGearPlatform(GearMotionType.HorizontalOscillation, new Vector2(1.5f, -2.0f), radius: 2.5f, speed: 1.8f, angle: 0f);
+            gear.IsPaused = true;
+
+            AncientDoor door = CreateAncientDoor(new Vector2(9.0f, -1.0f), new List<PuzzleNode>());
+            TorchPoweredClockwork lens = CreateTorchLens(new Vector2(-4.0f, 1.3f), radius: 2.8f, stayLit: true, door: door, gears: new List<RotatingGearPlatform> { gear });
+            door.Configure(new List<PuzzleNode> { lens });
+
+            CreateExitPortal(new Vector2(11.0f, -1.0f), door, false);
+
+            SpawnCharactersAndTorch(new Vector2(-6.0f, -1.0f), new Vector2(-7.0f, -1.0f), new Vector2(-6.0f, -1.0f), true);
+        }
+
+        // Level 27: Between Two Ticks (ShadowClockworkPassage + Clockwork Switch unlocking grate)
+        private void BuildLevel27_BetweenTwoTicks()
+        {
+            CreatePlatformRow(-8, -1, -2.0f, true);
+            CreatePlatformRow(1, 13, -2.0f, true);
+
+            CreateWallColumn(0, 0, 5);
+            ShadowClockworkPassage grate = CreateShadowGrate(new Vector2(0.0f, -1.0f));
+
+            PendulumObstacle pendulum = CreatePendulumObstacle(new Vector2(4.0f, 2.5f), length: 3.2f, angle: 45f, speed: 2.0f);
+
+            AncientDoor door = CreateAncientDoor(new Vector2(10.0f, -1.0f), new List<PuzzleNode>());
+            ClockworkSwitch cSwitch = CreateClockworkSwitch(new Vector2(6.0f, -1.2f), timed: true, duration: 7.0f, door: door, pendulums: new List<PendulumObstacle> { pendulum });
+            door.Configure(new List<PuzzleNode> { cSwitch });
+            grate.Configure(new List<PuzzleNode> { cSwitch }, stayOpen: true);
+
+            CreateExitPortal(new Vector2(12.0f, -1.0f), door, false);
+
+            SpawnCharactersAndTorch(new Vector2(-6.0f, -1.0f), new Vector2(-7.0f, -1.0f), new Vector2(-6.0f, -1.0f), true);
+        }
+
+        // Level 28: The Fallen Bells (Vertical belfry climb with bells and solar lens)
+        private void BuildLevel28_TheFallenBells()
+        {
+            CreatePlatformRow(-8, -3, -2.0f, true);
+            CreatePlatformRow(1, 4, 0.8f, true);
+            CreatePlatformRow(8, 13, 2.6f, true);
+
+            CreateGearPlatform(GearMotionType.VerticalOscillation, new Vector2(-1.0f, 0.0f), radius: 1.6f, speed: 1.5f, angle: 0f);
+            CreatePendulumObstacle(new Vector2(2.5f, 4.0f), length: 2.2f, angle: 40f, speed: 1.8f);
+
+            RotatingGearPlatform gear2 = CreateGearPlatform(GearMotionType.HorizontalOscillation, new Vector2(6.0f, 1.8f), radius: 1.6f, speed: 1.6f, angle: 0f);
+            _ = gear2;
+
+            AncientDoor door = CreateAncientDoor(new Vector2(10.5f, 3.6f), new List<PuzzleNode>());
+            TorchPoweredClockwork lens = CreateTorchLens(new Vector2(2.5f, 1.6f), radius: 2.6f, stayLit: true, door: door);
+            door.Configure(new List<PuzzleNode> { lens });
+
+            CreateExitPortal(new Vector2(12.0f, 3.6f), door, false);
+
+            SpawnCharactersAndTorch(new Vector2(-6.0f, -1.0f), new Vector2(-7.0f, -1.0f), new Vector2(-6.0f, -1.0f), true);
+        }
+
+        // Level 29: The Last Hour (Dual-tier upper gantry and lower gear tunnel)
+        private void BuildLevel29_TheLastHour()
+        {
+            // Upper Gantry (Protagonist + Torch path)
+            CreatePlatformRow(-8, 12, 2.0f, true);
+
+            // Lower Tunnel (Shadow path)
+            CreatePlatformRow(-8, 12, -2.0f, true);
+
+            // Dividing Wall between Gantry and Lower Tunnel
+            CreateWallColumn(-4, -1, 1);
+            CreateWallColumn(2, -1, 1);
+            CreateWallColumn(6, -1, 1);
+
+            // Grates in lower tunnel
+            CreateShadowGrate(new Vector2(-4.0f, -1.0f));
+            CreateShadowGrate(new Vector2(2.0f, -1.0f));
+            CreateShadowGrate(new Vector2(6.0f, -1.0f));
+
+            // Lower tunnel pendulum
+            CreatePendulumObstacle(new Vector2(-1.0f, 0.8f), length: 2.0f, angle: 40f, speed: 1.8f);
+
+            // Upper Gantry Lenses
+            TorchPoweredClockwork lens1 = CreateTorchLens(new Vector2(-1.5f, 2.8f), radius: 2.6f, stayLit: true);
+            TorchPoweredClockwork lens2 = CreateTorchLens(new Vector2(4.5f, 2.8f), radius: 2.6f, stayLit: true);
+
+            // Lower Tunnel Clockwork Switch
+            ClockworkSwitch shadowClockSwitch = CreateClockworkSwitch(new Vector2(8.5f, -1.2f), timed: false, duration: 0f);
+
+            // Upper Gantry Door and Portal
+            AncientDoor door = CreateAncientDoor(new Vector2(9.5f, 3.0f), new List<PuzzleNode> { lens1, lens2, shadowClockSwitch }, requireAll: true);
+            CreateExitPortal(new Vector2(11.5f, 3.0f), door, false);
+
+            SpawnCharactersAndTorch(new Vector2(-6.0f, 3.0f), new Vector2(-6.0f, -1.0f), new Vector2(-6.0f, 3.0f), true);
+        }
+
+        // Level 30: Heart of the Clocktower (4-Phase Grand Climax)
+        private void BuildLevel30_HeartOfTheClocktower()
+        {
+            // === PHASE 1: Gear Ascent (x = -8 to -1) ===
+            CreatePlatformRow(-8, -4, -2.0f, true);
+            CreateGearPlatform(GearMotionType.VerticalOscillation, new Vector2(-2.5f, -0.5f), radius: 1.6f, speed: 1.5f, angle: 0f);
+
+            // === PHASE 2: Hall of Pendulums & Clockwork Switch (x = 0 to 8) ===
+            CreatePlatformRow(0, 8, 1.2f, true);
+            PendulumObstacle pen1 = CreatePendulumObstacle(new Vector2(2.5f, 4.8f), length: 2.8f, angle: 50f, speed: 2.5f, phase: 0f);
+            PendulumObstacle pen2 = CreatePendulumObstacle(new Vector2(5.5f, 4.8f), length: 2.8f, angle: 50f, speed: 2.5f, phase: 90f);
+
+            ClockworkSwitch freezeSwitch = CreateClockworkSwitch(new Vector2(0.5f, 2.0f), timed: true, duration: 7.0f, pendulums: new List<PendulumObstacle> { pen1, pen2 });
+            _ = freezeSwitch;
+
+            // === PHASE 3: Spectral Grate & Internal Machinery (x = 9 to 16) ===
+            CreatePlatformRow(9, 16, 1.2f, true);
+            CreateWallColumn(10, 2, 6);
+            ShadowClockworkPassage grate = CreateShadowGrate(new Vector2(10.0f, 2.2f));
+
+            ShadowSwitch shadowSecretSwitch = CreateShadowSwitch(new Vector2(13.0f, 2.0f));
+            grate.Configure(new List<PuzzleNode> { shadowSecretSwitch }, stayOpen: true);
+
+            // Gear lift to Phase 4
+            RotatingGearPlatform apexLift = CreateGearPlatform(GearMotionType.VerticalOscillation, new Vector2(15.5f, 2.2f), radius: 1.5f, speed: 1.5f, angle: 0f);
+            _ = apexLift;
+
+            // === PHASE 4: The Apex Belfry (x = 17 to 28) ===
+            CreatePlatformRow(17, 28, 2.5f, true);
+
+            TorchPoweredClockwork apexLens = CreateTorchLens(new Vector2(19.0f, 3.3f), radius: 2.8f, stayLit: true);
+
+            AncientDoor grandDoor = CreateAncientDoor(
+                new Vector2(23.5f, 3.5f),
+                new List<PuzzleNode> { shadowSecretSwitch, apexLens },
+                requireAll: true
+            );
+            grandDoor.ConfigureCustomSprites("Environment/ceremonial_door_closed", "Environment/ceremonial_door_open");
+
+            CreateProp("Environment/dawn_portal_arch", new Vector2(26.5f, 3.5f), 1);
+            CreateExitPortal(new Vector2(26.5f, 3.5f), grandDoor, requireShadowNear: true);
+
+            SpawnCharactersAndTorch(new Vector2(-6.0f, -1.0f), new Vector2(-7.0f, -1.0f), new Vector2(-6.0f, -1.0f), true);
+        }
+
+        // =========================================================================
         // WORLD 2 FACTORY HELPERS
         // =========================================================================
 
@@ -1290,6 +1537,60 @@ namespace MyShadowQuit.Core
             ForestHazard fh = go.AddComponent<ForestHazard>();
             fh.Configure(size);
             return fh;
+        }
+
+        // =========================================================================
+        // WORLD 3 FACTORY HELPERS
+        // =========================================================================
+
+        private RotatingGearPlatform CreateGearPlatform(GearMotionType type, Vector2 center, float radius = 2.2f, float speed = 1.2f, float angle = 0f, Vector2? size = null)
+        {
+            GameObject go = new GameObject("RotatingGearPlatform");
+            go.transform.SetParent(_levelRoot.transform, false);
+            go.transform.position = center;
+            RotatingGearPlatform gear = go.AddComponent<RotatingGearPlatform>();
+            gear.Configure(type, center, radius, speed, angle, size);
+            return gear;
+        }
+
+        private PendulumObstacle CreatePendulumObstacle(Vector2 pivotPos, float length = 3.2f, float angle = 55f, float speed = 2.2f, float phase = 0f)
+        {
+            GameObject go = new GameObject("PendulumObstacle");
+            go.transform.SetParent(_levelRoot.transform, false);
+            go.transform.position = pivotPos;
+            PendulumObstacle p = go.AddComponent<PendulumObstacle>();
+            p.Configure(length, angle, speed, phase);
+            return p;
+        }
+
+        private ClockworkSwitch CreateClockworkSwitch(Vector2 pos, bool timed = true, float duration = 6.0f, AncientDoor door = null, List<PendulumObstacle> pendulums = null, List<RotatingGearPlatform> gears = null)
+        {
+            GameObject go = new GameObject("ClockworkSwitch");
+            go.transform.SetParent(_levelRoot.transform, false);
+            go.transform.position = pos;
+            ClockworkSwitch cs = go.AddComponent<ClockworkSwitch>();
+            cs.Configure(timed, duration, door, pendulums, gears);
+            return cs;
+        }
+
+        private TorchPoweredClockwork CreateTorchLens(Vector2 pos, float radius = 2.8f, bool stayLit = true, AncientDoor door = null, List<RotatingGearPlatform> gears = null, List<GameObject> enableObjects = null)
+        {
+            GameObject go = new GameObject("TorchPoweredClockwork");
+            go.transform.SetParent(_levelRoot.transform, false);
+            go.transform.position = pos;
+            TorchPoweredClockwork tc = go.AddComponent<TorchPoweredClockwork>();
+            tc.Configure(radius, stayLit, door, gears, enableObjects);
+            return tc;
+        }
+
+        private ShadowClockworkPassage CreateShadowGrate(Vector2 pos, List<PuzzleNode> unlockNodes = null, bool stayOpen = true)
+        {
+            GameObject go = new GameObject("ShadowClockworkPassage");
+            go.transform.SetParent(_levelRoot.transform, false);
+            go.transform.position = pos;
+            ShadowClockworkPassage sp = go.AddComponent<ShadowClockworkPassage>();
+            sp.Configure(unlockNodes, stayOpen);
+            return sp;
         }
 
         public WorldEnvironmentProfile GetActiveEnvironmentProfile()
