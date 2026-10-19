@@ -440,7 +440,12 @@ namespace MyShadowQuit.UI
 
             _world1ArtSprite = AssetRegistry.GetSprite("UI/world1_card_art", 32f);
             _world2ArtSprite = AssetRegistry.GetSprite("UI/world2_card_art", 32f);
-            _world3ArtSprite = AssetRegistry.GetSprite("World3/world3_card_art", 32f) ?? _world2ArtSprite;
+            _world3ArtSprite = AssetRegistry.GetSprite("UI/world3_card_art", 32f);
+            if (_world3ArtSprite == null)
+            {
+                // Never fall back to another world's illustration: a missing asset must be visible, not masked.
+                Debug.LogError("[UIManager] Missing WORLD 3 card artwork at Resources/Sprites/UI/world3_card_art.png");
+            }
             _worldCardActiveSprite = AssetRegistry.GetSprite("UI/world_card_frame_active", 32f) ?? _panelSprite;
             _worldCardLockedSprite = AssetRegistry.GetSprite("UI/world_card_frame_locked", 32f) ?? _panelSprite;
             _lockSealSprite = AssetRegistry.GetSprite("UI/icon_lock_seal", 32f);
