@@ -17,7 +17,7 @@ namespace MyShadowQuit.Puzzle
     /// and prevent character jitter or catapulting, while rotating the visual gear mechanism.
     /// </summary>
     [RequireComponent(typeof(BoxCollider2D), typeof(Rigidbody2D))]
-    public class RotatingGearPlatform : MonoBehaviour
+    public class RotatingGearPlatform : MonoBehaviour, IMovingSurface
     {
         [SerializeField] private GearMotionType motionType = GearMotionType.Orbital;
         [SerializeField] private Vector2 orbitCenter = Vector2.zero;
@@ -54,7 +54,11 @@ namespace MyShadowQuit.Puzzle
             _currentAngle = initialAngle * Mathf.Deg2Rad;
 
             EnsureInitialized(platformSize);
+            PlaceAtCurrentAngle();
         }
+
+        /// <summary>Real kinematic velocity applied this physics step (zero while paused).</summary>
+        public Vector2 SurfaceVelocity => _rb != null ? _rb.linearVelocity : Vector2.zero;
 
         private void Awake()
         {
@@ -114,43 +118,63 @@ namespace MyShadowQuit.Puzzle
             walkwayObj.transform.localScale = new Vector3(size.x / 2.0f, 1f, 1f);
         }
 
+        private Vector2 ComputeTarget(float angle)
+        {
+            switch (motionType)
+            {
+                case GearMotionType.Orbital:
+                    return orbitCenter + new Vector2(Mathf.Cos(angle), Mathf.Sin(angle)) * radius;
+                case GearMotionType.HorizontalOscillation:
+                    return orbitCenter + new Vector2(Mathf.Sin(angle) * radius, 0f);
+                case GearMotionType.VerticalOscillation:
+                    return orbitCenter + new Vector2(0f, Mathf.Sin(angle) * radius);
+                default:
+                    return orbitCenter;
+            }
+        }
+
+        private void PlaceAtCurrentAngle()
+        {
+            Vector2 start = ComputeTarget(_currentAngle);
+            transform.position = start;
+            if (_rb != null)
+            {
+                _rb.position = start;
+                _rb.linearVelocity = Vector2.zero;
+            }
+        }
+
         private void FixedUpdate()
         {
-            if (isPaused) return;
-
+            if (_rb == null) return;
             float dt = Time.fixedDeltaTime;
+            if (dt <= 0f) return;
 
-            // Rotate the visual gear constantly
+            if (isPaused)
+            {
+                _rb.linearVelocity = Vector2.zero;
+                return;
+            }
+
+            // Rotate the visual gear constantly (visual only; the walkable surface never tilts)
             if (_gearVisual != null)
             {
                 _gearVisual.Rotate(0f, 0f, -gearVisualRotationSpeed * dt);
             }
 
-            // Move the platform horizontally, vertically, or in orbit
-            Vector2 targetPos = _rb.position;
-            switch (motionType)
+            if (motionType != GearMotionType.StationaryRotating)
             {
-                case GearMotionType.Orbital:
-                    _currentAngle += speed * dt;
-                    targetPos = orbitCenter + new Vector2(Mathf.Cos(_currentAngle), Mathf.Sin(_currentAngle)) * radius;
-                    break;
-
-                case GearMotionType.HorizontalOscillation:
-                    _currentAngle += speed * dt;
-                    targetPos = orbitCenter + new Vector2(Mathf.Sin(_currentAngle) * radius, 0f);
-                    break;
-
-                case GearMotionType.VerticalOscillation:
-                    _currentAngle += speed * dt;
-                    targetPos = orbitCenter + new Vector2(0f, Mathf.Sin(_currentAngle) * radius);
-                    break;
-
-                case GearMotionType.StationaryRotating:
-                    targetPos = orbitCenter;
-                    break;
+                _currentAngle += speed * dt;
             }
 
-            _rb.MovePosition(targetPos);
+            // Drive the kinematic body with its true velocity so passengers can match it.
+            Vector2 targetPos = ComputeTarget(_currentAngle);
+            _rb.linearVelocity = (targetPos - _rb.position) / dt;
+        }
+
+        private void OnDisable()
+        {
+            if (_rb != null) _rb.linearVelocity = Vector2.zero;
         }
 
         public void SetPaused(bool paused)

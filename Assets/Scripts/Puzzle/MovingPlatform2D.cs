@@ -12,7 +12,7 @@ namespace MyShadowQuit.Puzzle
     /// their transforms, preventing physics glitches and jitter in 2D platforming.
     /// </summary>
     [RequireComponent(typeof(SpriteRenderer), typeof(BoxCollider2D), typeof(Rigidbody2D))]
-    public class MovingPlatform2D : MonoBehaviour
+    public class MovingPlatform2D : MonoBehaviour, IMovingSurface
     {
         [SerializeField] private Vector2[] waypoints;
         [SerializeField] private float speed = 2.2f;
@@ -27,11 +27,13 @@ namespace MyShadowQuit.Puzzle
         private int _direction = 1;
         private float _waitTimer;
         private Vector2 _previousPosition;
-        private readonly HashSet<Rigidbody2D> _activeRiders = new HashSet<Rigidbody2D>();
 
         public Vector2[] Waypoints => waypoints;
         public float Speed => speed;
         public bool IsMoving => waypoints != null && waypoints.Length > 1 && _waitTimer <= 0f;
+
+        /// <summary>Real kinematic velocity applied this physics step (zero while waiting).</summary>
+        public Vector2 SurfaceVelocity => _rb != null ? _rb.linearVelocity : Vector2.zero;
 
         public void Configure(Vector2[] points, float moveSpeed = 2.2f, float waitTime = 0.6f, bool isPingPong = true)
         {
@@ -93,25 +95,29 @@ namespace MyShadowQuit.Puzzle
         {
             if (_rb == null || waypoints == null || waypoints.Length <= 1) return;
 
+            float dt = Time.fixedDeltaTime;
+            if (dt <= 0f) return;
+
             Vector2 currentPos = _rb.position;
 
             if (_waitTimer > 0f)
             {
-                _waitTimer -= Time.fixedDeltaTime;
+                _waitTimer -= dt;
+                _rb.linearVelocity = Vector2.zero;
                 _previousPosition = currentPos;
                 return;
             }
 
             Vector2 targetWp = waypoints[_currentWaypointIndex];
-            Vector2 newPos = Vector2.MoveTowards(currentPos, targetWp, speed * Time.fixedDeltaTime);
-            Vector2 deltaPos = newPos - currentPos;
+            Vector2 newPos = Vector2.MoveTowards(currentPos, targetWp, speed * dt);
+            bool arrived = (targetWp - newPos).sqrMagnitude < 0.0004f;
+            if (arrived) newPos = targetWp;
 
-            _rb.MovePosition(newPos);
+            // Drive the kinematic body with a real velocity so the physics solver sees the
+            // platform motion and passengers (Player / Shadow) can match it exactly.
+            _rb.linearVelocity = (newPos - currentPos) / dt;
 
-            // Carry standing riders smoothly with zero jitter
-            DetectAndMoveRiders(deltaPos);
-
-            if (Vector2.Distance(newPos, targetWp) < 0.02f)
+            if (arrived)
             {
                 _waitTimer = waitDuration;
                 AdvanceWaypoint();
@@ -142,69 +148,26 @@ namespace MyShadowQuit.Puzzle
             }
         }
 
-        private void DetectAndMoveRiders(Vector2 deltaPos)
-        {
-            if (_col == null || deltaPos.sqrMagnitude < 0.000001f) return;
-
-            Bounds b = _col.bounds;
-            Vector2 boxCenter = new Vector2(b.center.x, b.max.y + 0.16f);
-            Vector2 boxSize = new Vector2(b.size.x * 0.94f, 0.28f);
-
-            Collider2D[] hits = Physics2D.OverlapBoxAll(boxCenter, boxSize, 0f);
-            _activeRiders.Clear();
-
-            foreach (Collider2D hit in hits)
-            {
-                if (hit == null || hit == _col || hit.isTrigger) continue;
-
-                Rigidbody2D riderRb = hit.attachedRigidbody;
-                if (riderRb != null && riderRb != _rb && !_activeRiders.Contains(riderRb))
-                {
-                    _activeRiders.Add(riderRb);
-                    Vector2 riderDelta = deltaPos;
-                    // If rider is jumping upwards away from the platform, don't drag them downward
-                    if (riderRb.linearVelocity.y > 0.15f && deltaPos.y < 0f)
-                    {
-                        riderDelta.y = 0f;
-                    }
-                    riderRb.position += riderDelta;
-                }
-            }
-        }
-
         public void ResetPlatform()
         {
             _currentWaypointIndex = 0;
             _direction = 1;
             _waitTimer = 0f;
-            _activeRiders.Clear();
             if (waypoints != null && waypoints.Length > 0)
             {
                 transform.position = waypoints[0];
-                if (_rb != null) _rb.position = waypoints[0];
+                if (_rb != null)
+                {
+                    _rb.position = waypoints[0];
+                    _rb.linearVelocity = Vector2.zero;
+                }
                 _previousPosition = waypoints[0];
             }
         }
 
         private void OnDisable()
         {
-            _activeRiders.Clear();
-        }
-
-        private void OnCollisionEnter2D(Collision2D collision)
-        {
-            if (collision.rigidbody != null && collision.rigidbody != _rb)
-            {
-                _activeRiders.Add(collision.rigidbody);
-            }
-        }
-
-        private void OnCollisionExit2D(Collision2D collision)
-        {
-            if (collision.rigidbody != null)
-            {
-                _activeRiders.Remove(collision.rigidbody);
-            }
+            if (_rb != null) _rb.linearVelocity = Vector2.zero;
         }
     }
 }

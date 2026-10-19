@@ -35,6 +35,9 @@ namespace MyShadowQuit.Entities
         private float _jumpBufferTimer;
         private bool _isGrounded;
         private bool _wasGrounded;
+        private bool _onMovingSurface;
+        private Vector2 _surfaceVelocity;
+        private float _airCarryX;
         private float _landAnimTimer;
         private float _interactAnimTimer;
         private float _footstepTimer;
@@ -199,21 +202,41 @@ namespace MyShadowQuit.Entities
                 _coyoteTimer -= Time.fixedDeltaTime;
             }
 
-            // Horizontal movement with smooth acceleration & deceleration
+            // Horizontal movement with smooth acceleration & deceleration.
+            // Movement is applied relative to the supporting surface (platform velocity while grounded,
+            // decaying inherited platform velocity in the air) so riders are carried without drift.
             float targetSpeed = _moveInput * maxSpeed;
             float accelRate = (Mathf.Abs(targetSpeed) > 0.01f) ? acceleration : deceleration;
             if (!_isGrounded) accelRate *= airControlMultiplier;
 
-            float newVelX = Mathf.MoveTowards(_rb.linearVelocity.x, targetSpeed, accelRate * Time.fixedDeltaTime);
+            float dt = Time.fixedDeltaTime;
+            float refVelX;
+            float nextRefVelX;
+            if (_isGrounded)
+            {
+                refVelX = _surfaceVelocity.x;
+                nextRefVelX = refVelX;
+                _airCarryX = refVelX;
+            }
+            else
+            {
+                refVelX = _airCarryX;
+                _airCarryX = Mathf.MoveTowards(_airCarryX, 0f, 4f * dt);
+                nextRefVelX = _airCarryX;
+            }
+
+            float newVelX = MovingSurfaceUtil.StepHorizontal(_rb.linearVelocity.x, refVelX, nextRefVelX, targetSpeed, accelRate, dt);
             float newVelY = _rb.linearVelocity.y;
 
             // Jump execution via coyote time + jump buffer
+            bool jumpedThisStep = false;
             if (_jumpBufferTimer > 0f && _coyoteTimer > 0f)
             {
                 newVelY = jumpForce;
                 _jumpBufferTimer = 0f;
                 _coyoteTimer = 0f;
                 _isGrounded = false;
+                jumpedThisStep = true;
 
                 if (AudioManager.Instance != null)
                 {
@@ -221,14 +244,25 @@ namespace MyShadowQuit.Entities
                 }
             }
 
+            // Stay glued to a vertically moving surface (never when jumping / rising away from it)
+            bool snapToSurface = _isGrounded && !jumpedThisStep && _onMovingSurface
+                                 && _rb.linearVelocity.y <= Mathf.Max(_surfaceVelocity.y, 0f) + 0.5f;
+
             // Variable jump height & crisp fall gravity
-            if (newVelY < 0f)
+            if (!snapToSurface)
             {
-                newVelY += Physics2D.gravity.y * (fallGravityMultiplier - 1f) * Time.fixedDeltaTime;
+                if (newVelY < 0f)
+                {
+                    newVelY += Physics2D.gravity.y * (fallGravityMultiplier - 1f) * Time.fixedDeltaTime;
+                }
+                else if (newVelY > 0f && _isControlActive && !GameInput.GetJumpHeld())
+                {
+                    newVelY += Physics2D.gravity.y * 0.9f * Time.fixedDeltaTime;
+                }
             }
-            else if (newVelY > 0f && _isControlActive && !GameInput.GetJumpHeld())
+            else
             {
-                newVelY += Physics2D.gravity.y * 0.9f * Time.fixedDeltaTime;
+                newVelY = _surfaceVelocity.y;
             }
 
             _rb.linearVelocity = new Vector2(newVelX, Mathf.Max(newVelY, -16f));
@@ -257,13 +291,19 @@ namespace MyShadowQuit.Entities
 
             Collider2D[] hits = Physics2D.OverlapBoxAll(boxCenter, boxSize, 0f);
             _isGrounded = false;
+            _onMovingSurface = false;
+            _surfaceVelocity = Vector2.zero;
             foreach (Collider2D hit in hits)
             {
                 if (hit != null && hit != _col && !hit.isTrigger)
                 {
                     // Check if it's a solid barrier or ground
                     _isGrounded = true;
-                    break;
+                    if (!_onMovingSurface && MovingSurfaceUtil.TryGetSurfaceVelocity(hit, out Vector2 surfVel))
+                    {
+                        _onMovingSurface = true;
+                        _surfaceVelocity = surfVel;
+                    }
                 }
             }
 

@@ -43,6 +43,9 @@ namespace MyShadowQuit.Entities
         private float _jumpBufferTimer;
         private bool _jumpPressedThisStep;
         private bool _isGrounded;
+        private bool _onMovingSurface;
+        private Vector2 _surfaceVelocity;
+        private float _airCarryX;
         private int _jumpsRemaining = MaxJumps;
         private int _facingDir = 1;
 
@@ -409,13 +412,34 @@ namespace MyShadowQuit.Entities
                 accelRate *= airControlMultiplier;
             }
 
-            float newVelX = Mathf.MoveTowards(_rb.linearVelocity.x, targetSpeed, accelRate * Time.fixedDeltaTime);
+            // Movement is applied relative to the supporting surface (platform velocity while grounded,
+            // decaying inherited platform velocity in the air) so riders are carried without drift.
+            float dt = Time.fixedDeltaTime;
+            float refVelX;
+            float nextRefVelX;
+            if (_isGrounded)
+            {
+                refVelX = _surfaceVelocity.x;
+                nextRefVelX = refVelX;
+                _airCarryX = refVelX;
+            }
+            else
+            {
+                refVelX = _airCarryX;
+                _airCarryX = Mathf.MoveTowards(_airCarryX, 0f, 4f * dt);
+                nextRefVelX = _airCarryX;
+            }
+
+            float newVelX = MovingSurfaceUtil.StepHorizontal(_rb.linearVelocity.x, refVelX, nextRefVelX, targetSpeed, accelRate, dt);
             float newVelY = _rb.linearVelocity.y;
+
+            bool jumpedThisStep = false;
 
             // 1. First Jump: From ground or within Coyote Time window
             if (_jumpBufferTimer > 0f && (_coyoteTimer > 0f || (_isGrounded && _jumpsRemaining == MaxJumps)))
             {
                 ExecuteFirstJump(ref newVelY);
+                jumpedThisStep = true;
             }
             // 2. Second Jump (Mid-Air Double Jump): Requires a fresh SPACE press while airborne with at least 1 jump left
             else if (_jumpPressedThisStep && !_isGrounded && _coyoteTimer <= 0f && _jumpsRemaining > 0)
@@ -423,18 +447,30 @@ namespace MyShadowQuit.Entities
                 // If the player walked off a ledge without jumping first, walking off consumes the ground jump slot
                 // so they have exactly 1 mid-air jump (never 2 mid-air jumps after falling off a ledge)
                 ExecuteSecondJump(ref newVelY);
+                jumpedThisStep = true;
             }
 
             _jumpPressedThisStep = false;
 
+            // Stay glued to a vertically moving surface (never when jumping / rising away from it)
+            bool snapToSurface = _isGrounded && !jumpedThisStep && _onMovingSurface
+                                 && _rb.linearVelocity.y <= Mathf.Max(_surfaceVelocity.y, 0f) + 0.5f;
+
             // Smooth low-gravity apex and controlled descent
-            if (newVelY < 0f)
+            if (!snapToSurface)
             {
-                newVelY += Physics2D.gravity.y * shadowGravityScale * (fallGravityMultiplier - 1f) * Time.fixedDeltaTime;
+                if (newVelY < 0f)
+                {
+                    newVelY += Physics2D.gravity.y * shadowGravityScale * (fallGravityMultiplier - 1f) * Time.fixedDeltaTime;
+                }
+                else if (newVelY > 0f && _isControlActive && !GameInput.GetJumpHeld())
+                {
+                    newVelY += Physics2D.gravity.y * shadowGravityScale * 0.65f * Time.fixedDeltaTime;
+                }
             }
-            else if (newVelY > 0f && _isControlActive && !GameInput.GetJumpHeld())
+            else
             {
-                newVelY += Physics2D.gravity.y * shadowGravityScale * 0.65f * Time.fixedDeltaTime;
+                newVelY = _surfaceVelocity.y;
             }
 
             _rb.linearVelocity = new Vector2(newVelX, Mathf.Max(newVelY, -11.5f));
@@ -569,6 +605,8 @@ namespace MyShadowQuit.Entities
 
             Collider2D[] hits = Physics2D.OverlapBoxAll(boxCenter, boxSize, 0f);
             _isGrounded = false;
+            _onMovingSurface = false;
+            _surfaceVelocity = Vector2.zero;
             foreach (Collider2D hit in hits)
             {
                 if (hit != null && hit != _col && !hit.isTrigger)
@@ -581,7 +619,12 @@ namespace MyShadowQuit.Entities
                     if (hit.bounds.max.y <= b.min.y + 0.08f)
                     {
                         _isGrounded = true;
-                        break;
+                        if (MovingSurfaceUtil.TryGetSurfaceVelocity(hit, out Vector2 surfVel))
+                        {
+                            _onMovingSurface = true;
+                            _surfaceVelocity = surfVel;
+                            break;
+                        }
                     }
                 }
             }
