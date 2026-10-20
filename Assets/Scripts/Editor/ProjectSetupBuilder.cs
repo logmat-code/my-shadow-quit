@@ -177,6 +177,9 @@ namespace MyShadowQuit.EditorTools
             PlayerSettings.Android.targetArchitectures = AndroidArchitecture.ARM64;
             PlayerSettings.SetScriptingBackend(NamedBuildTarget.Android, ScriptingImplementation.IL2CPP);
 
+            PlayerSettings.SplashScreen.show = false;
+            PlayerSettings.SplashScreen.showUnityLogo = false;
+
             Texture2D masterIcon = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Art/Branding/master_app_icon_1024.png");
             if (masterIcon != null)
             {

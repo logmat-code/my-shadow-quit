@@ -18,7 +18,7 @@ PlayerSettings:
   cursorHotspot: {x: 0, y: 0}
   m_SplashScreenBackgroundColor: {r: 0.043137256, g: 0.050980393, b: 0.09411765, a: 1}
   m_ShowUnitySplashScreen: 0
-  m_ShowUnitySplashLogo: 1
+  m_ShowUnitySplashLogo: 0
   m_SplashScreenOverlayOpacity: 1
   m_SplashScreenAnimation: 1
   m_SplashScreenLogoStyle: 1
@@ -304,35 +304,50 @@ PlayerSettings:
   - m_BuildTarget: 
     m_Icons:
     - {fileID: 2800000, guid: 8ede730aa52a3abf3aa50d96e08eb863, type: 3}
+  - m_BuildTarget: Android
+    m_Icons:
+    - {fileID: 2800000, guid: 8ede730aa52a3abf3aa50d96e08eb863, type: 3}
   m_BuildTargetPlatformIcons:
   - m_BuildTarget: Android
     m_Icons:
-    - m_Textures: []
+    - m_Textures:
+      - {fileID: 2800000, guid: 5888227580c14e659347db45fc204ed1, type: 3}
+      - {fileID: 2800000, guid: 75727e50786978edb5e91f7a11adf7b0, type: 3}
       m_Width: 432
       m_Height: 432
       m_Kind: 2
       m_SubKind: 
-    - m_Textures: []
+    - m_Textures:
+      - {fileID: 2800000, guid: 5888227580c14e659347db45fc204ed1, type: 3}
+      - {fileID: 2800000, guid: 75727e50786978edb5e91f7a11adf7b0, type: 3}
       m_Width: 324
       m_Height: 324
       m_Kind: 2
       m_SubKind: 
-    - m_Textures: []
+    - m_Textures:
+      - {fileID: 2800000, guid: 5888227580c14e659347db45fc204ed1, type: 3}
+      - {fileID: 2800000, guid: 75727e50786978edb5e91f7a11adf7b0, type: 3}
       m_Width: 216
       m_Height: 216
       m_Kind: 2
       m_SubKind: 
-    - m_Textures: []
+    - m_Textures:
+      - {fileID: 2800000, guid: 5888227580c14e659347db45fc204ed1, type: 3}
+      - {fileID: 2800000, guid: 75727e50786978edb5e91f7a11adf7b0, type: 3}
       m_Width: 162
       m_Height: 162
       m_Kind: 2
       m_SubKind: 
-    - m_Textures: []
+    - m_Textures:
+      - {fileID: 2800000, guid: 5888227580c14e659347db45fc204ed1, type: 3}
+      - {fileID: 2800000, guid: 75727e50786978edb5e91f7a11adf7b0, type: 3}
       m_Width: 108
       m_Height: 108
       m_Kind: 2
       m_SubKind: 
-    - m_Textures: []
+    - m_Textures:
+      - {fileID: 2800000, guid: 5888227580c14e659347db45fc204ed1, type: 3}
+      - {fileID: 2800000, guid: 75727e50786978edb5e91f7a11adf7b0, type: 3}
       m_Width: 81
       m_Height: 81
       m_Kind: 2
