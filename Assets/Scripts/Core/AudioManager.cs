@@ -236,14 +236,16 @@ namespace MyShadowQuit.Core
         /// Plays or maintains the dark fantasy Menu Theme.
         /// Does NOT restart the track or recreate AudioSources when navigating between HOME, SHOP, WORLD SELECT, etc.
         /// </summary>
+        public const string MenuTrackPath = "Music/menu_ambient_theme";
+
         public void PlayMenuMusic(float fadeDuration = 1.0f)
         {
-            if (_currentMusicState == AudioMusicState.Menu && _musicSource != null && _musicSource.isPlaying && _musicSource.clip != null && _musicSource.clip.name == "menu_theme")
+            if (_currentMusicState == AudioMusicState.Menu && _musicSource != null && _musicSource.isPlaying && _musicSource.clip != null && _musicSource.clip.name == "menu_ambient_theme")
             {
                 return;
             }
 
-            TransitionToTrack("Music/menu_theme", AudioMusicState.Menu, fadeDuration, playFireCrackle: false);
+            TransitionToTrack(MenuTrackPath, AudioMusicState.Menu, fadeDuration, playFireCrackle: false);
         }
 
         /// <summary>
@@ -304,7 +306,13 @@ namespace MyShadowQuit.Core
                 }
             }
 
-            AudioClip nextClip = AssetRegistry.GetAudio(trackPath) ?? AssetRegistry.GetAudio("Music/dark_ambient_theme");
+            // No silent cross-track fallback: a missing track must never masquerade as another one
+            // (e.g. HOME falling back to the World 1 theme).
+            AudioClip nextClip = AssetRegistry.GetAudio(trackPath);
+            if (nextClip == null)
+            {
+                Debug.LogError($"[AudioManager] Missing music track '{trackPath}'");
+            }
 
             if (!Application.isPlaying)
             {
@@ -374,7 +382,7 @@ namespace MyShadowQuit.Core
 
         public void StartAmbience(string musicTrackPath = null)
         {
-            if (string.IsNullOrEmpty(musicTrackPath) || musicTrackPath == "Music/menu_theme")
+            if (string.IsNullOrEmpty(musicTrackPath) || musicTrackPath == MenuTrackPath)
             {
                 PlayMenuMusic(0.8f);
             }
