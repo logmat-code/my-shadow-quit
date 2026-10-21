@@ -12,8 +12,8 @@ PlayerSettings:
   targetDevice: 2
   useOnDemandResources: 0
   accelerometerFrequency: 60
-  companyName: LastFlameStudio
-  productName: 'MY SHADOW QUIT.'
+  companyName: LOGMAT
+  productName: MY SHADOW QUIT.
   defaultCursor: {fileID: 0}
   cursorHotspot: {x: 0, y: 0}
   m_SplashScreenBackgroundColor: {r: 0.043137256, g: 0.050980393, b: 0.09411765, a: 1}
@@ -303,10 +303,18 @@ PlayerSettings:
   m_BuildTargetIcons:
   - m_BuildTarget: 
     m_Icons:
-    - {fileID: 2800000, guid: 8ede730aa52a3abf3aa50d96e08eb863, type: 3}
+    - serializedVersion: 2
+      m_Icon: {fileID: 0}
+      m_Width: 636
+      m_Height: 636
+      m_Kind: 0
   - m_BuildTarget: Android
     m_Icons:
-    - {fileID: 2800000, guid: 8ede730aa52a3abf3aa50d96e08eb863, type: 3}
+    - serializedVersion: 2
+      m_Icon: {fileID: 0}
+      m_Width: 648
+      m_Height: 648
+      m_Kind: 0
   m_BuildTargetPlatformIcons:
   - m_BuildTarget: Android
     m_Icons:

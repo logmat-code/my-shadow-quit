@@ -159,7 +159,7 @@ namespace MyShadowQuit.EditorTools
         {
             EditorSettings.enterPlayModeOptionsEnabled = false;
             PlayerSettings.productName = "MY SHADOW QUIT.";
-            PlayerSettings.companyName = "Logmat";
+            PlayerSettings.companyName = "LOGMAT";
             PlayerSettings.applicationIdentifier = "com.logmat.myshadowquit";
             PlayerSettings.SetApplicationIdentifier(BuildTargetGroup.Android, "com.logmat.myshadowquit");
             PlayerSettings.SetApplicationIdentifier(BuildTargetGroup.WebGL, "com.logmat.myshadowquit");
