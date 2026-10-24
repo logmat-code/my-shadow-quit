@@ -57,7 +57,31 @@ namespace MyShadowQuit.Core
             "LEVEL 27: BETWEEN TWO TICKS",
             "LEVEL 28: THE FALLEN BELLS",
             "LEVEL 29: THE LAST HOUR",
-            "LEVEL 30: HEART OF THE CLOCKTOWER"
+            "LEVEL 30: HEART OF THE CLOCKTOWER",
+
+            // World 4: The Drowned Cathedral (Levels 31–40)
+            "LEVEL 31: BENEATH THE BLACK TIDE",
+            "LEVEL 32: THE FLOODED NAVE",
+            "LEVEL 33: DROWNED STEPS",
+            "LEVEL 34: GLASS BENEATH THE SEA",
+            "LEVEL 35: THE SILENT CHOIR",
+            "LEVEL 36: RISING WATERS",
+            "LEVEL 37: THE BROKEN BAPTISTERY",
+            "LEVEL 38: BENEATH THE BELLS",
+            "LEVEL 39: THE SUNKEN RELIQUARY",
+            "LEVEL 40: THE LAST CATHEDRAL LIGHT",
+
+            // World 5: The Abyss of the Last Flame (Levels 41–50)
+            "LEVEL 41: EDGE OF OBLIVION",
+            "LEVEL 42: WHERE LIGHT BREAKS",
+            "LEVEL 43: ECHOES WITHOUT FORM",
+            "LEVEL 44: THE FLAME ANCHORS",
+            "LEVEL 45: BRIDGES OF NOTHING",
+            "LEVEL 46: FRACTURED REFLECTIONS",
+            "LEVEL 47: THE FORGOTTEN DIVIDE",
+            "LEVEL 48: A WORLD WITHOUT FIRE",
+            "LEVEL 49: BEFORE THE LAST DAWN",
+            "LEVEL 50: THE LAST FLAME"
         };
 
         public static string FormatLevelTitle(int globalLevelNumber, string shortTitle)
@@ -106,7 +130,31 @@ namespace MyShadowQuit.Core
             "Your Shadow slips through the spectral iron grate while the Flame operates the mechanical lever.",
             "Ascend the vertical belfry. Coordinate moving gear platforms and evade the resonant pendulum weights.",
             "Synchronize gear elevators, clockwork levers, and the solar lens to unseal the high sanctuary.",
-            "The Heart of the Clocktower. Unwind all five ancient celestial clockworks to open the Grand Chrono Portal."
+            "The Heart of the Clocktower. Unwind all five ancient celestial clockworks to open the Grand Chrono Portal.",
+
+            // World 4 Hints
+            "The cathedral lies drowned. Cross the flooded threshold and find the exit.",
+            "Pull the tide lever to lower the water and reach the far side.",
+            "Buoyant platforms rise and fall with the tide. Ride them across.",
+            "Aim the Torch at the crystal; its refracted beam wakes the sealed gate.",
+            "Two plates, two voices. Player and Shadow must each hold one.",
+            "Raise the tide to float the platform, then lower it to open the passage.",
+            "Shadow slips through the submerged grate while the Flame works the lever.",
+            "Mind the sunken bell blades and the cutting currents.",
+            "Combine tide, crystal and plates to unseal the reliquary.",
+            "Player, Shadow and Torch must work together to kindle the final light.",
+
+            // World 5 Hints
+            "The ground ends here. Step across the fractured stones.",
+            "Some stones exist only in light, others only in shadow. Watch the pulse.",
+            "Only your Shadow can wake the echo switch.",
+            "Set the Torch on the anchor to keep the mechanism alive.",
+            "Torch and Shadow together weave a bridge. Cross before it fades.",
+            "Light and shadow routes must meet at the far gate.",
+            "A gate of light and a gate of shadow. Open both.",
+            "Only the Torch's glow reveals the path. Carry it carefully.",
+            "Every lesson of the descent, once more.",
+            "Reach the heart of the abyss and kindle the Last Flame."
         };
 
         private GameObject _levelRoot;
@@ -153,14 +201,14 @@ namespace MyShadowQuit.Core
 
             if (levelIndex >= 10)
             {
-                worldIdx = 1;
-                localIndex = levelIndex - 10;
-                if (_activeWorld == null || _activeWorld.WorldIndex != 1)
+                worldIdx = levelIndex / 10;
+                localIndex = levelIndex % 10;
+                if (_activeWorld == null || _activeWorld.WorldIndex != worldIdx)
                 {
-                    _activeWorld = WorldCatalog.GetWorld(1);
+                    _activeWorld = WorldCatalog.GetWorld(worldIdx);
                 }
             }
-            else if (worldIdx == 1)
+            else
             {
                 localIndex = levelIndex;
             }
@@ -168,7 +216,7 @@ namespace MyShadowQuit.Core
             int displayLevelNumber = (worldIdx * 10) + localIndex + 1;
             _levelRoot = new GameObject($"Level_{displayLevelNumber}");
 
-            bool isExtendedChamber = (worldIdx == 0 && localIndex == 9) || (worldIdx == 1 && localIndex == 9) || (worldIdx == 2 && localIndex == 9);
+            bool isExtendedChamber = localIndex == 9;
             int maxChamberX = isExtendedChamber ? 29 : 23;
 
             WorldEnvironmentProfile env = GetActiveEnvironmentProfile();
@@ -220,7 +268,7 @@ namespace MyShadowQuit.Core
                     default: BuildLevel20_HeartOfTheInvertedForest(); break;
                 }
             }
-            else
+            else if (worldIdx == 2)
             {
                 switch (localIndex)
                 {
@@ -234,6 +282,38 @@ namespace MyShadowQuit.Core
                     case 7: BuildLevel28_TheFallenBells(); break;
                     case 8: BuildLevel29_TheLastHour(); break;
                     default: BuildLevel30_HeartOfTheClocktower(); break;
+                }
+            }
+            else if (worldIdx == 3)
+            {
+                switch (localIndex)
+                {
+                    case 0: BuildLevel31_BeneathTheBlackTide(); break;
+                    case 1: BuildLevel32_TheFloodedNave(); break;
+                    case 2: BuildLevel33_DrownedSteps(); break;
+                    case 3: BuildLevel34_GlassBeneathTheSea(); break;
+                    case 4: BuildLevel35_TheSilentChoir(); break;
+                    case 5: BuildLevel36_RisingWaters(); break;
+                    case 6: BuildLevel37_TheBrokenBaptistery(); break;
+                    case 7: BuildLevel38_BeneathTheBells(); break;
+                    case 8: BuildLevel39_TheSunkenReliquary(); break;
+                    default: BuildLevel40_TheLastCathedralLight(); break;
+                }
+            }
+            else
+            {
+                switch (localIndex)
+                {
+                    case 0: BuildLevel41_EdgeOfOblivion(); break;
+                    case 1: BuildLevel42_WhereLightBreaks(); break;
+                    case 2: BuildLevel43_EchoesWithoutForm(); break;
+                    case 3: BuildLevel44_TheFlameAnchors(); break;
+                    case 4: BuildLevel45_BridgesOfNothing(); break;
+                    case 5: BuildLevel46_FracturedReflections(); break;
+                    case 6: BuildLevel47_TheForgottenDivide(); break;
+                    case 7: BuildLevel48_AWorldWithoutFire(); break;
+                    case 8: BuildLevel49_BeforeTheLastDawn(); break;
+                    default: BuildLevel50_TheLastFlame(); break;
                 }
             }
         }
@@ -1591,6 +1671,493 @@ namespace MyShadowQuit.Core
             ShadowClockworkPassage sp = go.AddComponent<ShadowClockworkPassage>();
             sp.Configure(unlockNodes, stayOpen);
             return sp;
+        }
+
+        // =========================================================================
+        // WORLD 4: THE DROWNED CATHEDRAL (Levels 31–40)
+        // =========================================================================
+
+        private WaterLevelZone CreateWaterZone(Vector2 pos, float lowY = -2f, float highY = 2f, bool startHigh = false)
+        {
+            GameObject go = new GameObject("WaterLevelZone");
+            go.transform.SetParent(_levelRoot.transform, false);
+            go.transform.position = pos;
+            WaterLevelZone wz = go.AddComponent<WaterLevelZone>();
+            wz.Configure(lowY, highY, startHigh);
+
+            // Visual surface
+            GameObject vis = new GameObject("WaterSurfaceVisual");
+            vis.transform.SetParent(go.transform, false);
+            SpriteRenderer sr = vis.AddComponent<SpriteRenderer>();
+            sr.sprite = AssetRegistry.GetSprite("World4/water_surface", 32f);
+            sr.color = new Color(0.2f, 0.7f, 0.8f, 0.75f);
+            sr.sortingOrder = 5;
+
+            return wz;
+        }
+
+        private BuoyantPlatform2D CreateBuoyantPlatform(Vector2 pos, WaterLevelZone zone, float width = 2f)
+        {
+            GameObject go = new GameObject("BuoyantPlatform");
+            go.transform.SetParent(_levelRoot.transform, false);
+            go.transform.position = pos;
+            SpriteRenderer sr = go.AddComponent<SpriteRenderer>();
+            sr.sprite = AssetRegistry.GetSprite("World4/buoyant_platform", 32f);
+            sr.sortingOrder = 2;
+
+            BoxCollider2D col = go.AddComponent<BoxCollider2D>();
+            col.size = new Vector2(width, 0.45f);
+
+            BuoyantPlatform2D bp = go.AddComponent<BuoyantPlatform2D>();
+            bp.Configure(zone);
+            return bp;
+        }
+
+        private TideSwitch CreateTideSwitch(Vector2 pos, WaterLevelZone zone, bool toggle = true, bool highOnTrigger = true)
+        {
+            GameObject go = new GameObject("TideSwitch");
+            go.transform.SetParent(_levelRoot.transform, false);
+            go.transform.position = pos;
+            SpriteRenderer sr = go.AddComponent<SpriteRenderer>();
+            sr.sprite = AssetRegistry.GetSprite("World4/tide_switch_off", 32f);
+            sr.sortingOrder = 2;
+
+            BoxCollider2D col = go.AddComponent<BoxCollider2D>();
+            col.isTrigger = true;
+            col.size = new Vector2(0.8f, 0.8f);
+
+            TideSwitch ts = go.AddComponent<TideSwitch>();
+            ts.Configure(zone, toggle, highOnTrigger);
+            return ts;
+        }
+
+        private RefractionCrystal CreateRefractionCrystal(Vector2 pos, AncientDoor door, float radius = 2.4f)
+        {
+            GameObject go = new GameObject("RefractionCrystal");
+            go.transform.SetParent(_levelRoot.transform, false);
+            go.transform.position = pos;
+            SpriteRenderer sr = go.AddComponent<SpriteRenderer>();
+            sr.sprite = AssetRegistry.GetSprite("World4/crystal_off", 32f);
+            sr.sortingOrder = 2;
+
+            RefractionCrystal rc = go.AddComponent<RefractionCrystal>();
+            rc.Configure(door, radius);
+            return rc;
+        }
+
+        private SubmergedGratePassage CreateSubmergedGrate(Vector2 pos, float openOffset = 2.5f)
+        {
+            GameObject go = new GameObject("SubmergedGrate");
+            go.transform.SetParent(_levelRoot.transform, false);
+            go.transform.position = pos;
+            SpriteRenderer sr = go.AddComponent<SpriteRenderer>();
+            sr.sprite = AssetRegistry.GetSprite("World4/submerged_grate", 32f);
+            sr.sortingOrder = 2;
+
+            BoxCollider2D col = go.AddComponent<BoxCollider2D>();
+            col.size = new Vector2(0.6f, 1.8f);
+
+            SubmergedGratePassage sg = go.AddComponent<SubmergedGratePassage>();
+            return sg;
+        }
+
+        private CathedralBellHazard CreateCathedralBell(Vector2 pos, float maxAngle = 45f, float speed = 1.8f, float offset = 0f)
+        {
+            GameObject go = new GameObject("CathedralBell");
+            go.transform.SetParent(_levelRoot.transform, false);
+            go.transform.position = pos;
+            SpriteRenderer sr = go.AddComponent<SpriteRenderer>();
+            sr.sprite = AssetRegistry.GetSprite("World4/bell_hazard", 32f);
+            sr.sortingOrder = 3;
+
+            CircleCollider2D col = go.AddComponent<CircleCollider2D>();
+            col.isTrigger = true;
+            col.radius = 0.65f;
+
+            CathedralBellHazard cb = go.AddComponent<CathedralBellHazard>();
+            cb.Configure(maxAngle, speed, offset);
+            return cb;
+        }
+
+        // Level 31: Beneath the Black Tide
+        private void BuildLevel31_BeneathTheBlackTide()
+        {
+            WaterLevelZone water = CreateWaterZone(new Vector2(3f, -2.5f), lowY: -3f, highY: -1.2f, startHigh: false);
+            CreatePlatformRow(-8, -2, -2f, true);
+            CreateBuoyantPlatform(new Vector2(2f, -2f), water, 2.5f);
+            CreatePlatformRow(6, 12, -2f, true);
+
+            AncientDoor door = CreateAncientDoor(new Vector2(9.5f, -1.2f), new List<PuzzleNode>());
+            CreateExitPortal(new Vector2(11.5f, -1.2f), door, false);
+
+            SpawnCharactersAndTorch(new Vector2(-6.5f, -1.2f), new Vector2(-7.2f, -1.2f), new Vector2(-6.5f, -1.2f), true);
+        }
+
+        // Level 32: The Flooded Nave
+        private void BuildLevel32_TheFloodedNave()
+        {
+            WaterLevelZone water = CreateWaterZone(new Vector2(3f, -1.5f), lowY: -3f, highY: 0.5f, startHigh: true);
+            CreatePlatformRow(-8, -3, 0f, true);
+            CreatePlatformRow(7, 12, 0f, true);
+
+            CreateBuoyantPlatform(new Vector2(2f, 0.5f), water, 2.5f);
+            CreateTideSwitch(new Vector2(-4f, 0.8f), water, toggle: true);
+
+            AncientDoor door = CreateAncientDoor(new Vector2(9.5f, 0.8f), new List<PuzzleNode>());
+            CreateExitPortal(new Vector2(11.5f, 0.8f), door, false);
+
+            SpawnCharactersAndTorch(new Vector2(-6.5f, 0.8f), new Vector2(-7.2f, 0.8f), new Vector2(-6.5f, 0.8f), true);
+        }
+
+        // Level 33: Drowned Steps
+        private void BuildLevel33_DrownedSteps()
+        {
+            WaterLevelZone water = CreateWaterZone(new Vector2(2f, -1.5f), lowY: -2.5f, highY: 1.2f, startHigh: false);
+            CreatePlatformRow(-8, -4, -1.5f, true);
+            CreateBuoyantPlatform(new Vector2(-1.5f, -1.5f), water, 2f);
+            CreateBuoyantPlatform(new Vector2(3.5f, -1.0f), water, 2f);
+            CreatePlatformRow(7, 12, 1.5f, true);
+
+            CreateTideSwitch(new Vector2(-5f, -0.7f), water, toggle: true);
+
+            AncientDoor door = CreateAncientDoor(new Vector2(9.5f, 2.3f), new List<PuzzleNode>());
+            CreateExitPortal(new Vector2(11.5f, 2.3f), door, false);
+
+            SpawnCharactersAndTorch(new Vector2(-6.5f, -0.7f), new Vector2(-7.2f, -0.7f), new Vector2(-6.5f, -0.7f), true);
+        }
+
+        // Level 34: Glass Beneath the Sea
+        private void BuildLevel34_GlassBeneathTheSea()
+        {
+            CreatePlatformRow(-8, 12, -2f, true);
+            AncientDoor door = CreateAncientDoor(new Vector2(8f, -1.2f), new List<PuzzleNode>());
+            CreateRefractionCrystal(new Vector2(1f, -1.2f), door, radius: 2.6f);
+            CreateExitPortal(new Vector2(11f, -1.2f), door, false);
+
+            SpawnCharactersAndTorch(new Vector2(-6.5f, -1.2f), new Vector2(-7.2f, -1.2f), new Vector2(-6.5f, -1.2f), true);
+        }
+
+        // Level 35: The Silent Choir
+        private void BuildLevel35_TheSilentChoir()
+        {
+            CreatePlatformRow(-8, 12, -2f, true);
+            PressurePlate p1 = CreatePressurePlate(new Vector2(-1f, -1.85f), false);
+            PressurePlate p2 = CreatePressurePlate(new Vector2(4f, -1.85f), false);
+
+            AncientDoor door = CreateAncientDoor(new Vector2(9.5f, -1.2f), new List<PuzzleNode> { p1, p2 }, requireAll: true);
+            CreateExitPortal(new Vector2(11.5f, -1.2f), door, false);
+
+            SpawnCharactersAndTorch(new Vector2(-6.5f, -1.2f), new Vector2(-7.2f, -1.2f), new Vector2(-6.5f, -1.2f), true);
+        }
+
+        // Level 36: Rising Waters
+        private void BuildLevel36_RisingWaters()
+        {
+            WaterLevelZone water = CreateWaterZone(new Vector2(2f, -1f), lowY: -3f, highY: 1.5f, startHigh: false);
+            CreatePlatformRow(-8, -3, -1.5f, true);
+            CreateBuoyantPlatform(new Vector2(1.5f, -1.5f), water, 2.8f);
+            CreatePlatformRow(6, 12, 1.8f, true);
+
+            CreateTideSwitch(new Vector2(-4.5f, -0.7f), water, toggle: true);
+
+            AncientDoor door = CreateAncientDoor(new Vector2(9.5f, 2.6f), new List<PuzzleNode>());
+            CreateExitPortal(new Vector2(11.5f, 2.6f), door, false);
+
+            SpawnCharactersAndTorch(new Vector2(-6.5f, -0.7f), new Vector2(-7.2f, -0.7f), new Vector2(-6.5f, -0.7f), true);
+        }
+
+        // Level 37: The Broken Baptistery
+        private void BuildLevel37_TheBrokenBaptistery()
+        {
+            CreatePlatformRow(-8, 12, -2f, true);
+            CreateWallColumn(0, -1, 3);
+            CreateSubmergedGrate(new Vector2(0f, -1.2f));
+
+            ShadowSwitch sw = CreateShadowSwitch(new Vector2(3.5f, -1.25f));
+            AncientDoor door = CreateAncientDoor(new Vector2(8.5f, -1.2f), new List<PuzzleNode> { sw }, requireAll: true);
+            CreateExitPortal(new Vector2(11f, -1.2f), door, false);
+
+            SpawnCharactersAndTorch(new Vector2(-6.5f, -1.2f), new Vector2(-7.2f, -1.2f), new Vector2(-6.5f, -1.2f), true);
+        }
+
+        // Level 38: Beneath the Bells
+        private void BuildLevel38_BeneathTheBells()
+        {
+            CreatePlatformRow(-8, 12, -2f, true);
+            CreateCathedralBell(new Vector2(-1f, 1.8f), maxAngle: 50f, speed: 2.2f, offset: 0f);
+            CreateCathedralBell(new Vector2(4f, 1.8f), maxAngle: 50f, speed: 2.2f, offset: 1.5f);
+
+            AncientDoor door = CreateAncientDoor(new Vector2(9.5f, -1.2f), new List<PuzzleNode>());
+            CreateExitPortal(new Vector2(11.5f, -1.2f), door, false);
+
+            SpawnCharactersAndTorch(new Vector2(-6.5f, -1.2f), new Vector2(-7.2f, -1.2f), new Vector2(-6.5f, -1.2f), true);
+        }
+
+        // Level 39: The Sunken Reliquary
+        private void BuildLevel39_TheSunkenReliquary()
+        {
+            WaterLevelZone water = CreateWaterZone(new Vector2(0f, -1.5f), lowY: -2.5f, highY: 0.8f, startHigh: false);
+            CreatePlatformRow(-8, -3, -1.5f, true);
+            CreateBuoyantPlatform(new Vector2(0f, -1.5f), water, 2.5f);
+            CreatePlatformRow(4, 12, 1.0f, true);
+
+            CreateTideSwitch(new Vector2(-4.5f, -0.7f), water, toggle: true);
+
+            AncientDoor door = CreateAncientDoor(new Vector2(9.5f, 1.8f), new List<PuzzleNode>());
+            CreateRefractionCrystal(new Vector2(6f, 1.8f), door, radius: 2.5f);
+            CreateExitPortal(new Vector2(11.5f, 1.8f), door, false);
+
+            SpawnCharactersAndTorch(new Vector2(-6.5f, -0.7f), new Vector2(-7.2f, -0.7f), new Vector2(-6.5f, -0.7f), true);
+        }
+
+        // Level 40: The Last Cathedral Light
+        private void BuildLevel40_TheLastCathedralLight()
+        {
+            WaterLevelZone water = CreateWaterZone(new Vector2(5f, -1.5f), lowY: -2.5f, highY: 1.2f, startHigh: false);
+            CreatePlatformRow(-8, -2, -1.5f, true);
+            CreateBuoyantPlatform(new Vector2(3f, -1.5f), water, 3f);
+            CreatePlatformRow(8, 28, 1.5f, true);
+
+            CreateTideSwitch(new Vector2(-4f, -0.7f), water, toggle: true);
+            CreateCathedralBell(new Vector2(13f, 4.5f), maxAngle: 45f, speed: 2f);
+
+            AncientDoor door = CreateAncientDoor(new Vector2(23f, 2.3f), new List<PuzzleNode>());
+            CreateRefractionCrystal(new Vector2(18f, 2.3f), door, radius: 2.6f);
+            CreateExitPortal(new Vector2(26f, 2.3f), door, false);
+
+            SpawnCharactersAndTorch(new Vector2(-6.5f, -0.7f), new Vector2(-7.2f, -0.7f), new Vector2(-6.5f, -0.7f), true);
+        }
+
+        // =========================================================================
+        // WORLD 5: THE ABYSS OF THE LAST FLAME (Levels 41–50)
+        // =========================================================================
+
+        private DualRealityPlatform CreateDualRealityPlatform(Vector2 pos, DualRealityPlatform.RealityState mode = DualRealityPlatform.RealityState.AlternatingTimer, float interval = 3.5f, bool startLight = true)
+        {
+            GameObject go = new GameObject("DualRealityPlatform");
+            go.transform.SetParent(_levelRoot.transform, false);
+            go.transform.position = pos;
+            SpriteRenderer sr = go.AddComponent<SpriteRenderer>();
+            sr.sprite = AssetRegistry.GetSprite("World5/dual_plat_light", 32f);
+            sr.sortingOrder = 2;
+
+            BoxCollider2D col = go.AddComponent<BoxCollider2D>();
+            col.size = new Vector2(2f, 0.45f);
+
+            DualRealityPlatform dr = go.AddComponent<DualRealityPlatform>();
+            dr.Configure(mode, interval, startLight);
+            return dr;
+        }
+
+        private FlameAnchor CreateFlameAnchor(Vector2 pos, DualRealityPlatform[] platforms, float radius = 3.5f)
+        {
+            GameObject go = new GameObject("FlameAnchor");
+            go.transform.SetParent(_levelRoot.transform, false);
+            go.transform.position = pos;
+            SpriteRenderer sr = go.AddComponent<SpriteRenderer>();
+            sr.sprite = AssetRegistry.GetSprite("World5/flame_anchor", 32f);
+            sr.sortingOrder = 2;
+
+            FlameAnchor fa = go.AddComponent<FlameAnchor>();
+            fa.Configure(platforms, radius);
+            return fa;
+        }
+
+        private ShadowEchoSwitch CreateEchoSwitch(Vector2 pos, AncientDoor door = null, AbyssalBridge bridge = null)
+        {
+            GameObject go = new GameObject("ShadowEchoSwitch");
+            go.transform.SetParent(_levelRoot.transform, false);
+            go.transform.position = pos;
+            SpriteRenderer sr = go.AddComponent<SpriteRenderer>();
+            sr.sprite = AssetRegistry.GetSprite("World5/echo_switch_off", 32f);
+            sr.sortingOrder = 2;
+
+            BoxCollider2D col = go.AddComponent<BoxCollider2D>();
+            col.isTrigger = true;
+            col.size = new Vector2(0.8f, 0.8f);
+
+            ShadowEchoSwitch es = go.AddComponent<ShadowEchoSwitch>();
+            es.Configure(door, bridge);
+            return es;
+        }
+
+        private AbyssalBridge CreateAbyssalBridge(Vector2 pos, bool startActive = false, float width = 3f)
+        {
+            GameObject go = new GameObject("AbyssalBridge");
+            go.transform.SetParent(_levelRoot.transform, false);
+            go.transform.position = pos;
+            SpriteRenderer sr = go.AddComponent<SpriteRenderer>();
+            sr.sprite = AssetRegistry.GetSprite("World5/abyssal_bridge", 32f);
+            sr.sortingOrder = 2;
+
+            BoxCollider2D col = go.AddComponent<BoxCollider2D>();
+            col.size = new Vector2(width, 0.45f);
+
+            AbyssalBridge ab = go.AddComponent<AbyssalBridge>();
+            ab.Configure(startActive);
+            return ab;
+        }
+
+        private FinalFlameAltar CreateFinalAltar(Vector2 pos)
+        {
+            GameObject go = new GameObject("FinalFlameAltar");
+            go.transform.SetParent(_levelRoot.transform, false);
+            go.transform.position = pos;
+            SpriteRenderer sr = go.AddComponent<SpriteRenderer>();
+            sr.sprite = AssetRegistry.GetSprite("World5/final_flame_altar", 32f);
+            sr.sortingOrder = 2;
+
+            FinalFlameAltar ffa = go.AddComponent<FinalFlameAltar>();
+            return ffa;
+        }
+
+        // Level 41: Edge of Oblivion
+        private void BuildLevel41_EdgeOfOblivion()
+        {
+            CreatePlatformRow(-8, -3, -2f, true);
+            CreatePlatformRow(4, 12, -2f, true);
+            CreateDualRealityPlatform(new Vector2(0.5f, -2f), DualRealityPlatform.RealityState.LightActive);
+
+            AncientDoor door = CreateAncientDoor(new Vector2(9.5f, -1.2f), new List<PuzzleNode>());
+            CreateExitPortal(new Vector2(11.5f, -1.2f), door, false);
+
+            SpawnCharactersAndTorch(new Vector2(-6.5f, -1.2f), new Vector2(-7.2f, -1.2f), new Vector2(-6.5f, -1.2f), true);
+        }
+
+        // Level 42: Where Light Breaks
+        private void BuildLevel42_WhereLightBreaks()
+        {
+            CreatePlatformRow(-8, -4, -2f, true);
+            CreateDualRealityPlatform(new Vector2(-1f, -2f), DualRealityPlatform.RealityState.AlternatingTimer, 3.5f, true);
+            CreateDualRealityPlatform(new Vector2(3f, -2f), DualRealityPlatform.RealityState.AlternatingTimer, 3.5f, false);
+            CreatePlatformRow(6, 12, -2f, true);
+
+            AncientDoor door = CreateAncientDoor(new Vector2(9.5f, -1.2f), new List<PuzzleNode>());
+            CreateExitPortal(new Vector2(11.5f, -1.2f), door, false);
+
+            SpawnCharactersAndTorch(new Vector2(-6.5f, -1.2f), new Vector2(-7.2f, -1.2f), new Vector2(-6.5f, -1.2f), true);
+        }
+
+        // Level 43: Echoes Without Form
+        private void BuildLevel43_EchoesWithoutForm()
+        {
+            CreatePlatformRow(-8, -3, -2f, true);
+            CreatePlatformRow(5, 12, -2f, true);
+
+            AbyssalBridge bridge = CreateAbyssalBridge(new Vector2(1f, -2f), false, 4f);
+            CreateEchoSwitch(new Vector2(-4.5f, 0.5f), null, bridge);
+
+            AncientDoor door = CreateAncientDoor(new Vector2(9.5f, -1.2f), new List<PuzzleNode>());
+            CreateExitPortal(new Vector2(11.5f, -1.2f), door, false);
+
+            SpawnCharactersAndTorch(new Vector2(-6.5f, -1.2f), new Vector2(-7.2f, -1.2f), new Vector2(-6.5f, -1.2f), true);
+        }
+
+        // Level 44: The Flame Anchors
+        private void BuildLevel44_TheFlameAnchors()
+        {
+            CreatePlatformRow(-8, -4, -2f, true);
+            DualRealityPlatform p1 = CreateDualRealityPlatform(new Vector2(0f, -2f), DualRealityPlatform.RealityState.AlternatingTimer, 2.5f, false);
+            CreatePlatformRow(4, 12, -2f, true);
+
+            CreateFlameAnchor(new Vector2(-5f, -1.2f), new[] { p1 }, radius: 3.5f);
+
+            AncientDoor door = CreateAncientDoor(new Vector2(9.5f, -1.2f), new List<PuzzleNode>());
+            CreateExitPortal(new Vector2(11.5f, -1.2f), door, false);
+
+            SpawnCharactersAndTorch(new Vector2(-6.5f, -1.2f), new Vector2(-7.2f, -1.2f), new Vector2(-6.5f, -1.2f), true);
+        }
+
+        // Level 45: Bridges of Nothing
+        private void BuildLevel45_BridgesOfNothing()
+        {
+            CreatePlatformRow(-8, -4, -2f, true);
+            AbyssalBridge b1 = CreateAbyssalBridge(new Vector2(-1f, -2f), false, 3f);
+            AbyssalBridge b2 = CreateAbyssalBridge(new Vector2(3f, -2f), false, 3f);
+            CreatePlatformRow(6, 12, -2f, true);
+
+            CreateEchoSwitch(new Vector2(-5f, 0.5f), null, b1);
+            CreateEchoSwitch(new Vector2(8f, 0.5f), null, b2);
+
+            AncientDoor door = CreateAncientDoor(new Vector2(9.5f, -1.2f), new List<PuzzleNode>());
+            CreateExitPortal(new Vector2(11.5f, -1.2f), door, false);
+
+            SpawnCharactersAndTorch(new Vector2(-6.5f, -1.2f), new Vector2(-7.2f, -1.2f), new Vector2(-6.5f, -1.2f), true);
+        }
+
+        // Level 46: Fractured Reflections
+        private void BuildLevel46_FracturedReflections()
+        {
+            CreatePlatformRow(-8, 12, -2f, true);
+            DualRealityPlatform pLight = CreateDualRealityPlatform(new Vector2(-1f, 0.5f), DualRealityPlatform.RealityState.LightActive);
+            DualRealityPlatform pShadow = CreateDualRealityPlatform(new Vector2(3f, 0.5f), DualRealityPlatform.RealityState.ShadowActive);
+            _ = pLight; _ = pShadow;
+
+            AncientDoor door = CreateAncientDoor(new Vector2(9.5f, -1.2f), new List<PuzzleNode>());
+            CreateExitPortal(new Vector2(11.5f, -1.2f), door, false);
+
+            SpawnCharactersAndTorch(new Vector2(-6.5f, -1.2f), new Vector2(-7.2f, -1.2f), new Vector2(-6.5f, -1.2f), true);
+        }
+
+        // Level 47: The Forgotten Divide
+        private void BuildLevel47_TheForgottenDivide()
+        {
+            CreatePlatformRow(-8, 12, -2f, true);
+            CreateWallColumn(0, -1, 3);
+
+            AncientDoor door = CreateAncientDoor(new Vector2(9.5f, -1.2f), new List<PuzzleNode>());
+            CreateEchoSwitch(new Vector2(3f, -1.2f), door);
+            CreateExitPortal(new Vector2(11.5f, -1.2f), door, false);
+
+            SpawnCharactersAndTorch(new Vector2(-6.5f, -1.2f), new Vector2(-7.2f, -1.2f), new Vector2(-6.5f, -1.2f), true);
+        }
+
+        // Level 48: A World Without Fire
+        private void BuildLevel48_AWorldWithoutFire()
+        {
+            CreatePlatformRow(-8, -3, -2f, true);
+            CreateDualRealityPlatform(new Vector2(1f, -2f), DualRealityPlatform.RealityState.AlternatingTimer, 3f, true);
+            CreatePlatformRow(5, 12, -2f, true);
+
+            AncientDoor door = CreateAncientDoor(new Vector2(9.5f, -1.2f), new List<PuzzleNode>());
+            CreateExitPortal(new Vector2(11.5f, -1.2f), door, false);
+
+            SpawnCharactersAndTorch(new Vector2(-6.5f, -1.2f), new Vector2(-7.2f, -1.2f), new Vector2(-6.5f, -1.2f), true);
+        }
+
+        // Level 49: Before the Last Dawn
+        private void BuildLevel49_BeforeTheLastDawn()
+        {
+            CreatePlatformRow(-8, -4, -2f, true);
+            DualRealityPlatform p1 = CreateDualRealityPlatform(new Vector2(-1f, -2f), DualRealityPlatform.RealityState.AlternatingTimer, 3.5f, true);
+            AbyssalBridge b1 = CreateAbyssalBridge(new Vector2(3.5f, -2f), false, 3.5f);
+            CreatePlatformRow(7, 14, -2f, true);
+
+            CreateEchoSwitch(new Vector2(-5f, 0.5f), null, b1);
+            CreateFlameAnchor(new Vector2(-6f, -1.2f), new[] { p1 });
+
+            AncientDoor door = CreateAncientDoor(new Vector2(11.5f, -1.2f), new List<PuzzleNode>());
+            CreateExitPortal(new Vector2(13.5f, -1.2f), door, false);
+
+            SpawnCharactersAndTorch(new Vector2(-6.5f, -1.2f), new Vector2(-7.2f, -1.2f), new Vector2(-6.5f, -1.2f), true);
+        }
+
+        // Level 50: The Last Flame (Grand Finale of the Prototype)
+        private void BuildLevel50_TheLastFlame()
+        {
+            CreatePlatformRow(-8, 28, -2f, true);
+
+            // Phase 1: Dual reality bridge
+            CreateDualRealityPlatform(new Vector2(2f, -0.5f), DualRealityPlatform.RealityState.LightActive);
+            CreateDualRealityPlatform(new Vector2(6f, -0.5f), DualRealityPlatform.RealityState.ShadowActive);
+
+            // Phase 2: Abyssal altar chamber
+            CreateFinalAltar(new Vector2(18f, -0.8f));
+
+            AncientDoor door = CreateAncientDoor(new Vector2(23f, -1.2f), new List<PuzzleNode>());
+            CreateExitPortal(new Vector2(26f, -1.2f), door, false);
+
+            SpawnCharactersAndTorch(new Vector2(-6.5f, -1.2f), new Vector2(-7.2f, -1.2f), new Vector2(-6.5f, -1.2f), true);
         }
 
         public WorldEnvironmentProfile GetActiveEnvironmentProfile()

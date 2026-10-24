@@ -176,24 +176,42 @@ namespace MyShadowQuit.Core
 
             bool isForest = profile.FarParallaxSpritePath.Contains("forest") || profile.FarParallaxSpritePath.Contains("World2");
             bool isClocktower = profile.FarParallaxSpritePath.Contains("clocktower") || profile.FarParallaxSpritePath.Contains("World3");
+            bool isCathedral = profile.FarParallaxSpritePath.Contains("cathedral") || profile.FarParallaxSpritePath.Contains("World4");
+            bool isAbyss = profile.FarParallaxSpritePath.Contains("abyss") || profile.FarParallaxSpritePath.Contains("World5");
 
-            Color farColor = isClocktower
-                ? new Color(0.55f, 0.60f, 0.75f, 1f)
-                : (isForest ? new Color(0.40f, 0.48f, 0.58f, 1f) : new Color(0.85f, 0.85f, 0.95f, 1f));
+            Color farColor = isAbyss
+                ? new Color(0.45f, 0.35f, 0.70f, 1f)
+                : (isCathedral
+                    ? new Color(0.35f, 0.55f, 0.65f, 1f)
+                    : (isClocktower
+                        ? new Color(0.55f, 0.60f, 0.75f, 1f)
+                        : (isForest ? new Color(0.40f, 0.48f, 0.58f, 1f) : new Color(0.85f, 0.85f, 0.95f, 1f))));
 
-            Color midColor = isClocktower
-                ? new Color(0.60f, 0.58f, 0.70f, 0.90f)
-                : (isForest ? new Color(0.35f, 0.45f, 0.42f, 0.88f) : new Color(0.9f, 0.85f, 1f, 0.92f));
+            Color midColor = isAbyss
+                ? new Color(0.55f, 0.40f, 0.80f, 0.90f)
+                : (isCathedral
+                    ? new Color(0.40f, 0.60f, 0.70f, 0.90f)
+                    : (isClocktower
+                        ? new Color(0.60f, 0.58f, 0.70f, 0.90f)
+                        : (isForest ? new Color(0.35f, 0.45f, 0.42f, 0.88f) : new Color(0.9f, 0.85f, 1f, 0.92f))));
 
-            Color nearColor = isClocktower
-                ? new Color(0.45f, 0.42f, 0.55f, 0.75f)
-                : (isForest ? new Color(0.30f, 0.40f, 0.38f, 0.65f) : new Color(1f, 1f, 1f, 0.65f));
+            Color nearColor = isAbyss
+                ? new Color(0.65f, 0.45f, 0.90f, 0.75f)
+                : (isCathedral
+                    ? new Color(0.45f, 0.65f, 0.75f, 0.75f)
+                    : (isClocktower
+                        ? new Color(0.45f, 0.42f, 0.55f, 0.75f)
+                        : (isForest ? new Color(0.30f, 0.40f, 0.38f, 0.65f) : new Color(1f, 1f, 1f, 0.65f))));
 
             if (_cam != null)
             {
-                _cam.backgroundColor = isClocktower
-                    ? new Color(0.016f, 0.020f, 0.035f, 1f)
-                    : (isForest ? new Color(0.012f, 0.020f, 0.030f, 1f) : new Color(0.031f, 0.039f, 0.071f, 1f));
+                _cam.backgroundColor = isAbyss
+                    ? new Color(0.010f, 0.008f, 0.024f, 1f)
+                    : (isCathedral
+                        ? new Color(0.010f, 0.022f, 0.032f, 1f)
+                        : (isClocktower
+                            ? new Color(0.016f, 0.020f, 0.035f, 1f)
+                            : (isForest ? new Color(0.012f, 0.020f, 0.030f, 1f) : new Color(0.031f, 0.039f, 0.071f, 1f))));
             }
 
             for (int i = -1; i <= 3; i++)

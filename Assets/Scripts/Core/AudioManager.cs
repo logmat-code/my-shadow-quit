@@ -9,6 +9,8 @@ namespace MyShadowQuit.Core
         Gameplay_World1,
         Gameplay_World2,
         Gameplay_World3,
+        Gameplay_World4,
+        Gameplay_World5,
         Paused
     }
 
@@ -249,10 +251,12 @@ namespace MyShadowQuit.Core
         }
 
         /// <summary>
-        /// Smoothly transitions to the distinct gameplay ambient music for the specified world (0: World 1, 1: World 2, 2: World 3).
+        /// Smoothly transitions to the distinct gameplay ambient music for the specified world (0: World 1, 1: World 2, 2: World 3, 3: World 4, 4: World 5).
         /// World 1: The Ruins of the Last Flame ("Music/dark_ambient_theme")
         /// World 2: The Inverted Forest ("Music/forest_ambient_theme")
         /// World 3: The Hollow Clocktower ("Music/clocktower_ambient_theme")
+        /// World 4: The Drowned Cathedral ("Music/cathedral_ambient_theme")
+        /// World 5: The Abyss of the Last Flame ("Music/abyss_ambient_theme")
         /// </summary>
         public void PlayGameplayMusic(int worldIndex, float fadeDuration = 1.0f)
         {
@@ -268,6 +272,14 @@ namespace MyShadowQuit.Core
                 case 2:
                     targetState = AudioMusicState.Gameplay_World3;
                     trackPath = "Music/clocktower_ambient_theme";
+                    break;
+                case 3:
+                    targetState = AudioMusicState.Gameplay_World4;
+                    trackPath = "Music/cathedral_ambient_theme";
+                    break;
+                case 4:
+                    targetState = AudioMusicState.Gameplay_World5;
+                    trackPath = "Music/abyss_ambient_theme";
                     break;
                 default:
                     targetState = AudioMusicState.Gameplay_World1;

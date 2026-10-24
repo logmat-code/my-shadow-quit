@@ -75,8 +75,7 @@ namespace MyShadowQuit.Core
         public string WorldSubtitle => worldSubtitle;
         public string CompletionQuote => completionQuote;
         public bool IsUnlocked => unlockedByDefault ||
-            (worldNumber == 2 && WorldProgressSave.IsWorldCompleted("world_1")) ||
-            (worldNumber == 3 && WorldProgressSave.IsWorldCompleted("world_2"));
+            (worldNumber > 1 && WorldProgressSave.IsWorldCompleted("world_" + (worldNumber - 1)));
         public bool IsImplemented => isImplemented;
         public int LevelCount => levels != null ? levels.Count : 0;
         public List<LevelEntry> Levels => levels;
@@ -177,9 +176,131 @@ namespace MyShadowQuit.Core
                 EnsureWorld3HasTenLevels(w3);
             }
 
+            // Worlds 4 and 5 are code-defined (no .asset), so they cannot be shadowed by stale assets.
+            WorldDefinition w4 = CreateDefaultWorld4();
+            WorldDefinition w5 = CreateDefaultWorld5();
+
             _worlds.Add(w1);
             _worlds.Add(w2);
             _worlds.Add(w3);
+            _worlds.Add(w4);
+            _worlds.Add(w5);
+        }
+
+        public static void EnsureWorld4HasTenLevels(WorldDefinition w4)
+        {
+            w4.worldId = "world_4";
+            w4.worldNumber = 4;
+            w4.worldName = "THE DROWNED CATHEDRAL";
+            w4.worldSubtitle = "WORLD 4";
+            w4.initialSceneName = "Level1_Awakening";
+            w4.artDirection = "Abyssal blue, marine black, grey-green, desaturated turquoise, wet stone, aged silver, torch amber. Submerged gothic cathedral.";
+            w4.musicTrackPath = "Music/cathedral_ambient_theme";
+            w4.completionQuote = "\"Beneath the black tide, the last choir still remembers the light.\"";
+            w4.environmentProfile = new WorldEnvironmentProfile
+            {
+                FarParallaxSpritePath = "World4/cathedral_parallax_far",
+                MidParallaxSpritePath = "World4/cathedral_parallax_mid",
+                NearParallaxSpritePath = "World4/cathedral_parallax_near",
+                FloorSpritePath = "World4/cathedral_floor",
+                WallSpritePath = "World4/cathedral_wall",
+                PlatformLeftSpritePath = "World4/cathedral_platform_left",
+                PlatformRightSpritePath = "World4/cathedral_platform_right",
+                AmbientColor = new Color(0.010f, 0.030f, 0.045f, 1f),
+                SporeParticleColor = new Color(0.50f, 0.85f, 0.85f, 0.30f),
+                HasSporeParticles = true,
+                MusicTrackPath = "Music/cathedral_ambient_theme"
+            };
+            w4.availableMechanics = new[]
+            {
+                "Water Level Switches",
+                "Buoyant Platforms",
+                "Submerged Passages",
+                "Light Refraction Crystals",
+                "Cooperative Pressure Plates",
+                "Cathedral Hazards"
+            };
+            w4.isImplemented = true;
+            w4.unlockedByDefault = false;
+            w4.levels = new List<LevelEntry>
+            {
+                new LevelEntry(0, "w4_lvl1", "LEVEL 31: BENEATH THE BLACK TIDE", "The cathedral lies drowned. Cross the flooded threshold and find the exit."),
+                new LevelEntry(1, "w4_lvl2", "LEVEL 32: THE FLOODED NAVE", "Pull the tide lever to lower the water and reach the far side."),
+                new LevelEntry(2, "w4_lvl3", "LEVEL 33: DROWNED STEPS", "Buoyant platforms rise and fall with the tide. Ride them across."),
+                new LevelEntry(3, "w4_lvl4", "LEVEL 34: GLASS BENEATH THE SEA", "Aim the Torch at the crystal; its refracted beam wakes the sealed gate."),
+                new LevelEntry(4, "w4_lvl5", "LEVEL 35: THE SILENT CHOIR", "Two plates, two voices. Player and Shadow must each hold one."),
+                new LevelEntry(5, "w4_lvl6", "LEVEL 36: RISING WATERS", "Raise the tide to float the platform, then lower it to open the passage."),
+                new LevelEntry(6, "w4_lvl7", "LEVEL 37: THE BROKEN BAPTISTERY", "Shadow slips through the submerged grate while the Flame works the lever."),
+                new LevelEntry(7, "w4_lvl8", "LEVEL 38: BENEATH THE BELLS", "Mind the sunken bell blades and the cutting currents."),
+                new LevelEntry(8, "w4_lvl9", "LEVEL 39: THE SUNKEN RELIQUARY", "Combine tide, crystal and plates to unseal the reliquary."),
+                new LevelEntry(9, "w4_lvl10", "LEVEL 40: THE LAST CATHEDRAL LIGHT", "Player, Shadow and Torch must work together to kindle the final light.")
+            };
+        }
+
+        public static WorldDefinition CreateDefaultWorld4()
+        {
+            WorldDefinition w4 = ScriptableObject.CreateInstance<WorldDefinition>();
+            w4.name = "World4_TheDrownedCathedral";
+            EnsureWorld4HasTenLevels(w4);
+            return w4;
+        }
+
+        public static void EnsureWorld5HasTenLevels(WorldDefinition w5)
+        {
+            w5.worldId = "world_5";
+            w5.worldNumber = 5;
+            w5.worldName = "THE ABYSS OF THE LAST FLAME";
+            w5.worldSubtitle = "WORLD 5";
+            w5.initialSceneName = "Level1_Awakening";
+            w5.artDirection = "Deep black, indigo, spectral violet, ash grey, old gold, incandescent amber. Fractured light/shadow abyss.";
+            w5.musicTrackPath = "Music/abyss_ambient_theme";
+            w5.completionQuote = "\"The last flame was never a fire. It was the two of us.\"";
+            w5.environmentProfile = new WorldEnvironmentProfile
+            {
+                FarParallaxSpritePath = "World5/abyss_parallax_far",
+                MidParallaxSpritePath = "World5/abyss_parallax_mid",
+                NearParallaxSpritePath = "World5/abyss_parallax_near",
+                FloorSpritePath = "World5/abyss_floor",
+                WallSpritePath = "World5/abyss_wall",
+                PlatformLeftSpritePath = "World5/abyss_platform_left",
+                PlatformRightSpritePath = "World5/abyss_platform_right",
+                AmbientColor = new Color(0.012f, 0.008f, 0.030f, 1f),
+                SporeParticleColor = new Color(0.95f, 0.75f, 0.35f, 0.30f),
+                HasSporeParticles = true,
+                MusicTrackPath = "Music/abyss_ambient_theme"
+            };
+            w5.availableMechanics = new[]
+            {
+                "Dual-Reality Platforms",
+                "Flame Anchors",
+                "Shadow Echo Switches",
+                "Abyssal Bridges",
+                "Light and Shadow Gates",
+                "Final Convergence"
+            };
+            w5.isImplemented = true;
+            w5.unlockedByDefault = false;
+            w5.levels = new List<LevelEntry>
+            {
+                new LevelEntry(0, "w5_lvl1", "LEVEL 41: EDGE OF OBLIVION", "The ground ends here. Step across the fractured stones."),
+                new LevelEntry(1, "w5_lvl2", "LEVEL 42: WHERE LIGHT BREAKS", "Some stones exist only in light, others only in shadow. Watch the pulse."),
+                new LevelEntry(2, "w5_lvl3", "LEVEL 43: ECHOES WITHOUT FORM", "Only your Shadow can wake the echo switch."),
+                new LevelEntry(3, "w5_lvl4", "LEVEL 44: THE FLAME ANCHORS", "Set the Torch on the anchor to keep the mechanism alive."),
+                new LevelEntry(4, "w5_lvl5", "LEVEL 45: BRIDGES OF NOTHING", "Torch and Shadow together weave a bridge. Cross before it fades."),
+                new LevelEntry(5, "w5_lvl6", "LEVEL 46: FRACTURED REFLECTIONS", "Light and shadow routes must meet at the far gate."),
+                new LevelEntry(6, "w5_lvl7", "LEVEL 47: THE FORGOTTEN DIVIDE", "A gate of light and a gate of shadow. Open both."),
+                new LevelEntry(7, "w5_lvl8", "LEVEL 48: A WORLD WITHOUT FIRE", "Only the Torch's glow reveals the path. Carry it carefully."),
+                new LevelEntry(8, "w5_lvl9", "LEVEL 49: BEFORE THE LAST DAWN", "Every lesson of the descent, once more."),
+                new LevelEntry(9, "w5_lvl10", "LEVEL 50: THE LAST FLAME", "Reach the heart of the abyss and kindle the Last Flame.")
+            };
+        }
+
+        public static WorldDefinition CreateDefaultWorld5()
+        {
+            WorldDefinition w5 = ScriptableObject.CreateInstance<WorldDefinition>();
+            w5.name = "World5_TheAbyssOfTheLastFlame";
+            EnsureWorld5HasTenLevels(w5);
+            return w5;
         }
 
         public static WorldDefinition CreateDefaultWorld1()
@@ -386,54 +507,46 @@ namespace MyShadowQuit.Core
             }
 
             // Fallback for previous saves that don't have KeyLastPlayedWorld:
-            // Check if World 3 has any progress recorded
-            if (HasSavedProgress("world_3"))
+            // pick the highest-numbered world that has any recorded progress.
+            for (int n = WorldCount; n >= 2; n--)
             {
-                return "world_3";
-            }
-            // Check if World 2 has any progress recorded
-            if (HasSavedProgress("world_2"))
-            {
-                return "world_2";
+                if (HasSavedProgress("world_" + n)) return "world_" + n;
             }
 
             // Otherwise default to World 1
             return "world_1";
         }
 
+        /// <summary>Total number of worlds in the prototype (stable, independent of Resources loading).</summary>
+        public const int WorldCount = 5;
+        public const int LevelsPerWorld = 10;
+
         public static bool HasAnySavedProgress()
         {
-            return HasSavedProgress("world_3") || HasSavedProgress("world_2") || HasSavedProgress("world_1");
+            for (int n = 1; n <= WorldCount; n++)
+            {
+                if (HasSavedProgress("world_" + n)) return true;
+            }
+            return false;
         }
 
         public static void GetGlobalContinuePoint(out string worldId, out int worldIndex, out int levelIndex, out int displayLevelNumber)
         {
             worldId = GetLastPlayedWorldId();
-            if (worldId == "world_3")
+            worldIndex = 0;
+            if (worldId != null && worldId.StartsWith("world_") && int.TryParse(worldId.Substring(6), out int n) && n >= 1 && n <= WorldCount)
             {
-                worldIndex = 2;
-                WorldDefinition w3 = WorldCatalog.GetWorld(2);
-                int total = w3 != null && w3.LevelCount > 0 ? w3.LevelCount : 10;
-                levelIndex = GetContinueLevelIndex("world_3", total);
-                displayLevelNumber = 20 + levelIndex + 1; // 21 to 30
-            }
-            else if (worldId == "world_2")
-            {
-                worldIndex = 1;
-                WorldDefinition w2 = WorldCatalog.GetWorld(1);
-                int total = w2 != null && w2.LevelCount > 0 ? w2.LevelCount : 10;
-                levelIndex = GetContinueLevelIndex("world_2", total);
-                displayLevelNumber = 10 + levelIndex + 1; // 11 to 20
+                worldIndex = n - 1;
             }
             else
             {
                 worldId = "world_1";
-                worldIndex = 0;
-                WorldDefinition w1 = WorldCatalog.GetWorld(0);
-                int total = w1 != null && w1.LevelCount > 0 ? w1.LevelCount : 10;
-                levelIndex = GetContinueLevelIndex("world_1", total);
-                displayLevelNumber = levelIndex + 1; // 1 to 10
             }
+
+            WorldDefinition wd = WorldCatalog.GetWorld(worldIndex);
+            int total = wd != null && wd.LevelCount > 0 ? wd.LevelCount : LevelsPerWorld;
+            levelIndex = GetContinueLevelIndex(worldId, total);
+            displayLevelNumber = worldIndex * LevelsPerWorld + levelIndex + 1;
         }
 
         public static bool HasSavedProgress(string worldId)
