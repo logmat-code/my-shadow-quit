@@ -41,7 +41,11 @@ namespace MyShadowQuit.Puzzle
         {
             if (collision.CompareTag("Player"))
             {
-                if (Core.GameManager.Instance != null)
+                if (Combat.HealthSystem.Instance != null)
+                {
+                    Combat.HealthSystem.Instance.TakeDamage(1, Vector2.up * 5.5f, 0.85f);
+                }
+                else if (Core.GameManager.Instance != null)
                 {
                     Core.GameManager.Instance.RestartCurrentLevel();
                 }

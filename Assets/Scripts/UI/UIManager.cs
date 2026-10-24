@@ -57,7 +57,8 @@ namespace MyShadowQuit.UI
             World2ComingSoon,
             Victory,
             NewGameConfirm,
-            Shop
+            Shop,
+            LoreJournal
         }
 
         private Canvas _canvas;
@@ -77,6 +78,13 @@ namespace MyShadowQuit.UI
         private GameObject _world2ComingSoonPanel;
         private GameObject _victoryPanel;
         private GameObject _shopPanel;
+        private GameObject _loreJournalPanel;
+
+        // Combat & Health HUD
+        private Image[] _heartIcons;
+        private Image _equippedWeaponIcon;
+        private Text _loreJournalContentText;
+        private Text _loreJournalListText;
 
         private ActiveMenuScreen _currentScreen = ActiveMenuScreen.None;
         private ActiveMenuScreen _screenBeforeSubPanel = ActiveMenuScreen.Home;
@@ -623,6 +631,7 @@ namespace MyShadowQuit.UI
             BuildLevelSelectMapMenu(canvasObj.transform);
             BuildShopMenu(canvasObj.transform);
             BuildPauseMenu(canvasObj.transform);
+            BuildLoreJournalMenu(canvasObj.transform);
             BuildSettingsMenu(canvasObj.transform);
             BuildCreditsMenu(canvasObj.transform);
             BuildWorld1CompleteScreen(canvasObj.transform);
@@ -648,6 +657,38 @@ namespace MyShadowQuit.UI
 
             _levelTitleText = CreateText(topBar.transform, "LevelTitle", "LEVEL 1: AWAKENING", 30, new Vector2(-560f, 0f), new Vector2(620f, 58f), new Color(1f, 0.82f, 0.35f, 1f), TextAnchor.MiddleLeft);
             _activeControlText = CreateText(topBar.transform, "ActiveControl", "ACTIVE: PROTAGONIST [TAB to switch]", 25, new Vector2(430f, 0f), new Vector2(700f, 58f), new Color(0.85f, 0.78f, 1f, 1f), TextAnchor.MiddleRight);
+
+            // Health Hearts Container (up to 6 hearts)
+            GameObject healthContainer = new GameObject("HealthContainer", typeof(RectTransform));
+            healthContainer.transform.SetParent(topBar.transform, false);
+            RectTransform hrt = healthContainer.GetComponent<RectTransform>();
+            hrt.anchoredPosition = new Vector2(-120f, 0f);
+            hrt.sizeDelta = new Vector2(240f, 40f);
+
+            _heartIcons = new Image[6];
+            Sprite hFull = Resources.Load<Sprite>("Sprites/UI/heart_full");
+            for (int i = 0; i < 6; i++)
+            {
+                GameObject hObj = new GameObject($"Heart_{i}", typeof(RectTransform), typeof(Image));
+                hObj.transform.SetParent(healthContainer.transform, false);
+                RectTransform rt = hObj.GetComponent<RectTransform>();
+                rt.anchoredPosition = new Vector2(i * 36f - 90f, 0f);
+                rt.sizeDelta = new Vector2(28f, 28f);
+                Image img = hObj.GetComponent<Image>();
+                img.sprite = hFull;
+                img.preserveAspect = true;
+                _heartIcons[i] = img;
+            }
+
+            // Equipped Weapon HUD Icon
+            GameObject wepObj = new GameObject("HUDWeaponIcon", typeof(RectTransform), typeof(Image));
+            wepObj.transform.SetParent(topBar.transform, false);
+            RectTransform wrt = wepObj.GetComponent<RectTransform>();
+            wrt.anchoredPosition = new Vector2(100f, 0f);
+            wrt.sizeDelta = new Vector2(36f, 36f);
+            _equippedWeaponIcon = wepObj.GetComponent<Image>();
+            _equippedWeaponIcon.preserveAspect = true;
+            _equippedWeaponIcon.enabled = false;
 
             // In-Game Pause Button in the top right of TopHUD
             _inGamePauseButton = CreateCustomSpriteButton(topBar.transform, "InGamePauseButton", _btnPauseHudNormal, _btnPauseHudHover, _btnPauseHudPressed, new Vector2(845f, 0f), new Vector2(48f, 48f), () =>
@@ -2526,40 +2567,48 @@ namespace MyShadowQuit.UI
             Image backdrop = _pauseMenuContainer.AddComponent<Image>();
             backdrop.color = new Color(0.02f, 0.03f, 0.06f, 0.72f); // partially dim gameplay behind pause
 
-            _pauseMenuPanel = CreateImagePanel(_pauseMenuContainer.transform, "PauseMenuPanel", Vector2.zero, new Vector2(720f, 680f), _modalFrameSprite);
-            CreateStyledTitleText(_pauseMenuPanel.transform, "PauseHeader", "PAUSED", 46, new Vector2(0f, 248f), new Vector2(560f, 60f), new Color(1f, 0.84f, 0.35f, 1f));
-            CreateStyledTitleText(_pauseMenuPanel.transform, "PauseSubtitle", "THE FLAME RESTS", 24, new Vector2(0f, 198f), new Vector2(560f, 38f), new Color(0.78f, 0.62f, 0.98f, 1f));
-            CreateSpriteElement(_pauseMenuPanel.transform, "PauseDivider", _stoneDividerSprite, new Vector2(0f, 156f), new Vector2(460f, 24f));
+            _pauseMenuPanel = CreateImagePanel(_pauseMenuContainer.transform, "PauseMenuPanel", Vector2.zero, new Vector2(720f, 740f), _modalFrameSprite);
+            CreateStyledTitleText(_pauseMenuPanel.transform, "PauseHeader", "PAUSED", 46, new Vector2(0f, 275f), new Vector2(560f, 60f), new Color(1f, 0.84f, 0.35f, 1f));
+            CreateStyledTitleText(_pauseMenuPanel.transform, "PauseSubtitle", "THE FLAME RESTS", 24, new Vector2(0f, 225f), new Vector2(560f, 38f), new Color(0.78f, 0.62f, 0.98f, 1f));
+            CreateSpriteElement(_pauseMenuPanel.transform, "PauseDivider", _stoneDividerSprite, new Vector2(0f, 185f), new Vector2(460f, 24f));
 
             _pauseMenuButtons.Clear();
 
-            Button resumeBtn = CreateMenuButton(_pauseMenuPanel.transform, "RESUME", new Vector2(0f, 86f), () => OnResumeRequested?.Invoke(), new Vector2(360f, 60f));
+            Button resumeBtn = CreateMenuButton(_pauseMenuPanel.transform, "RESUME", new Vector2(0f, 115f), () => OnResumeRequested?.Invoke(), new Vector2(360f, 54f));
             _pauseMenuButtons.Add(resumeBtn);
 
-            Button restartBtn = CreateMenuButton(_pauseMenuPanel.transform, "RESTART LEVEL", new Vector2(0f, 14f), () => OnRestartRequested?.Invoke(), new Vector2(360f, 60f));
+            Button restartBtn = CreateMenuButton(_pauseMenuPanel.transform, "RESTART LEVEL", new Vector2(0f, 50f), () => OnRestartRequested?.Invoke(), new Vector2(360f, 54f));
             _pauseMenuButtons.Add(restartBtn);
 
-            Button levelSelectBtn = CreateMenuButton(_pauseMenuPanel.transform, "LEVEL SELECT", new Vector2(0f, -58f), () =>
+            Button journalBtn = CreateMenuButton(_pauseMenuPanel.transform, "LORE JOURNAL", new Vector2(0f, -15f), () =>
+            {
+                _screenBeforeSubPanel = ActiveMenuScreen.Pause;
+                ShowSubPanel(_loreJournalPanel);
+                RefreshLoreJournalUI();
+            }, new Vector2(360f, 54f));
+            _pauseMenuButtons.Add(journalBtn);
+
+            Button levelSelectBtn = CreateMenuButton(_pauseMenuPanel.transform, "LEVEL SELECT", new Vector2(0f, -80f), () =>
             {
                 TransitionToAction(() =>
                 {
                     OnLevelSelectRequested?.Invoke();
                     ShowLevelSelectScreen();
                 });
-            }, new Vector2(360f, 60f));
+            }, new Vector2(360f, 54f));
             _pauseMenuButtons.Add(levelSelectBtn);
 
-            Button settingsBtn = CreateMenuButton(_pauseMenuPanel.transform, "SETTINGS", new Vector2(0f, -130f), () =>
+            Button settingsBtn = CreateMenuButton(_pauseMenuPanel.transform, "SETTINGS", new Vector2(0f, -145f), () =>
             {
                 _screenBeforeSubPanel = ActiveMenuScreen.Pause;
                 ShowSubPanel(_settingsPanel);
-            }, new Vector2(360f, 60f));
+            }, new Vector2(360f, 54f));
             _pauseMenuButtons.Add(settingsBtn);
 
-            Button mainMenuBtn = CreateMenuButton(_pauseMenuPanel.transform, "MAIN MENU", new Vector2(0f, -202f), () =>
+            Button mainMenuBtn = CreateMenuButton(_pauseMenuPanel.transform, "MAIN MENU", new Vector2(0f, -210f), () =>
             {
                 TransitionToAction(() => OnMainMenuRequested?.Invoke());
-            }, new Vector2(360f, 60f));
+            }, new Vector2(360f, 54f));
             _pauseMenuButtons.Add(mainMenuBtn);
 
             _pauseMenuContainer.SetActive(false);
@@ -2586,6 +2635,66 @@ namespace MyShadowQuit.UI
                     img.sprite = (i == _pauseSelectedBtnIndex) ? _btnSelected : _btnNormal;
                 }
             }
+        }
+
+        private void BuildLoreJournalMenu(Transform parent)
+        {
+            _loreJournalPanel = CreateImagePanel(parent, "LoreJournalPanel", Vector2.zero, new Vector2(1040f, 720f), _modalFrameSprite);
+            CreateStyledTitleText(_loreJournalPanel.transform, "LoreHeader", "LORE JOURNAL", 38, new Vector2(0f, 295f), new Vector2(620f, 48f), new Color(1f, 0.84f, 0.35f, 1f));
+            CreateSpriteElement(_loreJournalPanel.transform, "LoreDivider", _stoneDividerSprite, new Vector2(0f, 255f), new Vector2(720f, 22f));
+
+            // Left side list
+            _loreJournalListText = CreateText(_loreJournalPanel.transform, "LoreList", "ARCHIVED MEMORIES:", 20, new Vector2(-280f, 40f), new Vector2(400f, 360f), new Color(0.85f, 0.85f, 0.95f, 1f), TextAnchor.UpperLeft);
+
+            // Right side detailed content
+            _loreJournalContentText = CreateText(_loreJournalPanel.transform, "LoreContent", "Select a fragment to read.", 19, new Vector2(180f, 40f), new Vector2(480f, 360f), new Color(1f, 0.92f, 0.72f, 1f), TextAnchor.UpperLeft);
+
+            CreateMenuButton(_loreJournalPanel.transform, "BACK", new Vector2(0f, -270f), () =>
+            {
+                _loreJournalPanel.SetActive(false);
+                if (_screenBeforeSubPanel == ActiveMenuScreen.Pause)
+                {
+                    if (_pauseMenuContainer != null) _pauseMenuContainer.SetActive(true);
+                    if (_pauseMenuPanel != null) _pauseMenuPanel.SetActive(true);
+                    _currentScreen = ActiveMenuScreen.Pause;
+                }
+                else
+                {
+                    ShowMainMenu();
+                }
+            }, new Vector2(260f, 50f));
+
+            _loreJournalPanel.SetActive(false);
+        }
+
+        public void RefreshLoreJournalUI()
+        {
+            if (_loreJournalListText == null || _loreJournalContentText == null) return;
+
+            var entries = Narrative.JournalService.GetAllUnlockedEntries();
+            if (entries.Count == 0)
+            {
+                _loreJournalListText.text = "CHRONICLES OF ASH\n\n(No memories unlocked yet.\nDiscover NPCs across the 5 worlds to gather fragments.)";
+                _loreJournalContentText.text = "";
+                return;
+            }
+
+            System.Text.StringBuilder listSb = new System.Text.StringBuilder();
+            System.Text.StringBuilder contSb = new System.Text.StringBuilder();
+
+            listSb.AppendLine($"CHRONICLES ({entries.Count}/{Narrative.JournalService.TotalAvailableCount} UNLOCKED):\n");
+            for (int i = 0; i < entries.Count; i++)
+            {
+                var e = entries[i];
+                listSb.AppendLine($"• {e.title}");
+                contSb.AppendLine($"<b><color=#FFD566>{e.title}</color></b>");
+                contSb.AppendLine($"<i><color=#C8A8F8>{e.worldOrigin}</color></i>");
+                contSb.AppendLine(e.content);
+                contSb.AppendLine("----------------------------------------\n");
+            }
+
+            _loreJournalListText.text = listSb.ToString();
+            _loreJournalContentText.text = contSb.ToString();
         }
 
         private void BuildSettingsMenu(Transform parent)
@@ -4002,6 +4111,47 @@ namespace MyShadowQuit.UI
                 _activeControlText.color = isControllingShadow
                     ? new Color(0.76f, 0.56f, 1f, 1f)
                     : new Color(1f, 0.82f, 0.38f, 1f);
+            }
+
+            // Update Hearts
+            if (_heartIcons != null && Combat.HealthSystem.Instance != null)
+            {
+                int maxHp = Combat.HealthSystem.Instance.MaxHealth;
+                int curHp = Combat.HealthSystem.Instance.CurrentHealth;
+                Sprite hFull = Resources.Load<Sprite>("Sprites/UI/heart_full");
+                Sprite hEmpty = Resources.Load<Sprite>("Sprites/UI/heart_empty");
+
+                for (int i = 0; i < _heartIcons.Length; i++)
+                {
+                    if (i < maxHp)
+                    {
+                        _heartIcons[i].gameObject.SetActive(true);
+                        _heartIcons[i].sprite = (i < curHp) ? hFull : hEmpty;
+                    }
+                    else
+                    {
+                        _heartIcons[i].gameObject.SetActive(false);
+                    }
+                }
+            }
+
+            // Update Weapon Icon
+            if (_equippedWeaponIcon != null)
+            {
+                Combat.WeaponType eq = Combat.WeaponCatalog.EquippedWeapon;
+                if (eq == Combat.WeaponType.None)
+                {
+                    _equippedWeaponIcon.enabled = false;
+                }
+                else
+                {
+                    Combat.WeaponDefinition def = Combat.WeaponCatalog.GetDefinition(eq);
+                    if (def != null)
+                    {
+                        _equippedWeaponIcon.sprite = Resources.Load<Sprite>("Sprites/Combat/" + def.spriteName);
+                        _equippedWeaponIcon.enabled = true;
+                    }
+                }
             }
         }
 

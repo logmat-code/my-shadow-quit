@@ -128,7 +128,11 @@ namespace MyShadowQuit.Puzzle
                 AudioManager.Instance.PlaySFX("stone_door", 0.85f, 1.4f);
             }
 
-            if (GameManager.Instance != null)
+            if (Combat.HealthSystem.Instance != null)
+            {
+                Combat.HealthSystem.Instance.TakeDamage(1, Vector2.up * 5.5f, 0.85f);
+            }
+            else if (GameManager.Instance != null)
             {
                 GameManager.Instance.RestartCurrentLevel();
             }

@@ -26,6 +26,8 @@ namespace MyShadowQuit.Core
         private static bool s_touchSwitchDownPending = false;
         private static bool s_touchRestartDownPending = false;
         private static bool s_touchPauseDownPending = false;
+        private static bool s_touchAttackDownPending = false;
+        private static bool s_touchCycleWeaponDownPending = false;
 
         public static float TouchHorizontal => s_touchHorizontal;
         public static bool TouchJumpHeld => s_touchJumpHeld;
@@ -75,6 +77,16 @@ namespace MyShadowQuit.Core
             s_touchPauseDownPending = true;
         }
 
+        public static void TriggerTouchAttack()
+        {
+            s_touchAttackDownPending = true;
+        }
+
+        public static void TriggerTouchCycleWeapon()
+        {
+            s_touchCycleWeaponDownPending = true;
+        }
+
         public static void ClearFrameTriggers()
         {
             s_touchJumpDownPending = false;
@@ -82,6 +94,8 @@ namespace MyShadowQuit.Core
             s_touchSwitchDownPending = false;
             s_touchRestartDownPending = false;
             s_touchPauseDownPending = false;
+            s_touchAttackDownPending = false;
+            s_touchCycleWeaponDownPending = false;
         }
 
         public static void ResetTouchInputs()
@@ -316,6 +330,39 @@ namespace MyShadowQuit.Core
                 return Input.GetKeyDown(KeyCode.RightArrow) || Input.GetKeyDown(KeyCode.D);
             }
             catch { return false; }
+        }
+
+        public static bool GetAttackDown()
+        {
+            if (s_touchAttackDownPending) return true;
+
+#if ENABLE_INPUT_SYSTEM
+            if (Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame) return true;
+            if (Keyboard.current != null && (Keyboard.current.jKey.wasPressedThisFrame || Keyboard.current.kKey.wasPressedThisFrame)) return true;
+#endif
+            try
+            {
+                if (Input.GetMouseButtonDown(0) || Input.GetKeyDown(KeyCode.J) || Input.GetKeyDown(KeyCode.K)) return true;
+            }
+            catch { }
+
+            return false;
+        }
+
+        public static bool GetCycleWeaponDown()
+        {
+            if (s_touchCycleWeaponDownPending) return true;
+
+#if ENABLE_INPUT_SYSTEM
+            if (Keyboard.current != null && Keyboard.current.qKey.wasPressedThisFrame) return true;
+#endif
+            try
+            {
+                if (Input.GetKeyDown(KeyCode.Q)) return true;
+            }
+            catch { }
+
+            return false;
         }
 
         public static Vector2 GetMouseScreenPosition()

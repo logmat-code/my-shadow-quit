@@ -19,7 +19,9 @@ namespace MyShadowQuit.UI
             Right,
             Jump,
             Interact,
-            SwitchCharacter
+            SwitchCharacter,
+            Attack,
+            CycleWeapon
         }
 
         [SerializeField] private VirtualButtonType buttonType;
@@ -145,6 +147,20 @@ namespace MyShadowQuit.UI
                     if (pressed)
                     {
                         GameInput.TriggerTouchSwitchCharacter();
+                    }
+                    break;
+
+                case VirtualButtonType.Attack:
+                    if (pressed)
+                    {
+                        GameInput.TriggerTouchAttack();
+                    }
+                    break;
+
+                case VirtualButtonType.CycleWeapon:
+                    if (pressed)
+                    {
+                        GameInput.TriggerTouchCycleWeapon();
                     }
                     break;
 

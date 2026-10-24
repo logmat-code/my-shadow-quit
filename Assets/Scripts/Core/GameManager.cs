@@ -145,6 +145,16 @@ namespace MyShadowQuit.Core
                 _tutorialDirector = gameObject.AddComponent<TutorialDirector>();
             }
 
+            if (GetComponent<Combat.HealthSystem>() == null)
+            {
+                gameObject.AddComponent<Combat.HealthSystem>();
+            }
+
+            if (GetComponent<Narrative.DialogueController>() == null)
+            {
+                gameObject.AddComponent<Narrative.DialogueController>();
+            }
+
             _uiManager.OnPlayRequested -= StartNewGame;
             _uiManager.OnPlayRequested += StartNewGame;
             _uiManager.OnContinueRequested -= ContinueSavedGame;

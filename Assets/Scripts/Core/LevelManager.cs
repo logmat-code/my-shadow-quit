@@ -2,6 +2,8 @@ using System.Collections.Generic;
 using UnityEngine;
 using MyShadowQuit.Entities;
 using MyShadowQuit.Puzzle;
+using MyShadowQuit.Combat;
+using MyShadowQuit.Narrative;
 
 namespace MyShadowQuit.Core
 {
@@ -403,6 +405,23 @@ namespace MyShadowQuit.Core
             CreateProp("Environment/hanging_chain", new Vector2(4.5f, 4.0f), 2);
             CreateProp("Environment/hanging_chain", new Vector2(12.5f, 4.0f), 2);
 
+            // NPC: The Archivist
+            CreateNPC(
+                name: "The Archivist",
+                sprite: "npc_archivist",
+                pos: new Vector2(-1.5f, -1.15f),
+                sequence: new DialogueSequence
+                {
+                    dialogueId = "archivist_intro",
+                    unlockedLoreEntryId = "lore_archivist_intro",
+                    lines = new[]
+                    {
+                        new DialogueLine { speakerName = "The Archivist", portraitSpriteName = "portrait_archivist", text = "Bearer of the spark... you awaken at last. But your shadow has stepped away from you." },
+                        new DialogueLine { speakerName = "The Archivist", portraitSpriteName = "portrait_archivist", text = "Do not fear the dark. Coexist with it, solve the seals of the five sanctums, and rekindle what was lost." }
+                    }
+                }
+            );
+
             // Spawn Protagonist & Shadow & Nearby Burning Torch
             SpawnCharactersAndTorch(
                 playerPos: new Vector2(-6.2f, -2.2f),
@@ -495,6 +514,9 @@ namespace MyShadowQuit.Core
             // Darkness Webs on the lower path blocking the Shadow unless Player stands above with the Torch
             CreateDarknessBarrier(new Vector2(2.0f, -2.0f), dissolvesWhenLit: true);
             CreateDarknessBarrier(new Vector2(7.5f, -2.0f), dissolvesWhenLit: true);
+
+            // World 1 Enemy: Ash Crawler patrolling upper walkway
+            CreateEnemy<AshCrawler>(new Vector2(4.0f, 1.6f));
 
             // Shadow Passage at the end of the lower tunnel
             ShadowPassage passage3 = CreateShadowPassage(new Vector2(11.5f, -2.0f));
@@ -1081,6 +1103,26 @@ namespace MyShadowQuit.Core
             CreatePlatformRow(5, 12, -2, true);
             CreatePlatformRow(1, 4, 1.5f, true);
 
+            // NPC: The Rootkeeper
+            CreateNPC(
+                name: "The Rootkeeper",
+                sprite: "npc_rootkeeper",
+                pos: new Vector2(-6.2f, -1.15f),
+                sequence: new DialogueSequence
+                {
+                    dialogueId = "rootkeeper_dialogue",
+                    unlockedLoreEntryId = "lore_rootkeeper_secrets",
+                    lines = new[]
+                    {
+                        new DialogueLine { speakerName = "The Rootkeeper", portraitSpriteName = "portrait_rootkeeper", text = "You tread upon the inverted canopy, mortal. The trees here weep shadows instead of dew." },
+                        new DialogueLine { speakerName = "The Rootkeeper", portraitSpriteName = "portrait_rootkeeper", text = "Be wary of the floating wisps. They feed upon the unresolved sorrow of separated souls." }
+                    }
+                }
+            );
+
+            // World 2 Enemy: Forest Wisp
+            CreateEnemy<ForestWisp>(new Vector2(2.5f, 0.5f));
+
             CreateForestHazard(new Vector2(1.5f, -3.2f), new Vector2(7.0f, 0.8f));
 
             CreateMovingPlatform(new[] { new Vector2(-0.5f, -2.0f), new Vector2(4.5f, -2.0f) }, speed: 2.4f, wait: 0.6f);
@@ -1326,6 +1368,26 @@ namespace MyShadowQuit.Core
             CreatePlatformRow(-8, -3, -2.0f, true);
             CreatePlatformRow(4, 12, -2.0f, true);
 
+            // NPC: The Last Clockmaker
+            CreateNPC(
+                name: "The Last Clockmaker",
+                sprite: "npc_clockmaker",
+                pos: new Vector2(-5.5f, -1.15f),
+                sequence: new DialogueSequence
+                {
+                    dialogueId = "clockmaker_dialogue",
+                    unlockedLoreEntryId = "lore_clockmaker_emberblade",
+                    lines = new[]
+                    {
+                        new DialogueLine { speakerName = "The Last Clockmaker", portraitSpriteName = "portrait_clockmaker", text = "Tick... tack... the gears of this world ground to a halt centuries ago." },
+                        new DialogueLine { speakerName = "The Last Clockmaker", portraitSpriteName = "portrait_clockmaker", text = "I left the Emberblade further up in the tower (Level 23). Take it to cut down the automatons!" }
+                    }
+                }
+            );
+
+            // Enemy: Clockwork Sentinel
+            CreateEnemy<ClockworkSentinel>(new Vector2(7.5f, -1.2f));
+
             CreateGearPlatform(GearMotionType.HorizontalOscillation, new Vector2(0.5f, -2.0f), radius: 2.2f, speed: 1.8f, angle: 0f);
 
             PressurePlate plate = CreatePressurePlate(new Vector2(6.5f, -1.2f), latch: true);
@@ -1357,6 +1419,9 @@ namespace MyShadowQuit.Core
             CreatePlatformRow(-8, -3, -2.0f, true);
             CreatePlatformRow(1, 3, 0.5f, true);
             CreatePlatformRow(7, 13, 2.8f, true);
+
+            // WEAPON UNLOCK 1: EMBERBLADE
+            CreateWeaponPickup(WeaponType.Emberblade, new Vector2(2.0f, 1.4f));
 
             CreateGearPlatform(GearMotionType.VerticalOscillation, new Vector2(-1.0f, 0.0f), radius: 1.6f, speed: 1.5f, angle: 0f);
             CreateGearPlatform(GearMotionType.VerticalOscillation, new Vector2(5.0f, 1.8f), radius: 1.5f, speed: 1.5f, angle: 180f);
@@ -1787,6 +1852,26 @@ namespace MyShadowQuit.Core
             CreateBuoyantPlatform(new Vector2(2f, -2f), water, 2.5f);
             CreatePlatformRow(6, 12, -2f, true);
 
+            // NPC: The Drowned Oracle
+            CreateNPC(
+                name: "The Drowned Oracle",
+                sprite: "npc_oracle",
+                pos: new Vector2(-5.5f, -1.15f),
+                sequence: new DialogueSequence
+                {
+                    dialogueId = "oracle_dialogue",
+                    unlockedLoreEntryId = "lore_oracle_cathedral",
+                    lines = new[]
+                    {
+                        new DialogueLine { speakerName = "The Drowned Oracle", portraitSpriteName = "portrait_oracle", text = "The black tides drown our prayers... but not your flame." },
+                        new DialogueLine { speakerName = "The Drowned Oracle", portraitSpriteName = "portrait_oracle", text = "Deep in the stained glass nave (Level 34), the Hollow Crossbow rests in the shallows." }
+                    }
+                }
+            );
+
+            // World 4 Enemy: Drowned Guardian
+            CreateEnemy<DrownedGuardian>(new Vector2(8.5f, -1.2f));
+
             AncientDoor door = CreateAncientDoor(new Vector2(9.5f, -1.2f), new List<PuzzleNode>());
             CreateExitPortal(new Vector2(11.5f, -1.2f), door, false);
 
@@ -1830,6 +1915,10 @@ namespace MyShadowQuit.Core
         private void BuildLevel34_GlassBeneathTheSea()
         {
             CreatePlatformRow(-8, 12, -2f, true);
+
+            // WEAPON UNLOCK 2: HOLLOW CROSSBOW
+            CreateWeaponPickup(WeaponType.HollowCrossbow, new Vector2(-1.5f, -1.2f));
+
             AncientDoor door = CreateAncientDoor(new Vector2(8f, -1.2f), new List<PuzzleNode>());
             CreateRefractionCrystal(new Vector2(1f, -1.2f), door, radius: 2.6f);
             CreateExitPortal(new Vector2(11f, -1.2f), door, false);
@@ -2018,6 +2107,26 @@ namespace MyShadowQuit.Core
             CreatePlatformRow(4, 12, -2f, true);
             CreateDualRealityPlatform(new Vector2(0.5f, -2f), DualRealityPlatform.RealityState.LightActive);
 
+            // NPC: The Hollow Warden
+            CreateNPC(
+                name: "The Hollow Warden",
+                sprite: "npc_warden",
+                pos: new Vector2(-5.5f, -1.15f),
+                sequence: new DialogueSequence
+                {
+                    dialogueId = "warden_dialogue",
+                    unlockedLoreEntryId = "lore_warden_final_truth",
+                    lines = new[]
+                    {
+                        new DialogueLine { speakerName = "The Hollow Warden", portraitSpriteName = "portrait_warden", text = "You have reached the boundary where existence shatters. Ahead lies the Abyss of the Last Flame." },
+                        new DialogueLine { speakerName = "The Hollow Warden", portraitSpriteName = "portrait_warden", text = "At Level 43 lies the Abyssal Scepter. Fire and Void must merge to conquer the final altar." }
+                    }
+                }
+            );
+
+            // World 5 Enemy: Abyssal Echo
+            CreateEnemy<AbyssalEcho>(new Vector2(8.5f, -1.2f));
+
             AncientDoor door = CreateAncientDoor(new Vector2(9.5f, -1.2f), new List<PuzzleNode>());
             CreateExitPortal(new Vector2(11.5f, -1.2f), door, false);
 
@@ -2043,6 +2152,9 @@ namespace MyShadowQuit.Core
         {
             CreatePlatformRow(-8, -3, -2f, true);
             CreatePlatformRow(5, 12, -2f, true);
+
+            // WEAPON UNLOCK 3: ABYSSAL SCEPTER
+            CreateWeaponPickup(WeaponType.AbyssalScepter, new Vector2(-4.5f, -1.2f));
 
             AbyssalBridge bridge = CreateAbyssalBridge(new Vector2(1f, -2f), false, 4f);
             CreateEchoSwitch(new Vector2(-4.5f, 0.5f), null, bridge);
@@ -2203,6 +2315,42 @@ namespace MyShadowQuit.Core
                 if (shader != null) psr.material = new Material(shader);
                 psr.sortingOrder = 8;
             }
+        }
+
+        private NPCInteraction CreateNPC(string name, string sprite, Vector2 pos, DialogueSequence sequence)
+        {
+            GameObject go = new GameObject("NPC_" + name);
+            go.transform.SetParent(_levelRoot.transform, false);
+            go.transform.position = pos;
+
+            NPCInteraction npc = go.AddComponent<NPCInteraction>();
+            npc.Initialize(name, sprite, sequence);
+            return npc;
+        }
+
+        private T CreateEnemy<T>(Vector2 pos) where T : EnemyBase
+        {
+            GameObject go = new GameObject("Enemy_" + typeof(T).Name);
+            go.transform.SetParent(_levelRoot.transform, false);
+            go.transform.position = pos;
+
+            go.AddComponent<Rigidbody2D>();
+            go.AddComponent<BoxCollider2D>();
+            go.AddComponent<SpriteRenderer>();
+
+            T enemy = go.AddComponent<T>();
+            return enemy;
+        }
+
+        private WeaponPickup CreateWeaponPickup(WeaponType type, Vector2 pos)
+        {
+            GameObject go = new GameObject("WeaponPickup_" + type);
+            go.transform.SetParent(_levelRoot.transform, false);
+            go.transform.position = pos;
+
+            WeaponPickup pickup = go.AddComponent<WeaponPickup>();
+            pickup.Initialize(type);
+            return pickup;
         }
     }
 }

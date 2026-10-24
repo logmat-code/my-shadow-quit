@@ -116,7 +116,12 @@ namespace MyShadowQuit.Puzzle
                 cam.TriggerShake(0.25f, 0.12f);
             }
 
-            if (GameManager.Instance != null)
+            if (Combat.HealthSystem.Instance != null)
+            {
+                Combat.HealthSystem.Instance.TakeDamage(1, Vector2.up * 5f, 0.85f);
+                _hasTriggered = false; // Reset trigger state so it can damage again if still in hazard
+            }
+            else if (GameManager.Instance != null)
             {
                 GameManager.Instance.RestartCurrentLevel();
             }

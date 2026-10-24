@@ -2,6 +2,7 @@ using UnityEngine;
 using MyShadowQuit.Core;
 using MyShadowQuit.Puzzle;
 using MyShadowQuit.Cosmetics;
+using MyShadowQuit.Combat;
 
 namespace MyShadowQuit.Entities
 {
@@ -91,6 +92,11 @@ namespace MyShadowQuit.Entities
             if (_sr != null)
             {
                 _sr.sortingOrder = 10;
+            }
+
+            if (GetComponent<PlayerCombatController>() == null)
+            {
+                gameObject.AddComponent<PlayerCombatController>();
             }
 
             if (_idleSprites == null || _idleSprites.Length == 0)

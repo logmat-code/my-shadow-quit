@@ -25,6 +25,8 @@ namespace MyShadowQuit.UI
         [SerializeField] private MobileVirtualButton jumpButton;
         [SerializeField] private MobileVirtualButton interactButton;
         [SerializeField] private MobileVirtualButton switchButton;
+        [SerializeField] private MobileVirtualButton attackButton;
+        [SerializeField] private MobileVirtualButton cycleWeaponButton;
 
         private RectTransform _rootRect;
         private CanvasGroup _canvasGroup;
@@ -41,6 +43,8 @@ namespace MyShadowQuit.UI
         public MobileVirtualButton JumpButton => jumpButton;
         public MobileVirtualButton InteractButton => interactButton;
         public MobileVirtualButton SwitchButton => switchButton;
+        public MobileVirtualButton AttackButton => attackButton;
+        public MobileVirtualButton CycleWeaponButton => cycleWeaponButton;
         public float CurrentScale => _currentScale;
         public float CurrentOpacity => _currentOpacity;
         public int CurrentPositionMode => _currentPositionMode;
@@ -285,7 +289,7 @@ namespace MyShadowQuit.UI
                 interactButton.SetOpacity(_currentOpacity);
             }
 
-            // 3. Right-Mid Cluster (Switch Character)
+            // 3. Right-Mid Cluster (Switch Character, Attack, Cycle Weapon)
             if (switchButton != null)
             {
                 RectTransform rt = switchButton.GetComponent<RectTransform>();
@@ -299,6 +303,34 @@ namespace MyShadowQuit.UI
                 }
                 switchButton.SetOpacity(_currentOpacity);
             }
+
+            if (attackButton != null)
+            {
+                RectTransform rt = attackButton.GetComponent<RectTransform>();
+                if (rt != null)
+                {
+                    rt.anchorMin = new Vector2(1f, 0f);
+                    rt.anchorMax = new Vector2(1f, 0f);
+                    rt.pivot = new Vector2(0.5f, 0.5f);
+                    rt.sizeDelta = new Vector2(120f, 120f) * _currentScale;
+                    rt.anchoredPosition = new Vector2((-205f - sideMarginOffset) * _currentScale, 215f * _currentScale);
+                }
+                attackButton.SetOpacity(_currentOpacity);
+            }
+
+            if (cycleWeaponButton != null)
+            {
+                RectTransform rt = cycleWeaponButton.GetComponent<RectTransform>();
+                if (rt != null)
+                {
+                    rt.anchorMin = new Vector2(1f, 0.5f);
+                    rt.anchorMax = new Vector2(1f, 0.5f);
+                    rt.pivot = new Vector2(0.5f, 0.5f);
+                    rt.sizeDelta = new Vector2(96f, 96f) * _currentScale;
+                    rt.anchoredPosition = new Vector2((-215f - sideMarginOffset) * _currentScale, 40f * _currentScale);
+                }
+                cycleWeaponButton.SetOpacity(_currentOpacity);
+            }
         }
 
         public void ReleaseAll()
@@ -308,6 +340,8 @@ namespace MyShadowQuit.UI
             if (jumpButton != null) jumpButton.Release();
             if (interactButton != null) interactButton.Release();
             if (switchButton != null) switchButton.Release();
+            if (attackButton != null) attackButton.Release();
+            if (cycleWeaponButton != null) cycleWeaponButton.Release();
             GameInput.ResetTouchInputs();
             _lastHorizontalDir = 0f;
         }
@@ -350,11 +384,16 @@ namespace MyShadowQuit.UI
             Sprite switchNormal = AssetRegistry.GetSprite("UI/mobile_switch_normal", 32f);
             Sprite switchPressed = AssetRegistry.GetSprite("UI/mobile_switch_pressed", 32f);
 
+            Sprite attackNormal = Resources.Load<Sprite>("Sprites/Combat/weapon_emberblade");
+            Sprite cycleNormal = Resources.Load<Sprite>("Sprites/Combat/weapon_crossbow");
+
             ui.leftButton = CreateButton(container.transform, "Btn_Left", MobileVirtualButton.VirtualButtonType.Left, leftNormal, leftPressed);
             ui.rightButton = CreateButton(container.transform, "Btn_Right", MobileVirtualButton.VirtualButtonType.Right, rightNormal, rightPressed);
             ui.jumpButton = CreateButton(container.transform, "Btn_Jump", MobileVirtualButton.VirtualButtonType.Jump, jumpNormal, jumpPressed);
             ui.interactButton = CreateButton(container.transform, "Btn_Interact", MobileVirtualButton.VirtualButtonType.Interact, interactNormal, interactPressed);
             ui.switchButton = CreateButton(container.transform, "Btn_Switch", MobileVirtualButton.VirtualButtonType.SwitchCharacter, switchNormal, switchPressed);
+            ui.attackButton = CreateButton(container.transform, "Btn_Attack", MobileVirtualButton.VirtualButtonType.Attack, attackNormal, attackNormal);
+            ui.cycleWeaponButton = CreateButton(container.transform, "Btn_CycleWeapon", MobileVirtualButton.VirtualButtonType.CycleWeapon, cycleNormal, cycleNormal);
 
             ui.EnsureInitialized();
             return ui;
