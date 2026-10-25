@@ -483,6 +483,11 @@ namespace MyShadowQuit.Core
                 }
             }
 
+            if (Combat.HealthSystem.Instance != null)
+            {
+                Combat.HealthSystem.Instance.ResetHealthToMax();
+            }
+
             if (!_isInMainMenu && _uiManager != null)
             {
                 _uiManager.TriggerFlashFade();
@@ -669,6 +674,11 @@ namespace MyShadowQuit.Core
                 }
             }
 
+            if (Combat.HealthSystem.Instance != null)
+            {
+                Combat.HealthSystem.Instance.EvaluateMaxHealthFromProgress();
+            }
+
             if (_levelManager.Player != null) _levelManager.Player.SetControlActive(false);
             if (_levelManager.Shadow != null) _levelManager.Shadow.SetControlActive(false);
 
@@ -850,6 +860,11 @@ namespace MyShadowQuit.Core
                 }
             }
 
+            if (Combat.HealthSystem.Instance != null)
+            {
+                Combat.HealthSystem.Instance.EvaluateMaxHealthFromProgress();
+            }
+
             if (_levelManager.Player != null) _levelManager.Player.SetControlActive(false);
             if (_levelManager.Shadow != null) _levelManager.Shadow.SetControlActive(false);
 
@@ -1028,6 +1043,11 @@ namespace MyShadowQuit.Core
                 }
             }
 
+            if (Combat.HealthSystem.Instance != null)
+            {
+                Combat.HealthSystem.Instance.EvaluateMaxHealthFromProgress();
+            }
+
             if (_levelManager.Player != null) _levelManager.Player.SetControlActive(false);
             if (_levelManager.Shadow != null) _levelManager.Shadow.SetControlActive(false);
 
@@ -1202,6 +1222,11 @@ namespace MyShadowQuit.Core
                 {
                     _uiManager.ShowTemporaryRewardNotification(worldSummary);
                 }
+            }
+
+            if (Combat.HealthSystem.Instance != null)
+            {
+                Combat.HealthSystem.Instance.EvaluateMaxHealthFromProgress();
             }
 
             if (_levelManager.Player != null) _levelManager.Player.SetControlActive(false);
