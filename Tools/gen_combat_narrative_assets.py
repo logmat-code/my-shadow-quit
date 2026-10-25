@@ -264,29 +264,29 @@ def px_ember_fragment(x, y, w, h):
     return (0, 0, 0, 0)
 
 def px_heart_full(x, y, w, h):
-    # 16x16 pixel heart
-    # Classic heart shape
-    # Top two lobes at (4.5, 11) and (11.5, 11)
-    d1 = math.sqrt((x - 4.5)**2 + (y - 10.5)**2)
-    d2 = math.sqrt((x - 11.5)**2 + (y - 10.5)**2)
-    # Bottom triangle from y=3 to y=10
-    in_triangle = (y <= 10) and (y >= 2) and (abs(x - 8) <= (y - 2) * 0.9)
+    # 16x16 pixel heart (y=0 at top of image, y=15 at bottom)
+    # Convert so math works naturally with lobes at top (y_m high) and tip pointing down (y_m=0)
+    ym = (h - 1) - y
+    d1 = math.sqrt((x - 4.5)**2 + (ym - 10.5)**2)
+    d2 = math.sqrt((x - 11.5)**2 + (ym - 10.5)**2)
+    in_triangle = (ym <= 10) and (ym >= 2) and (abs(x - 8) <= (ym - 2) * 0.9)
     if d1 <= 3.2 or d2 <= 3.2 or in_triangle:
-        if d1 <= 1.5 or (abs(x - 6) <= 1 and abs(y - 10) <= 1):
+        if d1 <= 1.5 or (abs(x - 6) <= 1 and abs(ym - 10) <= 1):
             return (255, 200, 200, 255) # specular highlight
         return (230, 35, 60, 255) # rich crimson red
-    if d1 <= 4.2 or d2 <= 4.2 or ((y <= 11) and (y >= 1) and (abs(x - 8) <= (y - 1) * 1.05)):
+    if d1 <= 4.2 or d2 <= 4.2 or ((ym <= 11) and (ym >= 1) and (abs(x - 8) <= (ym - 1) * 1.05)):
         return (60, 15, 20, 255) # dark outline
     return (0, 0, 0, 0)
 
 def px_heart_empty(x, y, w, h):
     # 16x16 empty heart socket
-    d1 = math.sqrt((x - 4.5)**2 + (y - 10.5)**2)
-    d2 = math.sqrt((x - 11.5)**2 + (y - 10.5)**2)
-    in_triangle = (y <= 10) and (y >= 2) and (abs(x - 8) <= (y - 2) * 0.9)
+    ym = (h - 1) - y
+    d1 = math.sqrt((x - 4.5)**2 + (ym - 10.5)**2)
+    d2 = math.sqrt((x - 11.5)**2 + (ym - 10.5)**2)
+    in_triangle = (ym <= 10) and (ym >= 2) and (abs(x - 8) <= (ym - 2) * 0.9)
     if d1 <= 3.2 or d2 <= 3.2 or in_triangle:
         return (35, 25, 30, 200) # dark hollow
-    if d1 <= 4.2 or d2 <= 4.2 or ((y <= 11) and (y >= 1) and (abs(x - 8) <= (y - 1) * 1.05)):
+    if d1 <= 4.2 or d2 <= 4.2 or ((ym <= 11) and (ym >= 1) and (abs(x - 8) <= (ym - 1) * 1.05)):
         return (80, 70, 80, 255) # stone/iron outline
     return (0, 0, 0, 0)
 

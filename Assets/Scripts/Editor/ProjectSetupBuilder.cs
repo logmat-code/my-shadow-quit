@@ -303,6 +303,8 @@ namespace MyShadowQuit.EditorTools
             gmObj.AddComponent<AudioManager>();
             gmObj.AddComponent<UIManager>();
             gmObj.AddComponent<TutorialDirector>();
+            gmObj.AddComponent<MyShadowQuit.Combat.HealthSystem>();
+            gmObj.AddComponent<MyShadowQuit.Narrative.DialogueController>();
 
             string level1Path = "Assets/Scenes/Level1_Awakening.unity";
             EditorSceneManager.SaveScene(levelScene, level1Path);

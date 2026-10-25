@@ -1195,10 +1195,15 @@ namespace MyShadowQuit.Core
             CreatePlatformRow(-2, 8, 2.8f, true);
             CreatePlatformRow(6, 12, -2, true);
 
+            // Stepped ledge to allow Protagonist and Shadow to reach the upper canopy
+            CreatePlatformRow(-5, -3, 0.4f, true);
+
             CreateWallColumn(0, -1, 2);
-            CreateShadowVine(new Vector2(0.0f, 3.8f));
+            ShadowVinePassage vine = CreateShadowVine(new Vector2(0.0f, 3.8f));
 
             ShadowSwitch ss = CreateShadowSwitch(new Vector2(5.5f, 3.6f));
+            vine.Configure(new List<PuzzleNode> { ss }, stayOpen: true);
+
             CreateMovingPlatform(new[] { new Vector2(-1.0f, -2.0f), new Vector2(4.5f, -2.0f) }, speed: 2.3f);
 
             AncientDoor door = CreateAncientDoor(new Vector2(9.0f, -1.0f), new List<PuzzleNode> { ss });

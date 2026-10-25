@@ -45,7 +45,9 @@ namespace MyShadowQuit.Narrative
             _promptVisual.transform.localPosition = new Vector3(0f, 1.1f, 0f);
 
             var sr = _promptVisual.AddComponent<SpriteRenderer>();
-            sr.sprite = Resources.Load<Sprite>("Sprites/UI/button_interact");
+            var promptSprite = Resources.Load<Sprite>("Sprites/UI/button_interact") 
+                ?? Resources.Load<Sprite>("Sprites/UI/mobile_interact_normal");
+            sr.sprite = promptSprite;
             sr.sortingOrder = 15;
             _promptVisual.transform.localScale = new Vector3(0.5f, 0.5f, 1f);
             _promptVisual.SetActive(false);

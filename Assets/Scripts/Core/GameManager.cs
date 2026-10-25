@@ -235,6 +235,19 @@ namespace MyShadowQuit.Core
             {
                 SwitchActiveCharacter();
             }
+
+            // Lethal void / pit check: if either entity falls below Y = -10, trigger instant lethal damage
+            if (Combat.HealthSystem.Instance != null && !Combat.HealthSystem.Instance.IsDead)
+            {
+                bool fell = false;
+                if (_levelManager.Player != null && _levelManager.Player.transform.position.y < -10f) fell = true;
+                if (_levelManager.Shadow != null && _levelManager.Shadow.transform.position.y < -10f) fell = true;
+
+                if (fell)
+                {
+                    Combat.HealthSystem.Instance.KillInstantly();
+                }
+            }
         }
 
         private void StopEndingSequenceIfNeeded()
