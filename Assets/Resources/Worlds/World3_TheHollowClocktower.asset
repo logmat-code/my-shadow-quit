@@ -1,0 +1,83 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 228e5e4af3554afe7fdcf4200f7497dc, type: 3}
+  m_Name: World3_TheHollowClocktower
+  m_EditorClassIdentifier: Assembly-CSharp::MyShadowQuit.Core.WorldDefinition
+  worldId: world_3
+  worldNumber: 3
+  worldName: THE HOLLOW CLOCKTOWER
+  worldSubtitle: WORLD 3
+  initialSceneName: Level1_Awakening
+  artDirection: Dark steel blue, charcoal grey, aged bronze, gothic machinery, rotating gears, and pendulum clockworks.
+  musicTrackPath: Music/clocktower_ambient_theme
+  availableMechanics:
+  - Rotating Gear Platforms
+  - Swinging Pendulum Obstacles
+  - Timed Clockwork Switches
+  - Torch-Powered Clockwork Lenses
+  - Spectral Shadow Grate Passages
+  completionQuote: '"Time stood still, but our flames kept moving. The clocktower yields its secret."'
+  isImplemented: 1
+  unlockedByDefault: 1
+  levels:
+  - levelIndex: 0
+    levelId: w3_lvl1
+    title: 'LEVEL 21: THE SILENT HANDS'
+    hint: Step aboard the slow-turning gear platform to traverse the clocktower vestibule.
+  - levelIndex: 1
+    levelId: w3_lvl2
+    title: 'LEVEL 22: THE FIRST TICK'
+    hint: The clockwork switch winds the ancient spring, opening the timed gate for a brief interval.
+  - levelIndex: 2
+    levelId: w3_lvl3
+    title: 'LEVEL 23: BROKEN GEARS'
+    hint: Gear platforms rotate at differing cadences. Use your Shadow's double jump [SPACE x2] to bridge the high gap.
+  - levelIndex: 3
+    levelId: w3_lvl4
+    title: 'LEVEL 24: THE SWINGING HALL'
+    hint: Observe the pendulum's rhythmic swing. Wait for the apex before dashing through the hazard zone.
+  - levelIndex: 4
+    levelId: w3_lvl5
+    title: 'LEVEL 25: THE FROZEN MINUTE'
+    hint: Hit the clockwork switch to temporarily lock the swinging pendulums in place.
+  - levelIndex: 5
+    levelId: w3_lvl6
+    title: 'LEVEL 26: THE LENS OF EMBERS'
+    hint: Focus the Torch's golden flame upon the ancient lens to activate the dormant clockwork bridge.
+  - levelIndex: 6
+    levelId: w3_lvl7
+    title: 'LEVEL 27: BETWEEN TWO TICKS'
+    hint: Your Shadow slips through the spectral iron grate while the Flame operates the mechanical lever.
+  - levelIndex: 7
+    levelId: w3_lvl8
+    title: 'LEVEL 28: THE FALLEN BELLS'
+    hint: Ascend the vertical belfry. Coordinate moving gear platforms and evade the resonant pendulum weights.
+  - levelIndex: 8
+    levelId: w3_lvl9
+    title: 'LEVEL 29: THE LAST HOUR'
+    hint: Synchronize gear elevators, clockwork levers, and the solar lens to unseal the high sanctuary.
+  - levelIndex: 9
+    levelId: w3_lvl10
+    title: 'LEVEL 30: HEART OF THE CLOCKTOWER'
+    hint: The Heart of the Clocktower. Unwind all five ancient celestial clockworks to open the Grand Chrono Portal.
+  environmentProfile:
+    FarParallaxSpritePath: World3/clocktower_parallax_far
+    MidParallaxSpritePath: World3/clocktower_parallax_mid
+    NearParallaxSpritePath: World3/clocktower_parallax_near
+    FloorSpritePath: World3/clocktower_floor
+    WallSpritePath: World3/clocktower_wall
+    PlatformLeftSpritePath: World3/clocktower_platform_left
+    PlatformRightSpritePath: World3/clocktower_platform_right
+    AmbientColor: {r: 0.016, g: 0.02, b: 0.035, a: 1}
+    SporeParticleColor: {r: 0.92, g: 0.78, b: 0.38, a: 0.32}
+    HasSporeParticles: 1
+    MusicTrackPath: Music/clocktower_ambient_theme

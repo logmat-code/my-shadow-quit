@@ -1,0 +1,84 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 228e5e4af3554afe7fdcf4200f7497dc, type: 3}
+  m_Name: World1_TheRuinsOfTheLastFlame
+  m_EditorClassIdentifier: Assembly-CSharp::MyShadowQuit.Core.WorldDefinition
+  worldId: world_1
+  worldNumber: 1
+  worldName: THE RUINS OF THE LAST FLAME
+  worldSubtitle: WORLD 1
+  initialSceneName: Level1_Awakening
+  artDirection: Dark atmospheric pixel art, deep indigo/slate stone ruins, luminous violet shadow energy, warm golden torchlight.
+  musicTrackPath: Music/dark_ambient_theme
+  availableMechanics:
+  - Torch Illumination & Pedestals
+  - 'Conscious Shadow Separation & Reconnection [TAB]'
+  - Shadow Double Jump & 50% Reduced Gravity
+  - Shadow Passages & Obelisk Switches
+  - Solar Light Crystals & Darkness Webs
+  - Movable Carved Blocks & Pressure Plates
+  completionQuote: '"Beyond the darkness, another light awaits."'
+  isImplemented: 1
+  unlockedByDefault: 1
+  levels:
+  - levelIndex: 0
+    levelId: w1_lvl1
+    title: 'LEVEL 1: AWAKENING'
+    hint: 'A/D: Move   SPACE: Jump   Q: Pick up / Place Torch   E: Interact   TAB: Control Shadow'
+  - levelIndex: 1
+    levelId: w1_lvl2
+    title: 'LEVEL 2: THE SEPARATION'
+    hint: Stand on the lower stone plate, switch to Shadow [TAB], and Double Jump [SPACE x2 in mid-air] to the upper ledge.
+  - levelIndex: 2
+    levelId: w1_lvl3
+    title: 'LEVEL 3: FOLLOW THE LIGHT'
+    hint: Darkness webs dissolve in Torchlight. Guide your Shadow across the illuminated path.
+  - levelIndex: 3
+    levelId: w1_lvl4
+    title: 'LEVEL 4: THE FORGOTTEN FLAME'
+    hint: Ancient solar crystals awaken when bathed in the Torch's golden flame.
+  - levelIndex: 4
+    levelId: w1_lvl5
+    title: 'LEVEL 5: DARK PASSAGE'
+    hint: Push the carved stone block onto the plate while your Shadow unlocks the inner sanctum.
+  - levelIndex: 5
+    levelId: w1_lvl6
+    title: 'LEVEL 6: TWO SIDES'
+    hint: 'Two parallel tiers: the Flame walks above, the Shadow walks below.'
+  - levelIndex: 6
+    levelId: w1_lvl7
+    title: 'LEVEL 7: THE LAST LIGHT'
+    hint: Transfer the Torch between pedestals to clear Darkness Webs and open the final seal.
+  - levelIndex: 7
+    levelId: w1_lvl8
+    title: 'LEVEL 8: MY SHADOW QUIT'
+    hint: Unite the three ancient seals and reconnect Flame and Shadow at the Sanctuary Arch.
+  - levelIndex: 8
+    levelId: w1_lvl9
+    title: 'LEVEL 9: ECHOES IN THE DARK'
+    hint: Mount the Torch to awaken the upper path, Double Jump with your Shadow across the high vault, and weight the lower seal.
+  - levelIndex: 9
+    levelId: w1_lvl10
+    title: 'LEVEL 10: THE FIRST DAWN'
+    hint: Awaken all five ceremonial seals of light and shadow to open the Great Gate toward the First Dawn.
+  environmentProfile:
+    FarParallaxSpritePath: Environment/parallax_far
+    MidParallaxSpritePath: Environment/parallax_mid
+    NearParallaxSpritePath: Environment/parallax_near
+    FloorSpritePath: Environment/stone_floor
+    WallSpritePath: Environment/stone_wall
+    PlatformLeftSpritePath: Environment/platform_edge_left
+    PlatformRightSpritePath: Environment/platform_edge_right
+    AmbientColor: {r: 0.08, g: 0.08, b: 0.14, a: 1}
+    SporeParticleColor: {r: 0.78, g: 0.65, b: 1, a: 0.35}
+    HasSporeParticles: 0
+    MusicTrackPath: Music/dark_ambient_theme

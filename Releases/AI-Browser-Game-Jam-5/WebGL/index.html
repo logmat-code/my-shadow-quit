@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en-us">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>MY SHADOW QUIT.</title>
+  <link rel="shortcut icon" href="favicon.ico">
+  <link rel="icon" type="image/png" href="favicon.png">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    html, body {
+      width: 100%;
+      height: 100%;
+      background-color: #080a12;
+      color: #e8dcc4;
+      font-family: sans-serif;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    #unity-viewport-wrapper {
+      position: relative;
+      width: 100vw;
+      height: 56.25vw; /* 16:9 height relative to width */
+      max-height: 100vh;
+      max-width: 177.78vh; /* 16:9 width relative to height */
+      margin: auto;
+      background-color: #080a12;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 32px rgba(0, 0, 0, 0.85);
+    }
+    #unity-canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+      background-color: #080a12;
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+      outline: none;
+    }
+    #unity-loading-bar {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      width: 280px;
+      text-align: center;
+    }
+    #unity-progress-bar-empty {
+      width: 100%;
+      height: 10px;
+      background: #161a30;
+      border: 1px solid #d29b3c;
+      margin-top: 10px;
+    }
+    #unity-progress-bar-full {
+      width: 0%;
+      height: 100%;
+      background: #ffcf4b;
+      transition: width 0.15s ease;
+    }
+  </style>
+</head>
+<body>
+  <div id="unity-viewport-wrapper">
+    <canvas id="unity-canvas" width="1280" height="720" tabindex="-1"></canvas>
+    <div id="unity-loading-bar">
+      <div style="font-size: 14px; letter-spacing: 2px; color: #ffcf4b;">MY SHADOW QUIT.</div>
+      <div id="unity-progress-bar-empty">
+        <div id="unity-progress-bar-full"></div>
+      </div>
+    </div>
+  </div>
+  <script>
+    const canvas = document.querySelector("#unity-canvas");
+    const loadingBar = document.querySelector("#unity-loading-bar");
+    const progressBarFull = document.querySelector("#unity-progress-bar-full");
+
+    const buildUrl = "Build";
+    const loaderUrl = buildUrl + "/WebGL.loader.js";
+    const config = {
+      dataUrl: buildUrl + "/WebGL.data.br",
+      frameworkUrl: buildUrl + "/WebGL.framework.js.br",
+      codeUrl: buildUrl + "/WebGL.wasm.br",
+      streamingAssetsUrl: "StreamingAssets",
+      companyName: "LOGMAT",
+      productName: "MY SHADOW QUIT.",
+      productVersion: "1.0",
+      matchWebGLToCanvasSize: true
+    };
+
+    const script = document.createElement("script");
+    script.src = loaderUrl;
+    script.onload = () => {
+      createUnityInstance(canvas, config, (progress) => {
+        progressBarFull.style.width = (100 * progress) + "%";
+      }).then((unityInstance) => {
+        loadingBar.style.display = "none";
+        canvas.focus();
+      }).catch((message) => {
+        console.error(message);
+      });
+    };
+    document.body.appendChild(script);
+
+    window.addEventListener("pointerdown", () => {
+      canvas.focus();
+    });
+  </script>
+</body>
+</html>

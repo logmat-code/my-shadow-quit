@@ -1,0 +1,85 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 228e5e4af3554afe7fdcf4200f7497dc, type: 3}
+  m_Name: World2_TheInvertedForest
+  m_EditorClassIdentifier: Assembly-CSharp::MyShadowQuit.Core.WorldDefinition
+  worldId: world_2
+  worldNumber: 2
+  worldName: THE INVERTED FOREST
+  worldSubtitle: WORLD 2
+  initialSceneName: Level1_Awakening
+  artDirection: Dark petroleum green, jade and deep turquoise bioluminescent forest, ancient twisted roots, mist, glowing flora.
+  musicTrackPath: Music/forest_ambient_theme
+  availableMechanics:
+  - Kinematic Moving Platforms (Horizontal & Elevators)
+  - Bioluminescent Temporary Fungal Platforms
+  - Illuminated Light Root Bridges
+  - Permeable Shadow Vine Passages
+  - Shimmering Light Bridges
+  - Cooperative Dual Switches
+  - Environmental Forest Briars & Thorns
+  completionQuote: '"The roots remember the first spark. Light and Shadow breathe as one."'
+  isImplemented: 1
+  unlockedByDefault: 0
+  levels:
+  - levelIndex: 0
+    levelId: w2_lvl1
+    title: 'LEVEL 11: WHISPERS IN THE ROOTS'
+    hint: Moving platforms carry the Flame across deep abysses. Switch between characters [TAB] to guide each other.
+  - levelIndex: 1
+    levelId: w2_lvl2
+    title: 'LEVEL 12: THE RISING PATH'
+    hint: The vertical elevator ascends through the ancient tree canopy. Step aboard and ride upward.
+  - levelIndex: 2
+    levelId: w2_lvl3
+    title: 'LEVEL 13: ROOTS OF LIGHT'
+    hint: Dormant roots bloom into solid bridges under the Torch's golden warmth. Light the way for your Shadow.
+  - levelIndex: 3
+    levelId: w2_lvl4
+    title: 'LEVEL 14: FADING FOOTSTEPS'
+    hint: Bioluminescent fungal platforms crumble shortly after being touched. Move swiftly with double jumps.
+  - levelIndex: 4
+    levelId: w2_lvl5
+    title: 'LEVEL 15: THE HOLLOW CANOPY'
+    hint: Dense shadow vines bar the Flame's passage, but your Shadow slips through freely to activate the lower mechanism.
+  - levelIndex: 5
+    levelId: w2_lvl6
+    title: 'LEVEL 16: A BRIDGE OF EMBERS'
+    hint: Mount the Torch on the ancient pedestal to awaken the shimmering Light Bridge across the chasm.
+  - levelIndex: 6
+    levelId: w2_lvl7
+    title: 'LEVEL 17: THE SILENT THORNS'
+    hint: Beware the toxic forest briars. Ride moving platforms carefully above the thorn beds.
+  - levelIndex: 7
+    levelId: w2_lvl8
+    title: 'LEVEL 18: THE FRACTURED GROVE'
+    hint: Synchronize temporary platforms, light roots, and shadow passages to unlock the triad seals.
+  - levelIndex: 8
+    levelId: w2_lvl9
+    title: 'LEVEL 19: TWO PATHS, ONE FLAME'
+    hint: 'Two separate chambers: the Flame activates the light roots while the Shadow coordinates the dual switches.'
+  - levelIndex: 9
+    levelId: w2_lvl10
+    title: 'LEVEL 20: HEART OF THE INVERTED FOREST'
+    hint: Ascend to the core of the Great Tree. Overcome all forest mechanisms and reunite Flame and Shadow at the Ancient Arch.
+  environmentProfile:
+    FarParallaxSpritePath: World2/forest_parallax_far
+    MidParallaxSpritePath: World2/forest_parallax_mid
+    NearParallaxSpritePath: World2/forest_parallax_near
+    FloorSpritePath: World2/forest_floor
+    WallSpritePath: World2/forest_wall
+    PlatformLeftSpritePath: World2/forest_platform_left
+    PlatformRightSpritePath: World2/forest_platform_right
+    AmbientColor: {r: 0.015, g: 0.028, b: 0.035, a: 1}
+    SporeParticleColor: {r: 0.18, g: 0.7, b: 0.55, a: 0.28}
+    HasSporeParticles: 1
+    MusicTrackPath: Music/forest_ambient_theme

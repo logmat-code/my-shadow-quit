@@ -154,3 +154,4 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::MyShadowQuit.Puzzle.PressurePlate
   isActivated: 0
   stayPressedOnceActivated: 0
+  allowedActivator: 0

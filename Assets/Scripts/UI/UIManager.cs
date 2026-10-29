@@ -27,6 +27,7 @@ namespace MyShadowQuit.UI
     /// </summary>
     public class UIManager : MonoBehaviour
     {
+        public static UIManager Instance { get; private set; }
         public event Action OnPlayRequested;
         public event Action OnContinueRequested;
         public event Action OnNewGameRequested;
@@ -88,6 +89,8 @@ namespace MyShadowQuit.UI
 
         private ActiveMenuScreen _currentScreen = ActiveMenuScreen.None;
         private ActiveMenuScreen _screenBeforeSubPanel = ActiveMenuScreen.Home;
+
+        public ActiveMenuScreen CurrentScreen => _currentScreen;
 
         // HUD elements
         private Text _levelTitleText;
@@ -498,7 +501,34 @@ namespace MyShadowQuit.UI
 
         private void Awake()
         {
+            if (Instance != null && Instance != this)
+            {
+                // Preserve single active reference
+            }
+            Instance = this;
             EnsureInitialized();
+        }
+
+        private void OnEnable()
+        {
+            Combat.WeaponCatalog.OnWeaponEquippedChanged -= HandleWeaponEquippedChanged;
+            Combat.WeaponCatalog.OnWeaponEquippedChanged += HandleWeaponEquippedChanged;
+        }
+
+        private void OnDisable()
+        {
+            Combat.WeaponCatalog.OnWeaponEquippedChanged -= HandleWeaponEquippedChanged;
+        }
+
+        private void HandleWeaponEquippedChanged(Combat.WeaponType newWeapon)
+        {
+            RefreshWeaponHUD();
+        }
+
+        private void OnDestroy()
+        {
+            Combat.WeaponCatalog.OnWeaponEquippedChanged -= HandleWeaponEquippedChanged;
+            if (Instance == this) Instance = null;
         }
 
         public void EnsureInitialized()
@@ -549,7 +579,7 @@ namespace MyShadowQuit.UI
 
             _ruinsMapSprite = AssetRegistry.GetSprite("UI/world1_ruins_map", 32f);
             _forestMapSprite = AssetRegistry.GetSprite("UI/world2_forest_map", 32f) ?? _ruinsMapSprite;
-            _clocktowerMapSprite = AssetRegistry.GetSprite("World3/world3_clocktower_map", 32f) ?? _ruinsMapSprite;
+            _clocktowerMapSprite = AssetRegistry.GetSprite("UI/world3_clocktower_map", 32f) ?? AssetRegistry.GetSprite("World3/world3_clocktower_map", 32f) ?? _ruinsMapSprite;
             _cathedralMapSprite = AssetRegistry.GetSprite("UI/world4_cathedral_map", 32f) ?? _ruinsMapSprite;
             _abyssMapSprite = AssetRegistry.GetSprite("UI/world5_abyss_map", 32f) ?? _ruinsMapSprite;
             _nodeCompletedSprite = AssetRegistry.GetSprite("UI/map_node_completed", 32f);
@@ -680,16 +710,6 @@ namespace MyShadowQuit.UI
                 _heartIcons[i] = img;
             }
 
-            // Equipped Weapon HUD Icon
-            GameObject wepObj = new GameObject("HUDWeaponIcon", typeof(RectTransform), typeof(Image));
-            wepObj.transform.SetParent(topBar.transform, false);
-            RectTransform wrt = wepObj.GetComponent<RectTransform>();
-            wrt.anchoredPosition = new Vector2(100f, 0f);
-            wrt.sizeDelta = new Vector2(36f, 36f);
-            _equippedWeaponIcon = wepObj.GetComponent<Image>();
-            _equippedWeaponIcon.preserveAspect = true;
-            _equippedWeaponIcon.enabled = false;
-
             // In-Game Pause Button in the top right of TopHUD
             _inGamePauseButton = CreateCustomSpriteButton(topBar.transform, "InGamePauseButton", _btnPauseHudNormal, _btnPauseHudHover, _btnPauseHudPressed, new Vector2(845f, 0f), new Vector2(48f, 48f), () =>
             {
@@ -703,6 +723,7 @@ namespace MyShadowQuit.UI
 
             GameObject bottomBar = CreateImagePanel(_hudPanel.transform, "BottomHUD", new Vector2(0f, -480f), new Vector2(1480f, 64f));
             bottomBar.GetComponent<Image>().color = new Color(0.04f, 0.05f, 0.10f, 0.88f);
+            bottomBar.SetActive(false); // Removed redundant bottom description overlay during gameplay
 
             _hintText = CreateText(bottomBar.transform, "HintText", "", 25, Vector2.zero, new Vector2(1420f, 54f), new Color(1f, 0.92f, 0.72f, 1f), TextAnchor.MiddleCenter);
 
@@ -2175,22 +2196,22 @@ namespace MyShadowQuit.UI
             }
 
             // Skin Details below stage
-            _shopPreviewTitleText = CreateStyledTitleText(stagePanel.transform, "PreviewTitle", "ASHEN KNIGHT", 28, new Vector2(0f, -145f), new Vector2(680f, 36f), new Color(1f, 0.88f, 0.40f));
-            _shopPreviewRarityText = CreateText(stagePanel.transform, "PreviewRarity", "RARE RELIC", 18, new Vector2(0f, -178f), new Vector2(680f, 26f), new Color(0.35f, 0.75f, 1f), TextAnchor.MiddleCenter);
-            _shopPreviewLoreText = CreateText(stagePanel.transform, "PreviewLore", "Forged in the embers of the sanctuary.", 17, new Vector2(0f, -220f), new Vector2(660f, 54f), new Color(0.85f, 0.85f, 0.95f), TextAnchor.MiddleCenter);
+            _shopPreviewTitleText = CreateStyledTitleText(stagePanel.transform, "PreviewTitle", "ASHEN KNIGHT", 26, new Vector2(0f, -135f), new Vector2(680f, 32f), new Color(1f, 0.88f, 0.40f));
+            _shopPreviewRarityText = CreateText(stagePanel.transform, "PreviewRarity", "RARE RELIC", 17, new Vector2(0f, -165f), new Vector2(680f, 24f), new Color(0.35f, 0.75f, 1f), TextAnchor.MiddleCenter);
+            _shopPreviewLoreText = CreateText(stagePanel.transform, "PreviewLore", "Forged in the embers of the sanctuary.", 15, new Vector2(0f, -198f), new Vector2(660f, 36f), new Color(0.85f, 0.85f, 0.95f), TextAnchor.MiddleCenter);
+
+            // Toast feedback message (placed safely above action button)
+            _shopToastText = CreateText(stagePanel.transform, "ShopToastText", "", 17, new Vector2(0f, -225f), new Vector2(600f, 24f), new Color(0.4f, 1f, 0.5f), TextAnchor.MiddleCenter);
+            _shopToastText.gameObject.SetActive(false);
 
             // Big Action Button: BUY / EQUIP / EQUIPPED
-            _shopActionButton = CreateMenuButton(stagePanel.transform, "EQUIP", new Vector2(0f, -265f), () =>
+            _shopActionButton = CreateMenuButton(stagePanel.transform, "EQUIP", new Vector2(0f, -262f), () =>
             {
                 ExecuteShopActionButton();
-            }, new Vector2(360f, 54f));
+            }, new Vector2(360f, 50f));
             _shopActionBtnImage = _shopActionButton.GetComponent<Image>();
             _shopActionBtnText = _shopActionButton.GetComponentInChildren<Text>();
             if (_shopActionBtnText != null) _shopActionBtnText.fontSize = 22;
-
-            // Toast feedback message
-            _shopToastText = CreateText(stagePanel.transform, "ShopToastText", "", 18, new Vector2(0f, -270f), new Vector2(600f, 30f), new Color(0.4f, 1f, 0.5f), TextAnchor.MiddleCenter);
-            _shopToastText.gameObject.SetActive(false);
 
             _shopPanel.SetActive(false);
         }
@@ -2651,17 +2672,7 @@ namespace MyShadowQuit.UI
 
             CreateMenuButton(_loreJournalPanel.transform, "BACK", new Vector2(0f, -270f), () =>
             {
-                _loreJournalPanel.SetActive(false);
-                if (_screenBeforeSubPanel == ActiveMenuScreen.Pause)
-                {
-                    if (_pauseMenuContainer != null) _pauseMenuContainer.SetActive(true);
-                    if (_pauseMenuPanel != null) _pauseMenuPanel.SetActive(true);
-                    _currentScreen = ActiveMenuScreen.Pause;
-                }
-                else
-                {
-                    ShowMainMenu();
-                }
+                CloseSubPanelAndReturn();
             }, new Vector2(260f, 50f));
 
             _loreJournalPanel.SetActive(false);
@@ -2798,10 +2809,10 @@ namespace MyShadowQuit.UI
             CreateText(
                 _settingsPanel.transform,
                 "ControlsGuide",
-                "KEYBOARD: A/D (Move)  SPACE (Jump/Double Jump)  E (Torch/Action)  TAB (Switch)  ESC (Pause)",
-                18,
+                "KEYBOARD: A/D (Move)  SPACE (Jump)  Q (Torch)  E (Interact)  J (Attack)  F (Weapon)  TAB (Switch)  ESC (Pause)",
+                17,
                 new Vector2(0f, -195f),
-                new Vector2(760f, 40f),
+                new Vector2(880f, 40f),
                 new Color(0.75f, 0.82f, 0.95f, 0.85f),
                 TextAnchor.MiddleCenter
             );
@@ -3087,6 +3098,7 @@ namespace MyShadowQuit.UI
             CreateMenuButton(_world4CompletePanel.transform, "CONTINUE TO WORLD 5", new Vector2(0f, -32f), () =>
             {
                 SetSelectedMapWorld(4);
+                HideAllMenuPanels();
                 TransitionToAction(() => OnWorldCompleteContinueRequested?.Invoke());
             });
             CreateMenuButton(_world4CompletePanel.transform, "LEVEL SELECT", new Vector2(0f, -106f), () =>
@@ -3592,7 +3604,7 @@ namespace MyShadowQuit.UI
                 return;
             }
 
-            if (_currentScreen == ActiveMenuScreen.Settings || _currentScreen == ActiveMenuScreen.Credits)
+            if (_currentScreen == ActiveMenuScreen.Settings || _currentScreen == ActiveMenuScreen.Credits || _currentScreen == ActiveMenuScreen.LoreJournal)
             {
                 if (GameInput.GetCancelDown())
                 {
@@ -3890,9 +3902,11 @@ namespace MyShadowQuit.UI
             if (_pauseMenuPanel != null) _pauseMenuPanel.SetActive(false);
             if (_settingsPanel != null) _settingsPanel.SetActive(false);
             if (_creditsPanel != null) _creditsPanel.SetActive(false);
+            if (_loreJournalPanel != null) _loreJournalPanel.SetActive(false);
             if (_worldCompletePanel != null) _worldCompletePanel.SetActive(false);
             if (_world2CompletePanel != null) _world2CompletePanel.SetActive(false);
             if (_world3CompletePanel != null) _world3CompletePanel.SetActive(false);
+            if (_world4CompletePanel != null) _world4CompletePanel.SetActive(false);
             if (_world2ComingSoonPanel != null) _world2ComingSoonPanel.SetActive(false);
             if (_victoryPanel != null) _victoryPanel.SetActive(false);
             if (_hudPanel != null) _hudPanel.SetActive(false);
@@ -3978,7 +3992,10 @@ namespace MyShadowQuit.UI
             _currentScreen = ActiveMenuScreen.Home;
             _homeSelectedBtnIndex = WorldProgressSave.HasAnySavedProgress() ? 0 : 1;
             RefreshHomeButtonSelectionVisuals();
-            AudioManager.Instance?.PlayMenuMusic();
+            if (Application.isPlaying && AudioManager.Instance != null)
+            {
+                AudioManager.Instance.PlayMenuMusic();
+            }
         }
 
         public void ShowWorldSelectScreen()
@@ -3989,7 +4006,10 @@ namespace MyShadowQuit.UI
             HideAllMenuPanels();
             _worldSelectPanel.SetActive(true);
             _currentScreen = ActiveMenuScreen.WorldSelect;
-            AudioManager.Instance?.PlayMenuMusic();
+            if (Application.isPlaying && AudioManager.Instance != null)
+            {
+                AudioManager.Instance.PlayMenuMusic();
+            }
         }
 
         public void ShowLevelSelectScreen()
@@ -3999,7 +4019,10 @@ namespace MyShadowQuit.UI
             HideAllMenuPanels();
             _levelSelectPanel.SetActive(true);
             _currentScreen = ActiveMenuScreen.LevelSelect;
-            AudioManager.Instance?.PlayMenuMusic();
+            if (Application.isPlaying && AudioManager.Instance != null)
+            {
+                AudioManager.Instance.PlayMenuMusic();
+            }
         }
 
         public void ShowWorld1CompleteScreen()
@@ -4048,7 +4071,10 @@ namespace MyShadowQuit.UI
             HideAllMenuPanels();
             _world2ComingSoonPanel.SetActive(true);
             _currentScreen = ActiveMenuScreen.World2ComingSoon;
-            AudioManager.Instance?.PlayMenuMusic();
+            if (Application.isPlaying && AudioManager.Instance != null)
+            {
+                AudioManager.Instance.PlayMenuMusic();
+            }
         }
 
         public void ShowShopScreen()
@@ -4057,7 +4083,10 @@ namespace MyShadowQuit.UI
             HideAllMenuPanels();
             _shopPanel.SetActive(true);
             _currentScreen = ActiveMenuScreen.Shop;
-            AudioManager.Instance?.PlayMenuMusic();
+            if (Application.isPlaying && AudioManager.Instance != null)
+            {
+                AudioManager.Instance.PlayMenuMusic();
+            }
 
             RefreshShopCoinBalance();
             SwitchShopCategory(_shopSelectedTab);
@@ -4114,6 +4143,14 @@ namespace MyShadowQuit.UI
             }
 
             // Update Hearts
+            RefreshHeartsHUD();
+
+            // Update Weapon Icon
+            RefreshWeaponHUD();
+        }
+
+        public void RefreshHeartsHUD()
+        {
             if (_heartIcons != null && Combat.HealthSystem.Instance != null)
             {
                 int maxHp = Combat.HealthSystem.Instance.MaxHealth;
@@ -4134,25 +4171,11 @@ namespace MyShadowQuit.UI
                     }
                 }
             }
+        }
 
-            // Update Weapon Icon
-            if (_equippedWeaponIcon != null)
-            {
-                Combat.WeaponType eq = Combat.WeaponCatalog.EquippedWeapon;
-                if (eq == Combat.WeaponType.None)
-                {
-                    _equippedWeaponIcon.enabled = false;
-                }
-                else
-                {
-                    Combat.WeaponDefinition def = Combat.WeaponCatalog.GetDefinition(eq);
-                    if (def != null)
-                    {
-                        _equippedWeaponIcon.sprite = Resources.Load<Sprite>("Sprites/Combat/" + def.spriteName);
-                        _equippedWeaponIcon.enabled = true;
-                    }
-                }
-            }
+        public void RefreshWeaponHUD()
+        {
+            // Weapon sprites completely removed from UI per specification
         }
 
         public void SetPauseMenuVisible(bool visible)
@@ -4202,7 +4225,12 @@ namespace MyShadowQuit.UI
             }
             _settingsPanel.SetActive(panel == _settingsPanel);
             _creditsPanel.SetActive(panel == _creditsPanel);
-            _currentScreen = (panel == _settingsPanel) ? ActiveMenuScreen.Settings : ActiveMenuScreen.Credits;
+            if (_loreJournalPanel != null) _loreJournalPanel.SetActive(panel == _loreJournalPanel);
+
+            if (panel == _settingsPanel) _currentScreen = ActiveMenuScreen.Settings;
+            else if (panel == _creditsPanel) _currentScreen = ActiveMenuScreen.Credits;
+            else if (panel == _loreJournalPanel) _currentScreen = ActiveMenuScreen.LoreJournal;
+
             if (AudioManager.Instance != null)
             {
                 AudioManager.Instance.PlaySFX("switch_activate", 0.60f, 1.1f);
@@ -4212,8 +4240,9 @@ namespace MyShadowQuit.UI
         private void CloseSubPanelAndReturn()
         {
             PlayMenuBackSound();
-            _settingsPanel.SetActive(false);
-            _creditsPanel.SetActive(false);
+            if (_settingsPanel != null) _settingsPanel.SetActive(false);
+            if (_creditsPanel != null) _creditsPanel.SetActive(false);
+            if (_loreJournalPanel != null) _loreJournalPanel.SetActive(false);
             if (_screenBeforeSubPanel == ActiveMenuScreen.Pause)
             {
                 if (_pauseMenuContainer != null) _pauseMenuContainer.SetActive(true);

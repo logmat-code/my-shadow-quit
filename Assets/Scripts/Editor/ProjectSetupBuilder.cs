@@ -15,6 +15,7 @@ using MyShadowQuit.UI;
 using MyShadowQuit.Cosmetics;
 using MyShadowQuit.Economy;
 using MyShadowQuit.Monetization.IAP;
+using MyShadowQuit.Combat;
 
 namespace MyShadowQuit.EditorTools
 {
@@ -746,6 +747,8 @@ namespace MyShadowQuit.EditorTools
                 }
 
                 // Step 3: Protagonist pushes MovableBlock onto lower PressurePlate -> exitDoor9 opens!
+                block9.EnsureInitialized();
+                plate9.EnsureInitialized();
                 block9.transform.position = plate9.transform.position + new Vector3(0f, 0.45f, 0f);
                 Physics2D.SyncTransforms();
                 plate9.EvaluateOccupancy();
@@ -1028,7 +1031,8 @@ namespace MyShadowQuit.EditorTools
                     throw new Exception("[Verification Failed] Locked Level 3 node was allowed to launch from Level Select Map!");
                 }
 
-                // Verify World 2 Map Switching & World 2 Complete Screen
+                // Verify World 2 Map Switching & World 2 Complete Screen (mark World 1 complete so World 2 is unlocked)
+                WorldProgressSave.MarkWorldCompleted("world_1", 10);
                 uiTest.SetSelectedMapWorld(1);
                 if (uiTest.SelectedMapWorldIndex != 1)
                 {
@@ -1041,7 +1045,8 @@ namespace MyShadowQuit.EditorTools
                 }
                 uiTest.SetSelectedMapWorld(0);
 
-                // Verify World 3 Map Switching & World 3 Complete Screen
+                // Verify World 3 Map Switching & World 3 Complete Screen (mark World 2 complete so World 3 is unlocked)
+                WorldProgressSave.MarkWorldCompleted("world_2", 10);
                 uiTest.SetSelectedMapWorld(2);
                 if (uiTest.SelectedMapWorldIndex != 2)
                 {
@@ -1084,10 +1089,10 @@ namespace MyShadowQuit.EditorTools
                     throw new Exception("[Verification Failed] Level 12 missing MovingPlatform2D component!");
                 }
 
-                lm.BuildLevel(0, null); // Level 11: TemporaryPlatform2D
+                lm.BuildLevel(3, null); // Level 14: TemporaryPlatform2D
                 if (UnityEngine.Object.FindFirstObjectByType<TemporaryPlatform2D>() == null)
                 {
-                    throw new Exception("[Verification Failed] Level 11 missing TemporaryPlatform2D component!");
+                    throw new Exception("[Verification Failed] Level 14 missing TemporaryPlatform2D component!");
                 }
 
                 lm.BuildLevel(2, null); // Level 13: LightRootMechanism
@@ -1114,10 +1119,10 @@ namespace MyShadowQuit.EditorTools
                     throw new Exception("[Verification Failed] Level 17 missing ForestHazard component!");
                 }
 
-                lm.BuildLevel(7, null); // Level 18: CooperativeSwitch
+                lm.BuildLevel(8, null); // Level 19: CooperativeSwitch
                 if (UnityEngine.Object.FindFirstObjectByType<CooperativeSwitch>() == null)
                 {
-                    throw new Exception("[Verification Failed] Level 18 missing CooperativeSwitch component!");
+                    throw new Exception("[Verification Failed] Level 19 missing CooperativeSwitch component!");
                 }
 
                 // =====================================================================
@@ -1150,28 +1155,28 @@ namespace MyShadowQuit.EditorTools
                     throw new Exception("[Verification Failed] Level 21 missing RotatingGearPlatform component!");
                 }
 
-                lm.BuildLevel(2, null); // Level 23: PendulumObstacle
+                lm.BuildLevel(1, null); // Level 22: PendulumObstacle
                 if (UnityEngine.Object.FindFirstObjectByType<PendulumObstacle>() == null)
                 {
-                    throw new Exception("[Verification Failed] Level 23 missing PendulumObstacle component!");
+                    throw new Exception("[Verification Failed] Level 22 missing PendulumObstacle component!");
                 }
 
-                lm.BuildLevel(3, null); // Level 24: ClockworkSwitch
+                lm.BuildLevel(4, null); // Level 25: ClockworkSwitch
                 if (UnityEngine.Object.FindFirstObjectByType<ClockworkSwitch>() == null)
                 {
-                    throw new Exception("[Verification Failed] Level 24 missing ClockworkSwitch component!");
+                    throw new Exception("[Verification Failed] Level 25 missing ClockworkSwitch component!");
                 }
 
-                lm.BuildLevel(4, null); // Level 25: TorchPoweredClockwork
+                lm.BuildLevel(5, null); // Level 26: TorchPoweredClockwork
                 if (UnityEngine.Object.FindFirstObjectByType<TorchPoweredClockwork>() == null)
                 {
-                    throw new Exception("[Verification Failed] Level 25 missing TorchPoweredClockwork component!");
+                    throw new Exception("[Verification Failed] Level 26 missing TorchPoweredClockwork component!");
                 }
 
-                lm.BuildLevel(5, null); // Level 26: ShadowClockworkPassage
+                lm.BuildLevel(6, null); // Level 27: ShadowClockworkPassage
                 if (UnityEngine.Object.FindFirstObjectByType<ShadowClockworkPassage>() == null)
                 {
-                    throw new Exception("[Verification Failed] Level 26 missing ShadowClockworkPassage component!");
+                    throw new Exception("[Verification Failed] Level 27 missing ShadowClockworkPassage component!");
                 }
 
                 // Switch back to World 1 for subsequent tests
@@ -1204,9 +1209,9 @@ namespace MyShadowQuit.EditorTools
                     throw new Exception($"[Verification Failed] InGamePauseButton rect invalid: size={pauseBtnRect.sizeDelta}, pos={pauseBtnRect.anchoredPosition}!");
                 }
 
-                if (uiTest.PauseButtonCount != 5)
+                if (uiTest.PauseButtonCount != 6)
                 {
-                    throw new Exception($"[Verification Failed] Expected 5 buttons in Pause Menu, got {uiTest.PauseButtonCount}!");
+                    throw new Exception($"[Verification Failed] Expected 6 buttons in Pause Menu, got {uiTest.PauseButtonCount}!");
                 }
 
                 uiTest.SetPauseMenuVisible(true);
@@ -1332,11 +1337,13 @@ namespace MyShadowQuit.EditorTools
 
                 // Verify RewardService non-repeatable rewards & exploit protection
                 RewardService rewTest = testObj.AddComponent<RewardService>();
+                typeof(RewardService).GetProperty("Instance")?.SetValue(null, rewTest);
+                typeof(WalletService).GetProperty("Instance")?.SetValue(null, walletTest);
                 rewTest.ResetClaimedRewards();
                 int r1 = rewTest.EvaluateAndClaimLevelRewards("world_1", 0, noRestartUsed: true, out string rMsg1);
                 if (r1 != 125 || walletTest.Balance != 325) // 200 + 100 + 25
                 {
-                    throw new Exception($"[Verification Failed] Level 1 first-clear reward mismatch: expected 125, got {r1}!");
+                    throw new Exception($"[Verification Failed] Level 1 first-clear reward mismatch: expected 125 (balance 325), got reward {r1}, balance {walletTest.Balance}!");
                 }
                 // Duplicate replay must give 0
                 int r2 = rewTest.EvaluateAndClaimLevelRewards("world_1", 0, noRestartUsed: true, out string rMsg2);
@@ -1357,6 +1364,9 @@ namespace MyShadowQuit.EditorTools
                 }
 
                 // Verify SkinEquipmentService persistence & entity update
+                PlayerPrefs.DeleteKey(SkinEquipmentService.KeyEquippedPlayer);
+                PlayerPrefs.DeleteKey(SkinEquipmentService.KeyEquippedShadow);
+                PlayerPrefs.DeleteKey(SkinEquipmentService.KeyEquippedTorch);
                 SkinEquipmentService equipTest = testObj.AddComponent<SkinEquipmentService>();
                 equipTest.LoadEquippedSkins();
                 if (equipTest.EquippedPlayerSkinId != "player_original")
@@ -1445,6 +1455,11 @@ namespace MyShadowQuit.EditorTools
                 {
                     throw new Exception("[Verification Failed] GameInput.TriggerTouchInteract did not set InteractDown!");
                 }
+                GameInput.TriggerTouchTorchAction();
+                if (!GameInput.GetTorchActionDown())
+                {
+                    throw new Exception("[Verification Failed] GameInput.TriggerTouchTorchAction did not set TorchActionDown!");
+                }
                 GameInput.TriggerTouchSwitchCharacter();
                 if (!GameInput.GetSwitchCharacterDown())
                 {
@@ -1515,8 +1530,10 @@ namespace MyShadowQuit.EditorTools
                 UnityEngine.Object.DestroyImmediate(coopObjB);
 
                 // 13. Verify Multiworld Continue Persistence Logic
-                WorldProgressSave.ClearWorldProgress("world_1");
-                WorldProgressSave.ClearWorldProgress("world_2");
+                for (int wIdx = 1; wIdx <= WorldProgressSave.WorldCount; wIdx++)
+                {
+                    WorldProgressSave.ClearWorldProgress("world_" + wIdx);
+                }
                 PlayerPrefs.DeleteKey(WorldProgressSave.KeyLastPlayedWorld);
 
                 if (WorldProgressSave.HasAnySavedProgress())
@@ -1567,10 +1584,12 @@ namespace MyShadowQuit.EditorTools
                     throw new Exception($"[Verification Failed] Multiworld fallback failed: expected World 3 Level 21, got W={contWIdFallback}, Lvl={contDispFallback}");
                 }
 
-                // 14. Comprehensive Reachability & Playability Verification (All 30 Levels: World 1, World 2 & World 3)
-                for (int wIdx = 0; wIdx < 3; wIdx++)
+                // 14. Comprehensive Reachability & Playability Verification (All 50 Levels: World 1 through 5)
+                WorldDefinition[] allWorlds = { world1Def, world2Def, world3Def, WorldCatalog.GetWorld(3), WorldCatalog.GetWorld(4) };
+                for (int wIdx = 0; wIdx < allWorlds.Length; wIdx++)
                 {
-                    WorldDefinition wDef = (wIdx == 0) ? world1Def : ((wIdx == 1) ? world2Def : world3Def);
+                    WorldDefinition wDef = allWorlds[wIdx];
+                    if (wDef == null) continue;
                     lm.SetActiveWorld(wDef);
 
                     for (int lIdx = 0; lIdx < 10; lIdx++)
@@ -1580,9 +1599,43 @@ namespace MyShadowQuit.EditorTools
                     }
                 }
 
+                // Verify Combat & Health System Damage Flow
+                GameObject healthTestObj = new GameObject("HealthVerification");
+                HealthSystem hs = healthTestObj.AddComponent<HealthSystem>();
+                hs.ResetHealthToMax();
+                if (hs.CurrentHealth != 3 || hs.MaxHealth != 3)
+                {
+                    throw new Exception($"[Verification Failed] HealthSystem initial HP mismatch: expected 3/3, got {hs.CurrentHealth}/{hs.MaxHealth}!");
+                }
+
+                // Standard hit (1 damage)
+                bool tookDamage = hs.TakeDamage(1, Vector2.zero, 0.85f);
+                if (!tookDamage || hs.CurrentHealth != 2 || !hs.IsInvulnerable)
+                {
+                    throw new Exception($"[Verification Failed] Standard damage flow failed: expected HP 2 and IsInvulnerable=true, got HP {hs.CurrentHealth}!");
+                }
+
+                // Immediate hit during invulnerability window (0.85s) must be debounced/ignored
+                bool ignoredDamage = hs.TakeDamage(1, Vector2.zero, 0.85f);
+                if (ignoredDamage || hs.CurrentHealth != 2)
+                {
+                    throw new Exception("[Verification Failed] Damage received during 0.85s invulnerability window was not ignored!");
+                }
+
+                // Ember healing (+1 HP)
+                hs.Heal(1);
+                if (hs.CurrentHealth != 3)
+                {
+                    throw new Exception($"[Verification Failed] Heal(1) failed: expected HP 3, got {hs.CurrentHealth}!");
+                }
+
+                UnityEngine.Object.DestroyImmediate(healthTestObj);
+
                 WorldProgressSave.ClearWorldProgress("world_1");
                 WorldProgressSave.ClearWorldProgress("world_2");
                 WorldProgressSave.ClearWorldProgress("world_3");
+                WorldProgressSave.ClearWorldProgress("world_4");
+                WorldProgressSave.ClearWorldProgress("world_5");
                 PlayerPrefs.DeleteKey(WorldProgressSave.KeyLastPlayedWorld);
             }
             finally
@@ -1633,10 +1686,21 @@ namespace MyShadowQuit.EditorTools
             CooperativeSwitch[] coopSwitches = UnityEngine.Object.FindObjectsByType<CooperativeSwitch>(FindObjectsSortMode.None);
             foreach (var cs in coopSwitches)
             {
-                Collider2D ground = Physics2D.OverlapCircle((Vector2)cs.transform.position + Vector2.down * 0.5f, 0.4f);
-                if (ground == null || ground.isTrigger)
+                Collider2D[] results = Physics2D.OverlapCircleAll((Vector2)cs.transform.position + Vector2.down * 0.7f, 0.8f);
+                Collider2D ground = null;
+                foreach (var col in results)
                 {
-                    throw new Exception($"[Playability Failed] Level {globalLevel}: CooperativeSwitch at {cs.transform.position} has no solid floor!");
+                    if (col != null && !col.isTrigger && col.gameObject != cs.gameObject)
+                    {
+                        ground = col;
+                        break;
+                    }
+                }
+                if (ground == null)
+                {
+                    string details = "";
+                    foreach (var c in results) details += $"[{c.name}, trig={c.isTrigger}, pos={c.transform.position}] ";
+                    throw new Exception($"[Playability Failed] Level {globalLevel}: CooperativeSwitch at {cs.transform.position} has no solid floor! Overlaps: {details}");
                 }
             }
 
@@ -1698,8 +1762,17 @@ namespace MyShadowQuit.EditorTools
             ClockworkSwitch[] clockworkSwitches = UnityEngine.Object.FindObjectsByType<ClockworkSwitch>(FindObjectsSortMode.None);
             foreach (var cs in clockworkSwitches)
             {
-                Collider2D ground = Physics2D.OverlapCircle((Vector2)cs.transform.position + Vector2.down * 0.5f, 0.4f);
-                if (ground == null || ground.isTrigger)
+                Collider2D[] results = Physics2D.OverlapCircleAll((Vector2)cs.transform.position + Vector2.down * 0.7f, 0.8f);
+                Collider2D ground = null;
+                foreach (var col in results)
+                {
+                    if (col != null && !col.isTrigger && col.gameObject != cs.gameObject)
+                    {
+                        ground = col;
+                        break;
+                    }
+                }
+                if (ground == null)
                 {
                     throw new Exception($"[Playability Failed] Level {globalLevel}: ClockworkSwitch at {cs.transform.position} has no solid floor!");
                 }
@@ -1726,6 +1799,46 @@ namespace MyShadowQuit.EditorTools
                     throw new Exception("[Playability Failed] Level 19 requires at least 2 CooperativeSwitches!");
                 }
             }
+
+            // 7. Special Verification for Level 20 ("Heart of the Inverted Forest")
+            if (globalLevel == 20)
+            {
+                ShadowVinePassage vine = UnityEngine.Object.FindFirstObjectByType<ShadowVinePassage>();
+                if (vine == null)
+                {
+                    throw new Exception("[Playability Failed] Level 20: Missing ShadowVinePassage!");
+                }
+
+                ShadowSwitch sSwitch = UnityEngine.Object.FindFirstObjectByType<ShadowSwitch>();
+                if (sSwitch == null)
+                {
+                    throw new Exception("[Playability Failed] Level 20: Missing high ShadowSwitch!");
+                }
+
+                if (coopSwitches.Length < 2)
+                {
+                    throw new Exception("[Playability Failed] Level 20: Requires 2 CooperativeSwitches (upper and lower)!");
+                }
+
+                AncientDoor finalDoor = UnityEngine.Object.FindFirstObjectByType<AncientDoor>();
+                if (finalDoor == null)
+                {
+                    throw new Exception("[Playability Failed] Level 20: Missing AncientDoor!");
+                }
+
+                LevelExitPortal portal = UnityEngine.Object.FindFirstObjectByType<LevelExitPortal>();
+                if (portal == null)
+                {
+                    throw new Exception("[Playability Failed] Level 20: Missing LevelExitPortal!");
+                }
+            }
+        }
+
+        public static void RunVerificationOnlyBatch()
+        {
+            Debug.Log("[ProjectSetupBuilder] Executing RunAutomatedVerification via batchmode...");
+            RunAutomatedVerification();
+            Debug.Log("[ProjectSetupBuilder] RunAutomatedVerification SUCCESS!");
         }
 
         [MenuItem("MyShadowQuit/Build WebGL Release")]

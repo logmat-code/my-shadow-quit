@@ -1,12 +1,14 @@
 using UnityEngine;
+using MyShadowQuit.Core;
 
 namespace MyShadowQuit.Puzzle
 {
     /// <summary>
     /// World 5 switch responsive solely to Shadow's metaphysical presence.
     /// Used in cooperative abyssal puzzles where the Player cannot reach or trigger the mechanism.
+    /// Inherits from PuzzleNode so it can link directly to AncientDoors and ShadowPassages.
     /// </summary>
-    public class ShadowEchoSwitch : MonoBehaviour
+    public class ShadowEchoSwitch : PuzzleNode
     {
         [Header("Targets")]
         [SerializeField] private AncientDoor linkedDoor;
@@ -17,9 +19,8 @@ namespace MyShadowQuit.Puzzle
         [SerializeField] private Sprite echoOnSprite;
 
         private SpriteRenderer sr;
-        private bool isTriggered = false;
 
-        public bool IsTriggered => isTriggered;
+        public bool IsTriggered => isActivated;
 
         private void Awake()
         {
@@ -41,7 +42,7 @@ namespace MyShadowQuit.Puzzle
         {
             if (collision.CompareTag("Shadow"))
             {
-                SetActivated(true);
+                ApplyActivation(true);
             }
         }
 
@@ -49,13 +50,13 @@ namespace MyShadowQuit.Puzzle
         {
             if (collision.CompareTag("Shadow"))
             {
-                SetActivated(false);
+                ApplyActivation(false);
             }
         }
 
-        private void SetActivated(bool active)
+        private void ApplyActivation(bool active)
         {
-            isTriggered = active;
+            SetActivated(active);
             UpdateVisual();
             if (linkedDoor != null)
             {
@@ -72,8 +73,13 @@ namespace MyShadowQuit.Puzzle
         {
             if (sr != null)
             {
-                sr.sprite = isTriggered ? echoOnSprite : echoOffSprite;
+                sr.sprite = isActivated ? echoOnSprite : echoOffSprite;
             }
+        }
+
+        protected override void OnVisualStateUpdated(bool active)
+        {
+            UpdateVisual();
         }
     }
 }

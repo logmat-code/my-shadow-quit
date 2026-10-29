@@ -3,6 +3,7 @@ using MyShadowQuit.Core;
 using MyShadowQuit.Entities;
 using MyShadowQuit.Puzzle;
 using MyShadowQuit.UI;
+using MyShadowQuit.Narrative;
 
 namespace MyShadowQuit.Core
 {
@@ -55,7 +56,8 @@ namespace MyShadowQuit.Core
 
             EnsureWorldPromptObjects();
 
-            if (levelIndex == 0 && _levelManager != null && _levelManager.Player != null)
+            int activeWorldIdx = (_levelManager != null && _levelManager.ActiveWorld != null) ? _levelManager.ActiveWorld.WorldIndex : 0;
+            if (activeWorldIdx == 0 && levelIndex == 0 && _levelManager != null && _levelManager.Player != null)
             {
                 _initialPlayerPos = _levelManager.Player.transform.position;
                 _currentStep = AwakeningStep.Move;
@@ -134,9 +136,43 @@ namespace MyShadowQuit.Core
             }
         }
 
+        private string GetInputPrompt(string desktopKey, string touchAction)
+        {
+#if UNITY_ANDROID || UNITY_IOS
+            return touchAction;
+#else
+            return desktopKey;
+#endif
+        }
+
         private void Update()
         {
             if (_levelManager == null || _levelManager.Player == null) return;
+
+            // Only run tutorial and floating torch/mechanism prompts in World 1 (Levels 1 to 10)
+            int currentLevel = (GameManager.Instance != null) ? GameManager.Instance.CurrentLevelIndex : 0;
+            int activeWorldIdx = (_levelManager != null && _levelManager.ActiveWorld != null) ? _levelManager.ActiveWorld.WorldIndex : 0;
+            if (activeWorldIdx > 0 || currentLevel >= 10)
+            {
+                if (_worldPromptObj != null) _worldPromptObj.SetActive(false);
+                if (_beaconHalo != null) _beaconHalo.gameObject.SetActive(false);
+                return;
+            }
+
+            // Do not show prompts if a dialogue, pause menu, or ending sequence is active
+            if (DialogueController.Instance != null && DialogueController.Instance.IsDialogueActive)
+            {
+                if (_worldPromptObj != null) _worldPromptObj.SetActive(false);
+                if (_beaconHalo != null) _beaconHalo.gameObject.SetActive(false);
+                return;
+            }
+
+            if (UIManager.Instance != null && UIManager.Instance.CurrentScreen != UIManager.ActiveMenuScreen.None)
+            {
+                if (_worldPromptObj != null) _worldPromptObj.SetActive(false);
+                if (_beaconHalo != null) _beaconHalo.gameObject.SetActive(false);
+                return;
+            }
 
             // Update dynamic torch crackle proximity so fire stays subtle
             if (AudioManager.Instance != null && _levelManager.Torch != null)
@@ -149,7 +185,7 @@ namespace MyShadowQuit.Core
                 AudioManager.Instance.SetTorchCrackleIntensity(0.25f + 0.55f * proximity);
             }
 
-            if (GameManager.Instance != null && GameManager.Instance.CurrentLevelIndex == 0)
+            if (currentLevel == 0)
             {
                 EvaluateAwakeningProgression(forceUpdate: false);
             }
@@ -230,24 +266,24 @@ namespace MyShadowQuit.Core
 
                 case AwakeningStep.PickUpTorch:
                     ActiveInstruction = progressiveHint
-                        ? "Stand next to the burning torch and press E to pick it up."
-                        : "Press E to pick up the torch";
+                        ? $"Stand next to the burning torch and {GetInputPrompt("press Q", "tap Torch Button")} to pick it up."
+                        : $"{GetInputPrompt("PRESS Q TO PICK UP TORCH", "TAP TORCH BUTTON TO PICK UP")}";
                     beaconTarget = torch != null ? torch.transform : null;
                     if (torch != null && Vector2.Distance(player.transform.position, torch.transform.position) <= 1.8f)
                     {
-                        worldTag = "[E] Pick Up Torch";
+                        worldTag = GetInputPrompt("[Q] Pick Up Torch", "[TAP] Pick Up Torch");
                     }
                     break;
 
                 case AwakeningStep.PlaceTorchOnPedestal:
                     ActiveInstruction = progressiveHint
-                        ? "Jump up the stone ledges (SPACE) and press E at the carved pedestal to mount the torch."
-                        : "Place the torch on the pedestal [E]";
+                        ? $"Jump up the stone ledges (SPACE) and {GetInputPrompt("press Q", "tap Torch Button")} at the carved pedestal to mount the torch."
+                        : $"{GetInputPrompt("PRESS Q TO PLACE TORCH", "TAP TORCH BUTTON TO PLACE TORCH")}";
                     beaconTarget = _level1Pedestal != null ? _level1Pedestal.transform : null;
                     if (_level1Pedestal != null)
                     {
                         worldTag = Vector2.Distance(player.transform.position, _level1Pedestal.transform.position) <= 1.8f
-                            ? "[E] Place Torch"
+                            ? GetInputPrompt("[Q] Place Torch", "[TAP] Place Torch")
                             : "Pedestal";
                     }
                     break;
@@ -294,10 +330,10 @@ namespace MyShadowQuit.Core
                     break;
             }
 
-            if (_uiManager != null && GameManager.Instance != null)
+            if (_uiManager != null && GameManager.Instance != null && _levelManager != null)
             {
                 _uiManager.UpdateHUDText(
-                    LevelManager.LevelTitles[0],
+                    _levelManager.GetLevelTitle(0),
                     ActiveInstruction,
                     GameManager.Instance.IsControllingShadow
                 );
@@ -389,7 +425,7 @@ namespace MyShadowQuit.Core
                 if (!player.HasTorch && torch != null && Vector2.Distance(player.transform.position, torch.transform.position) <= 1.6f)
                 {
                     target = torch.transform;
-                    tagText = "[E] Pick Up Torch";
+                    tagText = GetInputPrompt("[Q] Pick Up Torch", "[TAP] Pick Up Torch");
                 }
                 else
                 {
@@ -397,7 +433,9 @@ namespace MyShadowQuit.Core
                     if (ped != null && Vector2.Distance(player.transform.position, ped.transform.position) <= 1.6f)
                     {
                         target = ped.transform;
-                        tagText = player.HasTorch ? "[E] Place Torch" : (ped.HasTorch ? "[E] Take Torch" : "");
+                        tagText = player.HasTorch 
+                            ? GetInputPrompt("[Q] Place Torch", "[TAP] Place Torch") 
+                            : (ped.HasTorch ? GetInputPrompt("[Q] Take Torch", "[TAP] Take Torch") : "");
                     }
                 }
             }

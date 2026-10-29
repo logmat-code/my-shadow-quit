@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.UI;
 using MyShadowQuit.Core;
+using MyShadowQuit.Combat;
 
 namespace MyShadowQuit.UI
 {
@@ -24,6 +25,7 @@ namespace MyShadowQuit.UI
         [SerializeField] private MobileVirtualButton rightButton;
         [SerializeField] private MobileVirtualButton jumpButton;
         [SerializeField] private MobileVirtualButton interactButton;
+        [SerializeField] private MobileVirtualButton torchActionButton;
         [SerializeField] private MobileVirtualButton switchButton;
         [SerializeField] private MobileVirtualButton attackButton;
         [SerializeField] private MobileVirtualButton cycleWeaponButton;
@@ -42,6 +44,7 @@ namespace MyShadowQuit.UI
         public MobileVirtualButton RightButton => rightButton;
         public MobileVirtualButton JumpButton => jumpButton;
         public MobileVirtualButton InteractButton => interactButton;
+        public MobileVirtualButton TorchActionButton => torchActionButton;
         public MobileVirtualButton SwitchButton => switchButton;
         public MobileVirtualButton AttackButton => attackButton;
         public MobileVirtualButton CycleWeaponButton => cycleWeaponButton;
@@ -115,6 +118,89 @@ namespace MyShadowQuit.UI
             else
             {
                 GameInput.SetTouchHorizontal(0f);
+            }
+        }
+
+        private void Update()
+        {
+            UpdateCombatButtons();
+            UpdateInteractButton();
+        }
+
+        private void UpdateInteractButton()
+        {
+            if (interactButton == null) return;
+
+            // Contextual visibility: only show Interact button when a character is in range of an NPC or ShadowSwitch
+            bool hasValidInteraction = false;
+
+            // 1. Check NPC interaction range
+            Narrative.NPCInteraction[] npcs = FindObjectsByType<Narrative.NPCInteraction>(FindObjectsSortMode.None);
+            if (npcs != null && npcs.Length > 0)
+            {
+                var player = GameObject.FindWithTag("Player");
+                if (player != null)
+                {
+                    Vector2 playerPos = player.transform.position;
+                    foreach (var npc in npcs)
+                    {
+                        if (npc != null && !npc.IsConversationCompleted())
+                        {
+                            if (Vector2.Distance(playerPos, npc.transform.position) <= 1.8f)
+                            {
+                                hasValidInteraction = true;
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+
+            // 2. Check ShadowSwitch interaction range (if controlling Shadow)
+            if (!hasValidInteraction)
+            {
+                Entities.ShadowController shadow = FindAnyObjectByType<Entities.ShadowController>();
+                if (shadow != null && shadow.IsControlActive)
+                {
+                    Puzzle.ShadowSwitch[] switches = FindObjectsByType<Puzzle.ShadowSwitch>(FindObjectsSortMode.None);
+                    if (switches != null)
+                    {
+                        Vector2 shadowPos = shadow.transform.position;
+                        foreach (var sw in switches)
+                        {
+                            if (sw != null && !sw.IsActivated)
+                            {
+                                if (Vector2.Distance(shadowPos, sw.transform.position) <= 1.6f)
+                                {
+                                    hasValidInteraction = true;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (interactButton.gameObject.activeSelf != hasValidInteraction)
+            {
+                interactButton.gameObject.SetActive(hasValidInteraction);
+            }
+        }
+
+        public void UpdateCombatButtons()
+        {
+            int unlockedCount = WeaponCatalog.GetUnlockedWeaponsCount();
+            bool hasWeapons = unlockedCount > 0;
+            bool multipleWeapons = unlockedCount > 1;
+
+            if (attackButton != null)
+            {
+                attackButton.gameObject.SetActive(hasWeapons);
+            }
+
+            if (cycleWeaponButton != null)
+            {
+                cycleWeaponButton.gameObject.SetActive(multipleWeapons);
             }
         }
 
@@ -260,7 +346,7 @@ namespace MyShadowQuit.UI
                 rightButton.SetOpacity(_currentOpacity);
             }
 
-            // 2. Bottom-Right Cluster (Jump & Interact)
+            // 2. Bottom-Right Cluster (Jump, Attack, Torch)
             if (jumpButton != null)
             {
                 RectTransform rt = jumpButton.GetComponent<RectTransform>();
@@ -269,39 +355,10 @@ namespace MyShadowQuit.UI
                     rt.anchorMin = new Vector2(1f, 0f);
                     rt.anchorMax = new Vector2(1f, 0f);
                     rt.pivot = new Vector2(0.5f, 0.5f);
-                    rt.sizeDelta = new Vector2(150f, 150f) * _currentScale;
-                    rt.anchoredPosition = new Vector2((-125f - sideMarginOffset) * _currentScale, 125f * _currentScale);
+                    rt.sizeDelta = new Vector2(136f, 136f) * _currentScale;
+                    rt.anchoredPosition = new Vector2((-110f - sideMarginOffset) * _currentScale, 110f * _currentScale);
                 }
                 jumpButton.SetOpacity(_currentOpacity);
-            }
-
-            if (interactButton != null)
-            {
-                RectTransform rt = interactButton.GetComponent<RectTransform>();
-                if (rt != null)
-                {
-                    rt.anchorMin = new Vector2(1f, 0f);
-                    rt.anchorMax = new Vector2(1f, 0f);
-                    rt.pivot = new Vector2(0.5f, 0.5f);
-                    rt.sizeDelta = new Vector2(118f, 118f) * _currentScale;
-                    rt.anchoredPosition = new Vector2((-285f - sideMarginOffset) * _currentScale, 105f * _currentScale);
-                }
-                interactButton.SetOpacity(_currentOpacity);
-            }
-
-            // 3. Right-Mid Cluster (Switch Character, Attack, Cycle Weapon)
-            if (switchButton != null)
-            {
-                RectTransform rt = switchButton.GetComponent<RectTransform>();
-                if (rt != null)
-                {
-                    rt.anchorMin = new Vector2(1f, 0.5f);
-                    rt.anchorMax = new Vector2(1f, 0.5f);
-                    rt.pivot = new Vector2(0.5f, 0.5f);
-                    rt.sizeDelta = new Vector2(114f, 114f) * _currentScale;
-                    rt.anchoredPosition = new Vector2((-105f - sideMarginOffset) * _currentScale, 40f * _currentScale);
-                }
-                switchButton.SetOpacity(_currentOpacity);
             }
 
             if (attackButton != null)
@@ -313,9 +370,53 @@ namespace MyShadowQuit.UI
                     rt.anchorMax = new Vector2(1f, 0f);
                     rt.pivot = new Vector2(0.5f, 0.5f);
                     rt.sizeDelta = new Vector2(120f, 120f) * _currentScale;
-                    rt.anchoredPosition = new Vector2((-205f - sideMarginOffset) * _currentScale, 215f * _currentScale);
+                    rt.anchoredPosition = new Vector2((-240f - sideMarginOffset) * _currentScale, 110f * _currentScale);
                 }
                 attackButton.SetOpacity(_currentOpacity);
+            }
+
+            if (torchActionButton != null)
+            {
+                RectTransform rt = torchActionButton.GetComponent<RectTransform>();
+                if (rt != null)
+                {
+                    rt.anchorMin = new Vector2(1f, 0f);
+                    rt.anchorMax = new Vector2(1f, 0f);
+                    rt.pivot = new Vector2(0.5f, 0.5f);
+                    rt.sizeDelta = new Vector2(110f, 110f) * _currentScale;
+                    rt.anchoredPosition = new Vector2((-360f - sideMarginOffset) * _currentScale, 110f * _currentScale);
+                }
+                torchActionButton.SetOpacity(_currentOpacity);
+            }
+
+            // Contextual Interact button: sits cleanly above the Torch button when valid
+            if (interactButton != null)
+            {
+                RectTransform rt = interactButton.GetComponent<RectTransform>();
+                if (rt != null)
+                {
+                    rt.anchorMin = new Vector2(1f, 0f);
+                    rt.anchorMax = new Vector2(1f, 0f);
+                    rt.pivot = new Vector2(0.5f, 0.5f);
+                    rt.sizeDelta = new Vector2(104f, 104f) * _currentScale;
+                    rt.anchoredPosition = new Vector2((-360f - sideMarginOffset) * _currentScale, 235f * _currentScale);
+                }
+                interactButton.SetOpacity(_currentOpacity);
+            }
+
+            // 3. Right-Mid Cluster (Switch Character, Switch Weapon)
+            if (switchButton != null)
+            {
+                RectTransform rt = switchButton.GetComponent<RectTransform>();
+                if (rt != null)
+                {
+                    rt.anchorMin = new Vector2(1f, 0.5f);
+                    rt.anchorMax = new Vector2(1f, 0.5f);
+                    rt.pivot = new Vector2(0.5f, 0.5f);
+                    rt.sizeDelta = new Vector2(114f, 114f) * _currentScale;
+                    rt.anchoredPosition = new Vector2((-105f - sideMarginOffset) * _currentScale, 50f * _currentScale);
+                }
+                switchButton.SetOpacity(_currentOpacity);
             }
 
             if (cycleWeaponButton != null)
@@ -326,8 +427,8 @@ namespace MyShadowQuit.UI
                     rt.anchorMin = new Vector2(1f, 0.5f);
                     rt.anchorMax = new Vector2(1f, 0.5f);
                     rt.pivot = new Vector2(0.5f, 0.5f);
-                    rt.sizeDelta = new Vector2(96f, 96f) * _currentScale;
-                    rt.anchoredPosition = new Vector2((-215f - sideMarginOffset) * _currentScale, 40f * _currentScale);
+                    rt.sizeDelta = new Vector2(104f, 104f) * _currentScale;
+                    rt.anchoredPosition = new Vector2((-230f - sideMarginOffset) * _currentScale, 50f * _currentScale);
                 }
                 cycleWeaponButton.SetOpacity(_currentOpacity);
             }
@@ -339,6 +440,7 @@ namespace MyShadowQuit.UI
             if (rightButton != null) rightButton.Release();
             if (jumpButton != null) jumpButton.Release();
             if (interactButton != null) interactButton.Release();
+            if (torchActionButton != null) torchActionButton.Release();
             if (switchButton != null) switchButton.Release();
             if (attackButton != null) attackButton.Release();
             if (cycleWeaponButton != null) cycleWeaponButton.Release();
@@ -361,6 +463,18 @@ namespace MyShadowQuit.UI
 
         public static MobileControlsUI Create(Transform parent)
         {
+            if (parent != null)
+            {
+                Transform existing = parent.Find("MobileControlsRoot");
+                if (existing != null)
+                {
+                    MobileControlsUI existingUI = existing.GetComponent<MobileControlsUI>();
+                    if (existingUI != null) return existingUI;
+                    if (Application.isPlaying) Destroy(existing.gameObject);
+                    else DestroyImmediate(existing.gameObject);
+                }
+            }
+
             GameObject container = new GameObject("MobileControlsRoot", typeof(RectTransform), typeof(CanvasGroup));
             container.transform.SetParent(parent, false);
 
@@ -379,21 +493,25 @@ namespace MyShadowQuit.UI
             Sprite rightPressed = AssetRegistry.GetSprite("UI/mobile_right_pressed", 32f);
             Sprite jumpNormal = AssetRegistry.GetSprite("UI/mobile_jump_normal", 32f);
             Sprite jumpPressed = AssetRegistry.GetSprite("UI/mobile_jump_pressed", 32f);
+            Sprite torchNormal = AssetRegistry.GetSprite("UI/mobile_torch_normal", 32f) ?? AssetRegistry.GetSprite("UI/mobile_interact_normal", 32f);
+            Sprite torchPressed = AssetRegistry.GetSprite("UI/mobile_torch_pressed", 32f) ?? AssetRegistry.GetSprite("UI/mobile_interact_pressed", 32f);
+            Sprite switchCharNormal = AssetRegistry.GetSprite("UI/mobile_switch_char_normal", 32f) ?? AssetRegistry.GetSprite("UI/mobile_switch_normal", 32f);
+            Sprite switchCharPressed = AssetRegistry.GetSprite("UI/mobile_switch_char_pressed", 32f) ?? AssetRegistry.GetSprite("UI/mobile_switch_pressed", 32f);
+            Sprite attackNormal = AssetRegistry.GetSprite("UI/mobile_attack_normal", 32f) ?? AssetRegistry.GetSprite("UI/mobile_interact_normal", 32f);
+            Sprite attackPressed = AssetRegistry.GetSprite("UI/mobile_attack_pressed", 32f) ?? AssetRegistry.GetSprite("UI/mobile_interact_pressed", 32f);
+            Sprite cycleWeaponNormal = AssetRegistry.GetSprite("UI/mobile_cycle_weapon_normal", 32f) ?? AssetRegistry.GetSprite("UI/mobile_switch_normal", 32f);
+            Sprite cycleWeaponPressed = AssetRegistry.GetSprite("UI/mobile_cycle_weapon_pressed", 32f) ?? AssetRegistry.GetSprite("UI/mobile_switch_pressed", 32f);
             Sprite interactNormal = AssetRegistry.GetSprite("UI/mobile_interact_normal", 32f);
             Sprite interactPressed = AssetRegistry.GetSprite("UI/mobile_interact_pressed", 32f);
-            Sprite switchNormal = AssetRegistry.GetSprite("UI/mobile_switch_normal", 32f);
-            Sprite switchPressed = AssetRegistry.GetSprite("UI/mobile_switch_pressed", 32f);
-
-            Sprite attackNormal = Resources.Load<Sprite>("Sprites/Combat/weapon_emberblade");
-            Sprite cycleNormal = Resources.Load<Sprite>("Sprites/Combat/weapon_crossbow");
 
             ui.leftButton = CreateButton(container.transform, "Btn_Left", MobileVirtualButton.VirtualButtonType.Left, leftNormal, leftPressed);
             ui.rightButton = CreateButton(container.transform, "Btn_Right", MobileVirtualButton.VirtualButtonType.Right, rightNormal, rightPressed);
             ui.jumpButton = CreateButton(container.transform, "Btn_Jump", MobileVirtualButton.VirtualButtonType.Jump, jumpNormal, jumpPressed);
+            ui.torchActionButton = CreateButton(container.transform, "Btn_TorchAction", MobileVirtualButton.VirtualButtonType.TorchAction, torchNormal, torchPressed);
             ui.interactButton = CreateButton(container.transform, "Btn_Interact", MobileVirtualButton.VirtualButtonType.Interact, interactNormal, interactPressed);
-            ui.switchButton = CreateButton(container.transform, "Btn_Switch", MobileVirtualButton.VirtualButtonType.SwitchCharacter, switchNormal, switchPressed);
-            ui.attackButton = CreateButton(container.transform, "Btn_Attack", MobileVirtualButton.VirtualButtonType.Attack, attackNormal, attackNormal);
-            ui.cycleWeaponButton = CreateButton(container.transform, "Btn_CycleWeapon", MobileVirtualButton.VirtualButtonType.CycleWeapon, cycleNormal, cycleNormal);
+            ui.switchButton = CreateButton(container.transform, "Btn_Switch", MobileVirtualButton.VirtualButtonType.SwitchCharacter, switchCharNormal, switchCharPressed);
+            ui.attackButton = CreateButton(container.transform, "Btn_Attack", MobileVirtualButton.VirtualButtonType.Attack, attackNormal, attackPressed);
+            ui.cycleWeaponButton = CreateButton(container.transform, "Btn_CycleWeapon", MobileVirtualButton.VirtualButtonType.CycleWeapon, cycleWeaponNormal, cycleWeaponPressed);
 
             ui.EnsureInitialized();
             return ui;

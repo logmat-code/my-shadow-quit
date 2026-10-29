@@ -17,7 +17,7 @@ namespace MyShadowQuit.Monetization.IAP
         private readonly IPurchaseValidator _validator;
 
         public bool IsInitialized => _isInitialized;
-        public bool IsPlatformPurchasingSupported => Application.platform == RuntimePlatform.Android;
+        public bool IsPlatformPurchasingSupported => Application.platform == RuntimePlatform.Android || Application.isEditor;
         public IReadOnlyList<IAPProductDefinition> Catalog => _catalog;
 
         public GooglePlayBillingAdapter(IPurchaseValidator validator = null)

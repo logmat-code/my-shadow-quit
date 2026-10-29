@@ -10,9 +10,10 @@ namespace MyShadowQuit.Entities
     /// Responsive 2D platformer controller for the Protagonist.
     /// Features smooth acceleration/deceleration, coyote time, jump buffering,
     /// torch carrying/placing, and custom pixel-art frame animation.
+    /// Implements IDamageable by delegating damage to the shared HealthSystem.
     /// </summary>
     [RequireComponent(typeof(Rigidbody2D), typeof(BoxCollider2D), typeof(SpriteRenderer))]
-    public class PlayerController : MonoBehaviour
+    public class PlayerController : MonoBehaviour, IDamageable
     {
         [Header("Movement Settings")]
         [SerializeField] private float maxSpeed = 5.4f;
@@ -60,6 +61,7 @@ namespace MyShadowQuit.Entities
         private int _animFrame;
 
         public bool IsControlActive => _isControlActive;
+        public bool IsGrounded => _isGrounded;
         public bool HasTorch => _carriedTorch != null && _carriedTorch.State == TorchState.CarriedByPlayer;
         public TorchController CarriedTorch => _carriedTorch;
         public int FacingDirection => _facingDir;
@@ -71,6 +73,7 @@ namespace MyShadowQuit.Entities
 
         public void EnsureInitialized()
         {
+            gameObject.tag = "Player";
             if (_rb == null) _rb = GetComponent<Rigidbody2D>();
             if (_col == null) _col = GetComponent<BoxCollider2D>();
             if (_sr == null) _sr = GetComponent<SpriteRenderer>();
@@ -165,9 +168,10 @@ namespace MyShadowQuit.Entities
                     _jumpBufferTimer = jumpBufferDuration;
                 }
 
-                if (GameInput.GetInteractDown())
+                // Dedicated Torch Action: pick up, drop, or place in pedestal (KeyCode.Q / Mobile Torch Button)
+                if (GameInput.GetTorchActionDown())
                 {
-                    HandleInteract();
+                    HandleTorchAction();
                 }
 
                 // Aim torch with mouse or facing direction
@@ -323,7 +327,7 @@ namespace MyShadowQuit.Entities
             }
         }
 
-        private void HandleInteract()
+        private void HandleTorchAction()
         {
             _interactAnimTimer = 0.2f;
 
@@ -432,5 +436,30 @@ namespace MyShadowQuit.Entities
                 _sr.sprite = activeSet[idx];
             }
         }
+
+        #region IDamageable Implementation
+        public bool IsDead => HealthSystem.Instance != null && HealthSystem.Instance.IsDead;
+
+        public bool TakeDamage(int damage, Vector2 knockbackForce, float invulnDuration = 0.85f)
+        {
+            if (HealthSystem.Instance != null)
+            {
+                return HealthSystem.Instance.TakeDamage(damage, knockbackForce, invulnDuration);
+            }
+            return false;
+        }
+
+        public void KillInstantly()
+        {
+            if (HealthSystem.Instance != null)
+            {
+                HealthSystem.Instance.KillInstantly();
+            }
+            else if (GameManager.Instance != null)
+            {
+                GameManager.Instance.RestartCurrentLevel();
+            }
+        }
+        #endregion
     }
 }

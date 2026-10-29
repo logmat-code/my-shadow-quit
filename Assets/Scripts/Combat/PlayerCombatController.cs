@@ -15,6 +15,7 @@ namespace MyShadowQuit.Combat
         private SpriteRenderer _weaponSpriteRenderer;
         private GameObject _weaponVisualObj;
         private float _slashVisualTimer = 0f;
+        private Coroutine _meleeMotionCoroutine;
 
         private void Awake()
         {
@@ -49,24 +50,53 @@ namespace MyShadowQuit.Combat
                 }
             }
 
-            // Only allow combat inputs when control is active and player is controlled
-            if (_player == null || !_player.IsControlActive) return;
+            // Only allow combat inputs when control is active, player is not dead,
+            // no dialogues are open, and game is not paused
+            if (!CanCombatInput()) return;
 
-            // Weapon Cycling (Q or Mobile Button)
+            // Weapon Cycling (F on keyboard or Mobile Cycle Button)
             if (GameInput.GetCycleWeaponDown())
             {
                 WeaponCatalog.CycleNextUnlockedWeapon();
             }
 
-            // Weapon Attack (Left-click / J / Mobile Button)
+            // Weapon Attack (J / Left-click / Mobile Attack Button)
             if (GameInput.GetAttackDown())
             {
                 TryAttack();
             }
         }
 
+        private bool CanCombatInput()
+        {
+            if (_player == null || !_player.IsControlActive) return false;
+            if (_player.IsDead) return false;
+
+            // Check if dialogues are active
+            if (Narrative.DialogueController.Instance != null && Narrative.DialogueController.Instance.IsDialogueActive)
+            {
+                return false;
+            }
+
+            // Check if game is paused or in menus
+            if (GameManager.Instance != null)
+            {
+                if (GameManager.Instance.IsPaused || GameManager.Instance.IsInMainMenu || GameManager.Instance.IsEndingSequenceActive)
+                {
+                    return false;
+                }
+                if (GameManager.Instance.IsControllingShadow)
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
         public void TryAttack()
         {
+            if (!CanCombatInput()) return;
             if (_attackCooldownTimer > 0f) return;
 
             WeaponType current = WeaponCatalog.EquippedWeapon;
@@ -78,21 +108,30 @@ namespace MyShadowQuit.Combat
             _attackCooldownTimer = def.attackCooldown;
 
             int dir = _player.FacingDirection;
-            Vector2 origin = (Vector2)transform.position + new Vector2(dir * 0.45f, 0f);
 
             switch (current)
             {
                 case WeaponType.Emberblade:
-                    PerformMeleeAttack(def, origin, dir);
+                {
+                    Vector2 meleeHitCenter = (Vector2)transform.position + new Vector2(dir * 0.40f, -0.04f);
+                    PerformMeleeAttack(def, meleeHitCenter, dir);
                     break;
+                }
 
                 case WeaponType.HollowCrossbow:
-                    PerformRangedAttack(def, origin, dir, "proj_crossbow_bolt", 14f, 0f, 1.8f);
+                {
+                    // Muzzle is at the tip of the crossbow held at the hands
+                    Vector2 crossbowMuzzle = (Vector2)transform.position + new Vector2(dir * 0.42f, -0.05f);
+                    PerformRangedAttack(def, crossbowMuzzle, dir, "proj_crossbow_bolt", 14f, 0f, 1.8f);
                     break;
+                }
 
                 case WeaponType.AbyssalScepter:
-                    PerformRangedAttack(def, origin, dir, "proj_scepter_orb", 9f, 0.5f, 2.5f);
+                {
+                    Vector2 scepterOrbOrigin = (Vector2)transform.position + new Vector2(dir * 0.38f, 0.05f);
+                    PerformRangedAttack(def, scepterOrbOrigin, dir, "proj_scepter_orb", 9f, 0.5f, 2.5f);
                     break;
+                }
             }
         }
 
@@ -103,7 +142,7 @@ namespace MyShadowQuit.Combat
                 AudioManager.Instance.PlaySFX(def.sfxName, 0.9f);
             }
 
-            // Show slash visual
+            // Animate Emberblade slash arc originating crisply from the protagonist's hand
             if (_weaponVisualObj != null && _weaponSpriteRenderer != null)
             {
                 Sprite s = Resources.Load<Sprite>("Sprites/Combat/" + def.spriteName);
@@ -111,9 +150,9 @@ namespace MyShadowQuit.Combat
                 {
                     _weaponSpriteRenderer.sprite = s;
                     _weaponSpriteRenderer.flipX = (dir < 0);
-                    _weaponVisualObj.transform.localPosition = new Vector3(dir * 0.45f, 0.05f, 0f);
                     _weaponSpriteRenderer.enabled = true;
-                    _slashVisualTimer = 0.15f;
+                    if (_meleeMotionCoroutine != null) StopCoroutine(_meleeMotionCoroutine);
+                    _meleeMotionCoroutine = StartCoroutine(MeleeMotionCoroutine(dir));
                 }
             }
 
@@ -134,16 +173,68 @@ namespace MyShadowQuit.Combat
             }
         }
 
-        private void PerformRangedAttack(WeaponDefinition def, Vector2 origin, int dir, string projSprite, float speed, float homing, float life)
+        private System.Collections.IEnumerator MeleeMotionCoroutine(int dir)
+        {
+            float duration = 0.12f;
+            float elapsed = 0f;
+
+            // Start angle: raised strike (+40 deg), swinging down through follow-through (-45 deg)
+            float startAngle = (dir < 0) ? -40f : 40f;
+            float endAngle = (dir < 0) ? 45f : -45f;
+
+            while (elapsed < duration)
+            {
+                elapsed += Time.deltaTime;
+                float t = Mathf.Clamp01(elapsed / duration);
+
+                // Smooth forward slash curve anchored at protagonist's hand (x ~ dir * 0.22, y ~ -0.04)
+                float currentAngle = Mathf.Lerp(startAngle, endAngle, t);
+                float offsetX = Mathf.Lerp(dir * 0.18f, dir * 0.32f, t);
+                float offsetY = Mathf.Lerp(0.04f, -0.08f, t);
+
+                if (_weaponVisualObj != null)
+                {
+                    _weaponVisualObj.transform.localPosition = new Vector3(offsetX, offsetY, 0f);
+                    _weaponVisualObj.transform.localRotation = Quaternion.Euler(0f, 0f, currentAngle);
+                }
+
+                yield return null;
+            }
+
+            if (_weaponSpriteRenderer != null)
+            {
+                _weaponSpriteRenderer.enabled = false;
+            }
+            _meleeMotionCoroutine = null;
+        }
+
+        private void PerformRangedAttack(WeaponDefinition def, Vector2 muzzleOrigin, int dir, string projSprite, float speed, float homing, float life)
         {
             if (AudioManager.Instance != null && !string.IsNullOrEmpty(def.sfxName))
             {
                 AudioManager.Instance.PlaySFX(def.sfxName, 0.9f);
             }
 
-            // Spawn projectile
+            // Flash weapon at hand anchor
+            if (_weaponVisualObj != null && _weaponSpriteRenderer != null)
+            {
+                Sprite s = Resources.Load<Sprite>("Sprites/Combat/" + def.spriteName);
+                if (s != null)
+                {
+                    _weaponSpriteRenderer.sprite = s;
+                    _weaponSpriteRenderer.flipX = (dir < 0);
+                    // Held naturally at the waist/hands
+                    float offsetY = (def.weaponType == WeaponType.AbyssalScepter) ? 0.05f : -0.05f;
+                    _weaponVisualObj.transform.localPosition = new Vector3(dir * 0.22f, offsetY, 0f);
+                    _weaponVisualObj.transform.localRotation = Quaternion.identity;
+                    _weaponSpriteRenderer.enabled = true;
+                    _slashVisualTimer = 0.10f;
+                }
+            }
+
+            // Spawn projectile directly at muzzleOrigin
             GameObject pObj = new GameObject("Projectile_" + def.weaponType);
-            pObj.transform.position = origin;
+            pObj.transform.position = muzzleOrigin;
 
             ProjectileController proj = pObj.AddComponent<ProjectileController>();
             proj.Initialize(

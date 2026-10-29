@@ -3,6 +3,7 @@ using System.Collections;
 using UnityEngine;
 using MyShadowQuit.Core;
 using MyShadowQuit.Entities;
+using MyShadowQuit.UI;
 
 namespace MyShadowQuit.Combat
 {
@@ -64,6 +65,7 @@ namespace MyShadowQuit.Combat
             _maxHealth = Mathf.Clamp(hp, BaseMaxHealth, AbsoluteMaxHealth);
             if (_currentHealth > _maxHealth) _currentHealth = _maxHealth;
             OnHealthChanged?.Invoke(_currentHealth, _maxHealth);
+            NotifyUIRefresh();
         }
 
         public void ResetHealthToMax()
@@ -77,11 +79,32 @@ namespace MyShadowQuit.Combat
                 _invulnerableCoroutine = null;
             }
             OnHealthChanged?.Invoke(_currentHealth, _maxHealth);
+            NotifyUIRefresh();
+        }
+
+        public void ResetAllProgression()
+        {
+            _maxHealth = BaseMaxHealth;
+            _currentHealth = BaseMaxHealth;
+            _isDead = false;
+            _isInvulnerable = false;
+            if (_invulnerableCoroutine != null)
+            {
+                StopCoroutine(_invulnerableCoroutine);
+                _invulnerableCoroutine = null;
+            }
+            PlayerPrefs.DeleteKey(PrefKeyMaxHealthBonus);
+            PlayerPrefs.Save();
+            OnHealthChanged?.Invoke(_currentHealth, _maxHealth);
+            NotifyUIRefresh();
         }
 
         public bool TakeDamage(int amount, Vector2 hitDirection, float knockback = 0f)
         {
             if (_isDead || _isInvulnerable || amount <= 0) return false;
+
+            int currentLevel = GameManager.Instance != null ? GameManager.Instance.CurrentLevelIndex + 1 : -1;
+            Debug.Log($"[DEATH_DIAGNOSTIC] Level={currentLevel}, Frame={Time.frameCount}, Method=TakeDamage, Amount={amount}, HP={_currentHealth}->{Mathf.Max(0, _currentHealth - amount)}");
 
             _currentHealth = Mathf.Max(0, _currentHealth - amount);
             _isInvulnerable = true;
@@ -98,6 +121,7 @@ namespace MyShadowQuit.Combat
 
             OnDamaged?.Invoke(amount, hitDirection);
             OnHealthChanged?.Invoke(_currentHealth, _maxHealth);
+            NotifyUIRefresh();
 
             // Apply feedback to Player and Shadow
             ApplyHurtFeedback(hitDirection, knockback > 0f ? knockback : defaultKnockbackForce);
@@ -120,8 +144,13 @@ namespace MyShadowQuit.Combat
         public void KillInstantly()
         {
             if (_isDead) return;
+            string callerTrace = UnityEngine.StackTraceUtility.ExtractStackTrace();
+            int currentLevel = GameManager.Instance != null ? GameManager.Instance.CurrentLevelIndex + 1 : -1;
+            Debug.Log($"[DEATH_DIAGNOSTIC] Level={currentLevel}, Frame={Time.frameCount}, Method=KillInstantly, CallerTrace:\n{callerTrace}");
+
             _currentHealth = 0;
             OnHealthChanged?.Invoke(0, _maxHealth);
+            NotifyUIRefresh();
             TriggerDeath();
         }
 
@@ -135,6 +164,7 @@ namespace MyShadowQuit.Combat
                 AudioManager.Instance.PlaySFX("torch_ignite", 0.7f, 1.25f);
             }
             OnHealthChanged?.Invoke(_currentHealth, _maxHealth);
+            NotifyUIRefresh();
             return true;
         }
 
@@ -143,6 +173,15 @@ namespace MyShadowQuit.Combat
             _maxHealth = Mathf.Clamp(_maxHealth + amount, BaseMaxHealth, AbsoluteMaxHealth);
             _currentHealth = Mathf.Min(_currentHealth + amount, _maxHealth);
             OnHealthChanged?.Invoke(_currentHealth, _maxHealth);
+            NotifyUIRefresh();
+        }
+
+        private void NotifyUIRefresh()
+        {
+            if (UIManager.Instance != null)
+            {
+                UIManager.Instance.RefreshHeartsHUD();
+            }
         }
 
         private void TriggerDeath()

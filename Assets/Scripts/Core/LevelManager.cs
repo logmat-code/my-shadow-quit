@@ -99,7 +99,7 @@ namespace MyShadowQuit.Core
         public static readonly string[] LevelHints =
         {
             // World 1 Hints
-            "A/D: Move   SPACE: Jump   E: Pick up / Place Torch   TAB: Control Shadow",
+            "A/D: Move   SPACE: Jump   Q: Pick up / Place Torch   E: Interact   TAB: Control Shadow",
             "Stand on the lower stone plate, switch to Shadow [TAB], and Double Jump [SPACE x2 in mid-air] to the upper ledge.",
             "Darkness webs dissolve in Torchlight. Guide your Shadow across the illuminated path.",
             "Ancient solar crystals awaken when bathed in the Torch's golden flame.",
@@ -180,7 +180,8 @@ namespace MyShadowQuit.Core
         {
             int worldIdx = (ActiveWorld != null) ? ActiveWorld.WorldIndex : 0;
             int globalIndex = (levelIndex >= 10) ? levelIndex : (worldIdx * 10) + levelIndex;
-            LevelEntry entry = ActiveWorld != null ? ActiveWorld.GetLevel(levelIndex % 10) : null;
+            int localIdx = (levelIndex >= 10) ? (levelIndex % 10) : levelIndex;
+            LevelEntry entry = ActiveWorld != null ? ActiveWorld.GetLevel(localIdx) : null;
             if (entry != null && !string.IsNullOrEmpty(entry.title)) return entry.title;
             return LevelTitles[Mathf.Clamp(globalIndex, 0, LevelTitles.Length - 1)];
         }
@@ -189,7 +190,8 @@ namespace MyShadowQuit.Core
         {
             int worldIdx = (ActiveWorld != null) ? ActiveWorld.WorldIndex : 0;
             int globalIndex = (levelIndex >= 10) ? levelIndex : (worldIdx * 10) + levelIndex;
-            LevelEntry entry = ActiveWorld != null ? ActiveWorld.GetLevel(levelIndex % 10) : null;
+            int localIdx = (levelIndex >= 10) ? (levelIndex % 10) : levelIndex;
+            LevelEntry entry = ActiveWorld != null ? ActiveWorld.GetLevel(localIdx) : null;
             if (entry != null && !string.IsNullOrEmpty(entry.hint)) return entry.hint;
             return LevelHints[Mathf.Clamp(globalIndex, 0, LevelHints.Length - 1)];
         }
@@ -766,8 +768,8 @@ namespace MyShadowQuit.Core
             ShadowSwitch upperShadowSw = CreateShadowSwitch(new Vector2(10.0f, 3.22f));
 
             // Lower route gate at x=4.5 unlocks when Shadow activates upperShadowSw
-            ShadowPassage lowerGate9 = CreateShadowPassage(new Vector2(4.5f, -2.0f));
-            lowerGate9.ConfigureUnlockNodes(new List<PuzzleNode> { upperShadowSw }, requireAll: true, latchOpen: true);
+            AncientDoor lowerGate9 = CreateAncientDoor(new Vector2(4.5f, -1.5f), new List<PuzzleNode> { upperShadowSw }, requireAll: true);
+            _ = lowerGate9;
 
             // Step 7: Protagonist pushes MovableBlock (6.8, -2.1) onto PressurePlate (9.8, -2.85) on flat lower route
             CreateMovableBlock(new Vector2(6.8f, -2.1f));
@@ -982,12 +984,14 @@ namespace MyShadowQuit.Core
             _torch = torchObj.AddComponent<TorchController>();
 
             GameObject playerObj = new GameObject("Protagonist");
+            playerObj.tag = "Player";
             playerObj.transform.SetParent(_levelRoot.transform, false);
             playerObj.transform.position = playerPos;
             _player = playerObj.AddComponent<PlayerController>();
             _player.EnsureInitialized();
 
             GameObject shadowObj = new GameObject("Shadow");
+            shadowObj.tag = "Shadow";
             shadowObj.transform.SetParent(_levelRoot.transform, false);
             shadowObj.transform.position = shadowPos;
             _shadow = shadowObj.AddComponent<ShadowController>();
@@ -1007,13 +1011,13 @@ namespace MyShadowQuit.Core
             return go.AddComponent<TorchPedestal>();
         }
 
-        private PressurePlate CreatePressurePlate(Vector2 pos, bool latch)
+        private PressurePlate CreatePressurePlate(Vector2 pos, bool latch, PressurePlateAllowedActivator activator = PressurePlateAllowedActivator.Any)
         {
             GameObject go = new GameObject("PressurePlate");
             go.transform.SetParent(_levelRoot.transform, false);
             go.transform.position = pos;
             PressurePlate pp = go.AddComponent<PressurePlate>();
-            pp.Configure(latch);
+            pp.Configure(latch, activator);
             return pp;
         }
 
@@ -1060,7 +1064,9 @@ namespace MyShadowQuit.Core
             GameObject go = new GameObject("MovableBlock");
             go.transform.SetParent(_levelRoot.transform, false);
             go.transform.position = pos;
-            return go.AddComponent<MovableBlock>();
+            MovableBlock mb = go.AddComponent<MovableBlock>();
+            mb.EnsureInitialized();
+            return mb;
         }
 
         private Checkpoint CreateCheckpoint(Vector2 pos)
@@ -1157,6 +1163,9 @@ namespace MyShadowQuit.Core
             CreatePlatformRow(5, 12, -2, true);
             CreatePlatformRow(6, 8, 1.5f, true);
 
+            // Hazard pit underneath the light root platforms: falling causes damage and respawns safely
+            CreateForestHazard(new Vector2(1.0f, -3.4f), new Vector2(8.5f, 0.8f));
+
             CreateLightRoot(new Vector2(-1.0f, -2.0f), radius: 4.2f);
             CreateLightRoot(new Vector2(2.5f, -2.0f), radius: 4.2f);
 
@@ -1188,28 +1197,50 @@ namespace MyShadowQuit.Core
             SpawnCharactersAndTorch(new Vector2(-6.0f, -1.0f), new Vector2(-7.0f, -1.0f), new Vector2(-6.0f, -1.0f), true);
         }
 
-        // Level 15: The Hollow Canopy (Shadow Vine barrier + Lower Moving Platform)
+        // Level 15: The Hollow Canopy (Natural, clean 2-tier puzzle)
+        // Design:
+        // 1. Lower Level: Left bank (-8..-3, Y=-2.0) and Right bank (5..12, Y=-2.0) separated by a deep thorn chasm.
+        //    A kinematic moving platform ferries the Protagonist across the chasm at Y=-2.0.
+        // 2. Upper Canopy: Stepped natural boughs (-4..-2, Y=0.0) leading up to the Canopy Bridge (-1..8, Y=2.0).
+        // 3. Obstacle: Permeable ShadowVinePassage at (2.0, 2.0) blocks the physical Protagonist while allowing Shadow to pass.
+        // 4. Puzzle Sequence:
+        //    - Protagonist with Torch waits at lower bank or platform.
+        //    - Shadow ascends the natural bough (-4..-2, Y=0.0) into the canopy (-1..1, Y=2.0).
+        //    - Shadow slips effortlessly through the Shadow Vine at (2.0, 2.0) to the inner canopy (3..8, Y=2.0).
+        //    - Shadow activates the Shadow Switch at (6.0, 2.8), which dissolves the vine gate and opens the lower sanctum door at (8.5, -1.0).
+        //    - Protagonist steps onto the moving ferry platform (-2.0 -> 4.0, Y=-2.0) and crosses the chasm.
+        //    - Both reunite at the sanctuary exit portal (10.5, -1.0).
         private void BuildLevel15_TheHollowCanopy()
         {
-            CreatePlatformRow(-8, -3, -2, true);
-            CreatePlatformRow(-2, 8, 2.8f, true);
-            CreatePlatformRow(6, 12, -2, true);
+            // Lower Level: Left entry bank and Right exit bank
+            CreatePlatformRow(-8, -3, -2.0f, true);
+            CreatePlatformRow(5, 12, -2.0f, true);
 
-            // Stepped ledge to allow Protagonist and Shadow to reach the upper canopy
-            CreatePlatformRow(-5, -3, 0.4f, true);
+            // Natural thorn hazard spanning the lower chasm bottom
+            CreateForestHazard(new Vector2(1.0f, -3.4f), new Vector2(7.0f, 0.8f));
 
-            CreateWallColumn(0, -1, 2);
-            ShadowVinePassage vine = CreateShadowVine(new Vector2(0.0f, 3.8f));
+            // Lower ferry platform to carry Protagonist (and Torch) across the chasm
+            CreateMovingPlatform(new[] { new Vector2(-2.0f, -2.0f), new Vector2(4.0f, -2.0f) }, speed: 2.2f);
 
-            ShadowSwitch ss = CreateShadowSwitch(new Vector2(5.5f, 3.6f));
+            // Upper Canopy: Natural single ascending bough ledge
+            CreatePlatformRow(-4, -2, 0.0f, true);
+
+            // Continuous canopy bough (Shadow Vine provides the ethereal barrier)
+            CreatePlatformRow(-1, 8, 2.0f, true);
+
+            // Permeable Shadow Vine passage (no opaque solid wall column behind it)
+            ShadowVinePassage vine = CreateShadowVine(new Vector2(2.0f, 2.0f));
+
+            // Shadow switch in the inner canopy
+            ShadowSwitch ss = CreateShadowSwitch(new Vector2(6.0f, 2.8f));
             vine.Configure(new List<PuzzleNode> { ss }, stayOpen: true);
 
-            CreateMovingPlatform(new[] { new Vector2(-1.0f, -2.0f), new Vector2(4.5f, -2.0f) }, speed: 2.3f);
+            // Ancient Door guarding the sanctuary exit on the right bank
+            AncientDoor door = CreateAncientDoor(new Vector2(8.5f, -1.0f), new List<PuzzleNode> { ss });
+            CreateExitPortal(new Vector2(10.5f, -1.0f), door, false);
 
-            AncientDoor door = CreateAncientDoor(new Vector2(9.0f, -1.0f), new List<PuzzleNode> { ss });
-            CreateExitPortal(new Vector2(11.0f, -1.0f), door, false);
-
-            SpawnCharactersAndTorch(new Vector2(-5.5f, -1.0f), new Vector2(-6.5f, -1.0f), new Vector2(-5.5f, -1.0f), true);
+            // Spawn Protagonist with Torch and Shadow at left bank
+            SpawnCharactersAndTorch(new Vector2(-6.0f, -1.0f), new Vector2(-7.0f, -1.0f), new Vector2(-6.0f, -1.0f), true);
         }
 
         // Level 16: A Bridge of Embers (Torch Pedestal activates Light Bridge)
@@ -1328,37 +1359,62 @@ namespace MyShadowQuit.Core
         }
 
         // Level 20: Heart of the Inverted Forest (5-Phase Grand Climax)
+        // Level 20: Heart of the Inverted Forest (Climactic Grand Finale of World 2)
+        // Clean 4-Moment Architecture:
+        // Moment 1: Entrance & Vertical Ascent (Kinematic Elevator from -2.0 to 2.5)
+        // Moment 2: High Canopy & Light Roots (Torch blooms bridge to upper sanctuary)
+        // Moment 3: Shadow Separation & High Mechanism (Shadow Vine lattice at X=12, crumbling bough at X=14 to high Shadow Switch at 16.5)
+        // Moment 4: Cooperative Descent & Sanctuary Arch (Two tiered cooperative plates at X=19, Arch at X=24)
         private void BuildLevel20_HeartOfTheInvertedForest()
         {
-            // Phase 1: Base Platform & Elevator
-            CreatePlatformRow(-8, -4, -2, true);
-            CreateMovingPlatform(new[] { new Vector2(-2.5f, -2.0f), new Vector2(-2.5f, 2.5f) }, speed: 2.4f);
+            // MOMENT 1: Entrance & Ascent
+            CreatePlatformRow(-8, -4, -2.0f, true);
+            CreateMovingPlatform(new[] { new Vector2(-2.5f, -2.0f), new Vector2(-2.5f, 2.5f) }, speed: 2.2f);
 
-            // Phase 2: High Canopy with Light Roots
-            CreatePlatformRow(-1, 3, 2.5f, true);
-            CreateLightRoot(new Vector2(4.5f, 2.5f), radius: 4.2f);
-            CreatePlatformRow(6, 10, 2.5f, true);
+            // Hazard pit spanning the abyss floor
+            CreateForestHazard(new Vector2(3.5f, -3.4f), new Vector2(10.0f, 0.8f));
 
-            // Phase 3: Shadow Vine high chamber & temporary bridge
-            CreateShadowVine(new Vector2(10.5f, 3.5f));
-            CreateTemporaryPlatform(new Vector2(12.5f, 3.5f), collapseTime: 1.2f, respawnTime: 2.5f);
-            CreatePlatformRow(14, 17, 3.5f, true);
-            ShadowSwitch highSwitch = CreateShadowSwitch(new Vector2(16.0f, 4.3f));
+            // MOMENT 2: High Canopy with Light Roots
+            // Left canopy bough where elevator arrives
+            CreatePlatformRow(-1, 2, 2.5f, true);
+            // Light root blooms when Protagonist carrying Torch approaches
+            CreateLightRoot(new Vector2(4.0f, 2.5f), radius: 4.2f);
+            // Central canopy bough across the light root bridge
+            CreatePlatformRow(6, 9, 2.5f, true);
 
-            // Phase 4: Descent to Dual Cooperative Switches
-            CreatePlatformRow(14, 21, -1.5f, true);
-            CreatePlatformRow(14, 21, 1.0f, true);
+            // MOMENT 3: Shadow Separation & High Switch
+            // Permeable Shadow Vine passage (no opaque solid wall column behind it)
+            CreatePlatformRow(10, 11, 2.5f, true);
+            ShadowVinePassage vine = CreateShadowVine(new Vector2(11.0f, 2.5f));
 
-            CooperativeSwitch coopUpper = CreateCooperativeSwitch(new Vector2(19.0f, 1.8f));
+            // Crumbling fungal platform and high branch for Shadow
+            CreateTemporaryPlatform(new Vector2(13.5f, 2.5f), collapseTime: 1.5f, respawnTime: 2.5f);
+            CreatePlatformRow(15, 18, 2.5f, true);
+            ShadowSwitch highSwitch = CreateShadowSwitch(new Vector2(16.5f, 3.3f));
+            vine.Configure(new List<PuzzleNode> { highSwitch }, stayOpen: true);
+
+            // MOMENT 4: Cooperative Chamber & Sanctuary Arch
+            // Upper cooperative ledge (Y=1.5)
+            CreatePlatformRow(18, 20, 1.5f, true);
+            CooperativeSwitch coopUpper = CreateCooperativeSwitch(new Vector2(19.0f, 2.3f));
+
+            // Lower cooperative floor (Y=-1.5)
+            CreatePlatformRow(18, 20, -1.5f, true);
             CooperativeSwitch coopLower = CreateCooperativeSwitch(new Vector2(19.0f, -0.7f));
+
+            // Connect dual switches with generous timed activation and latched completion
             coopUpper.Configure(coopLower, CooperativeMode.TimedActivation, timer: 6.0f, stayActivated: true);
             coopLower.Configure(coopUpper, CooperativeMode.TimedActivation, timer: 6.0f, stayActivated: true);
 
-            // Phase 5: Sacred Grove Arch (requires both Flame and Shadow united!)
-            CreatePlatformRow(22, 27, 0.5f, true);
-            AncientDoor finalDoor = CreateAncientDoor(new Vector2(23.0f, 1.5f), new List<PuzzleNode> { highSwitch, coopUpper }, requireAll: true);
-            CreateExitPortal(new Vector2(25.5f, 1.5f), finalDoor, requireShadowNear: true);
+            // Natural stepping bough connecting lower tier to sanctuary level
+            CreatePlatformRow(22, 23, 0.0f, true);
 
+            // Sacred Grove Exit Platform (Y=1.5)
+            CreatePlatformRow(24, 28, 1.5f, true);
+            AncientDoor finalDoor = CreateAncientDoor(new Vector2(24.5f, 2.5f), new List<PuzzleNode> { highSwitch, coopUpper }, requireAll: true);
+            CreateExitPortal(new Vector2(26.5f, 2.5f), finalDoor, requireShadowNear: true);
+
+            // Spawn both characters on the entrance terrace with Torch
             SpawnCharactersAndTorch(new Vector2(-6.0f, -1.0f), new Vector2(-7.0f, -1.0f), new Vector2(-6.0f, -1.0f), true);
         }
 
@@ -1544,12 +1600,7 @@ namespace MyShadowQuit.Core
             // Lower Tunnel (Shadow path)
             CreatePlatformRow(-8, 12, -2.0f, true);
 
-            // Dividing Wall between Gantry and Lower Tunnel
-            CreateWallColumn(-4, -1, 1);
-            CreateWallColumn(2, -1, 1);
-            CreateWallColumn(6, -1, 1);
-
-            // Grates in lower tunnel
+            // Grates in lower tunnel (ShadowClockworkPassage manages its own selective collider: solid to Protagonist, permeable to Shadow)
             CreateShadowGrate(new Vector2(-4.0f, -1.0f));
             CreateShadowGrate(new Vector2(2.0f, -1.0f));
             CreateShadowGrate(new Vector2(6.0f, -1.0f));
@@ -1588,7 +1639,7 @@ namespace MyShadowQuit.Core
 
             // === PHASE 3: Spectral Grate & Internal Machinery (x = 9 to 16) ===
             CreatePlatformRow(9, 16, 1.2f, true);
-            CreateWallColumn(10, 2, 6);
+            // ShadowClockworkPassage manages protagonist-blocking collision while letting Shadow pass through
             ShadowClockworkPassage grate = CreateShadowGrate(new Vector2(10.0f, 2.2f));
 
             ShadowSwitch shadowSecretSwitch = CreateShadowSwitch(new Vector2(13.0f, 2.0f));
@@ -1747,22 +1798,35 @@ namespace MyShadowQuit.Core
         // WORLD 4: THE DROWNED CATHEDRAL (Levels 31–40)
         // =========================================================================
 
-        private WaterLevelZone CreateWaterZone(Vector2 pos, float lowY = -2f, float highY = 2f, bool startHigh = false)
+        private WaterLevelZone CreateWaterZone(Vector2 pos, float lowY = -2f, float highY = 2f, bool startHigh = false, float width = 36f)
         {
             GameObject go = new GameObject("WaterLevelZone");
             go.transform.SetParent(_levelRoot.transform, false);
             go.transform.position = pos;
+            BoxCollider2D col = go.AddComponent<BoxCollider2D>();
+            col.isTrigger = true;
             WaterLevelZone wz = go.AddComponent<WaterLevelZone>();
-            wz.Configure(lowY, highY, startHigh);
 
-            // Visual surface
+            // Water surface visual tile row
             GameObject vis = new GameObject("WaterSurfaceVisual");
             vis.transform.SetParent(go.transform, false);
             SpriteRenderer sr = vis.AddComponent<SpriteRenderer>();
             sr.sprite = AssetRegistry.GetSprite("World4/water_surface", 32f);
-            sr.color = new Color(0.2f, 0.7f, 0.8f, 0.75f);
+            sr.color = new Color(0.25f, 0.85f, 0.95f, 0.85f);
+            sr.drawMode = SpriteDrawMode.Tiled;
+            sr.size = new Vector2(width, 0.5f);
             sr.sortingOrder = 5;
 
+            // Submerged body visual: atmospheric deep cyan aquatic tint
+            GameObject body = new GameObject("WaterBodyVisual");
+            body.transform.SetParent(go.transform, false);
+            SpriteRenderer bodySr = body.AddComponent<SpriteRenderer>();
+            bodySr.sprite = AssetRegistry.GetSprite("UI/ui_panel", 32f);
+            bodySr.color = new Color(0.04f, 0.22f, 0.28f, 0.60f);
+            bodySr.drawMode = SpriteDrawMode.Sliced;
+            bodySr.sortingOrder = 4;
+
+            wz.Configure(lowY, highY, startHigh, 2.5f, width);
             return wz;
         }
 
@@ -1877,7 +1941,8 @@ namespace MyShadowQuit.Core
             // World 4 Enemy: Drowned Guardian
             CreateEnemy<DrownedGuardian>(new Vector2(8.5f, -1.2f));
 
-            AncientDoor door = CreateAncientDoor(new Vector2(9.5f, -1.2f), new List<PuzzleNode>());
+            ShadowSwitch sw31 = CreateShadowSwitch(new Vector2(8.0f, -1.25f));
+            AncientDoor door = CreateAncientDoor(new Vector2(9.5f, -1.2f), new List<PuzzleNode> { sw31 }, requireAll: true);
             CreateExitPortal(new Vector2(11.5f, -1.2f), door, false);
 
             SpawnCharactersAndTorch(new Vector2(-6.5f, -1.2f), new Vector2(-7.2f, -1.2f), new Vector2(-6.5f, -1.2f), true);
@@ -1893,7 +1958,8 @@ namespace MyShadowQuit.Core
             CreateBuoyantPlatform(new Vector2(2f, 0.5f), water, 2.5f);
             CreateTideSwitch(new Vector2(-4f, 0.8f), water, toggle: true);
 
-            AncientDoor door = CreateAncientDoor(new Vector2(9.5f, 0.8f), new List<PuzzleNode>());
+            ShadowSwitch sw32 = CreateShadowSwitch(new Vector2(8.5f, 0.75f));
+            AncientDoor door = CreateAncientDoor(new Vector2(9.5f, 0.8f), new List<PuzzleNode> { sw32 }, requireAll: true);
             CreateExitPortal(new Vector2(11.5f, 0.8f), door, false);
 
             SpawnCharactersAndTorch(new Vector2(-6.5f, 0.8f), new Vector2(-7.2f, 0.8f), new Vector2(-6.5f, 0.8f), true);
@@ -1910,7 +1976,8 @@ namespace MyShadowQuit.Core
 
             CreateTideSwitch(new Vector2(-5f, -0.7f), water, toggle: true);
 
-            AncientDoor door = CreateAncientDoor(new Vector2(9.5f, 2.3f), new List<PuzzleNode>());
+            ShadowSwitch sw33 = CreateShadowSwitch(new Vector2(8.5f, 2.25f));
+            AncientDoor door = CreateAncientDoor(new Vector2(9.5f, 2.3f), new List<PuzzleNode> { sw33 }, requireAll: true);
             CreateExitPortal(new Vector2(11.5f, 2.3f), door, false);
 
             SpawnCharactersAndTorch(new Vector2(-6.5f, -0.7f), new Vector2(-7.2f, -0.7f), new Vector2(-6.5f, -0.7f), true);
@@ -1919,6 +1986,7 @@ namespace MyShadowQuit.Core
         // Level 34: Glass Beneath the Sea
         private void BuildLevel34_GlassBeneathTheSea()
         {
+            WaterLevelZone water = CreateWaterZone(new Vector2(2f, -2.2f), lowY: -2.8f, highY: -1.0f, startHigh: false);
             CreatePlatformRow(-8, 12, -2f, true);
 
             // WEAPON UNLOCK 2: HOLLOW CROSSBOW
@@ -1934,11 +2002,23 @@ namespace MyShadowQuit.Core
         // Level 35: The Silent Choir
         private void BuildLevel35_TheSilentChoir()
         {
+            // The Silent Choir: Sacred dual resonant choral plates.
+            // Plate A: Protagonist only (amber illumination). Non-latching.
+            // Plate B: Shadow only (violet illumination). Non-latching.
+            // When both choral plates are occupied simultaneously, the sacred ancient choir sings in harmony,
+            // latching the ancient choral seal open permanently (latchOpen: true)!
+            WaterLevelZone water = CreateWaterZone(new Vector2(2f, -2.5f), lowY: -3.0f, highY: -1.2f, startHigh: false);
             CreatePlatformRow(-8, 12, -2f, true);
-            PressurePlate p1 = CreatePressurePlate(new Vector2(-1f, -1.85f), false);
-            PressurePlate p2 = CreatePressurePlate(new Vector2(4f, -1.85f), false);
 
-            AncientDoor door = CreateAncientDoor(new Vector2(9.5f, -1.2f), new List<PuzzleNode> { p1, p2 }, requireAll: true);
+            // Sacred Choral Plate A (Left Choir - stepped upon only by Protagonist, amber)
+            // Platform top is at Y = -1.53f. Position plate at Y = -1.50f so it rests cleanly on the surface.
+            PressurePlate p1 = CreatePressurePlate(new Vector2(-1.5f, -1.50f), latch: false, activator: PressurePlateAllowedActivator.ProtagonistOnly);
+
+            // Sacred Choral Plate B (Right Choir - stepped upon only by Shadow, violet)
+            PressurePlate p2 = CreatePressurePlate(new Vector2(4.5f, -1.50f), latch: false, activator: PressurePlateAllowedActivator.ShadowOnly);
+
+            // Ancient Door latches open permanently once both plates are active simultaneously
+            AncientDoor door = CreateAncientDoor(new Vector2(9.5f, -1.2f), new List<PuzzleNode> { p1, p2 }, requireAll: true, latchOpen: true);
             CreateExitPortal(new Vector2(11.5f, -1.2f), door, false);
 
             SpawnCharactersAndTorch(new Vector2(-6.5f, -1.2f), new Vector2(-7.2f, -1.2f), new Vector2(-6.5f, -1.2f), true);
@@ -1947,15 +2027,29 @@ namespace MyShadowQuit.Core
         // Level 36: Rising Waters
         private void BuildLevel36_RisingWaters()
         {
-            WaterLevelZone water = CreateWaterZone(new Vector2(2f, -1f), lowY: -3f, highY: 1.5f, startHigh: false);
+            // Level 36: Rising Waters
+            // Puzzle layout:
+            // 1. Safe starting terrace: (-8..-3, Y = -1.5). Characters spawn safely at x=-6.5, Y=-0.7.
+            // 2. TideSwitch at (-4.5, -0.7) lets either character toggle the cathedral tide.
+            // 3. Flood basin: Low tide Y = -2.5 (flooring well below platform). High tide Y = 0.5.
+            // 4. Buoyant Platform: Spans x = -0.5 to 3.5 (width 4.0m) at initial pos Y = -2.25.
+            //    At low tide: platform rests comfortably in the basin at Y = -2.0. Characters can jump onto it.
+            //    At high tide (Y = 0.5): platform floats up smoothly to top surface Y = 0.5 + 0.25 + 0.225 = 0.975m.
+            // 5. Destination terrace: (4..12, Y = 1.0), with walkable surface at Y = 1.47m.
+            //    From high-tide platform (surface Y ~ 1.0m), reaching the destination terrace (Y = 1.47m, gap ~ 0.5m)
+            //    is a comfortable, intuitive jump of ~0.5m height difference for both Protagonist (jump 10.6) and Shadow (jump 7.8)!
+            // 6. Cooperative action: Shadow activates high ShadowSwitch at (7.5, 2.05), which unseals the AncientDoor (9.5, 2.0).
+            // 7. Both characters reunite at the Exit Portal (11.5, 2.0).
+            WaterLevelZone water = CreateWaterZone(new Vector2(1.5f, -1.0f), lowY: -2.5f, highY: 0.5f, startHigh: false, width: 36f);
             CreatePlatformRow(-8, -3, -1.5f, true);
-            CreateBuoyantPlatform(new Vector2(1.5f, -1.5f), water, 2.8f);
-            CreatePlatformRow(6, 12, 1.8f, true);
+            CreateBuoyantPlatform(new Vector2(1.5f, -2.25f), water, 4.0f);
+            CreatePlatformRow(4, 12, 1.0f, true);
 
             CreateTideSwitch(new Vector2(-4.5f, -0.7f), water, toggle: true);
 
-            AncientDoor door = CreateAncientDoor(new Vector2(9.5f, 2.6f), new List<PuzzleNode>());
-            CreateExitPortal(new Vector2(11.5f, 2.6f), door, false);
+            ShadowSwitch sw36 = CreateShadowSwitch(new Vector2(7.5f, 2.05f));
+            AncientDoor door = CreateAncientDoor(new Vector2(9.5f, 1.8f), new List<PuzzleNode> { sw36 }, requireAll: true);
+            CreateExitPortal(new Vector2(11.5f, 1.8f), door, false);
 
             SpawnCharactersAndTorch(new Vector2(-6.5f, -0.7f), new Vector2(-7.2f, -0.7f), new Vector2(-6.5f, -0.7f), true);
         }
@@ -1963,9 +2057,9 @@ namespace MyShadowQuit.Core
         // Level 37: The Broken Baptistery
         private void BuildLevel37_TheBrokenBaptistery()
         {
+            WaterLevelZone water = CreateWaterZone(new Vector2(2f, -2.4f), lowY: -3.0f, highY: -1.2f, startHigh: false);
             CreatePlatformRow(-8, 12, -2f, true);
-            CreateWallColumn(0, -1, 3);
-            CreateSubmergedGrate(new Vector2(0f, -1.2f));
+            SubmergedGratePassage grate = CreateSubmergedGrate(new Vector2(0f, -1.2f));
 
             ShadowSwitch sw = CreateShadowSwitch(new Vector2(3.5f, -1.25f));
             AncientDoor door = CreateAncientDoor(new Vector2(8.5f, -1.2f), new List<PuzzleNode> { sw }, requireAll: true);
@@ -1977,11 +2071,13 @@ namespace MyShadowQuit.Core
         // Level 38: Beneath the Bells
         private void BuildLevel38_BeneathTheBells()
         {
+            WaterLevelZone water = CreateWaterZone(new Vector2(2f, -2.4f), lowY: -3.0f, highY: -1.2f, startHigh: false);
             CreatePlatformRow(-8, 12, -2f, true);
             CreateCathedralBell(new Vector2(-1f, 1.8f), maxAngle: 50f, speed: 2.2f, offset: 0f);
             CreateCathedralBell(new Vector2(4f, 1.8f), maxAngle: 50f, speed: 2.2f, offset: 1.5f);
 
-            AncientDoor door = CreateAncientDoor(new Vector2(9.5f, -1.2f), new List<PuzzleNode>());
+            ShadowSwitch sw38 = CreateShadowSwitch(new Vector2(8.5f, -1.25f));
+            AncientDoor door = CreateAncientDoor(new Vector2(9.5f, -1.2f), new List<PuzzleNode> { sw38 }, requireAll: true);
             CreateExitPortal(new Vector2(11.5f, -1.2f), door, false);
 
             SpawnCharactersAndTorch(new Vector2(-6.5f, -1.2f), new Vector2(-7.2f, -1.2f), new Vector2(-6.5f, -1.2f), true);
@@ -1997,7 +2093,8 @@ namespace MyShadowQuit.Core
 
             CreateTideSwitch(new Vector2(-4.5f, -0.7f), water, toggle: true);
 
-            AncientDoor door = CreateAncientDoor(new Vector2(9.5f, 1.8f), new List<PuzzleNode>());
+            ShadowSwitch sw39 = CreateShadowSwitch(new Vector2(8.0f, 1.75f));
+            AncientDoor door = CreateAncientDoor(new Vector2(9.5f, 1.8f), new List<PuzzleNode> { sw39 }, requireAll: true);
             CreateRefractionCrystal(new Vector2(6f, 1.8f), door, radius: 2.5f);
             CreateExitPortal(new Vector2(11.5f, 1.8f), door, false);
 
@@ -2007,7 +2104,7 @@ namespace MyShadowQuit.Core
         // Level 40: The Last Cathedral Light
         private void BuildLevel40_TheLastCathedralLight()
         {
-            WaterLevelZone water = CreateWaterZone(new Vector2(5f, -1.5f), lowY: -2.5f, highY: 1.2f, startHigh: false);
+            WaterLevelZone water = CreateWaterZone(new Vector2(5f, -1.5f), lowY: -2.5f, highY: 1.2f, startHigh: false, width: 44f);
             CreatePlatformRow(-8, -2, -1.5f, true);
             CreateBuoyantPlatform(new Vector2(3f, -1.5f), water, 3f);
             CreatePlatformRow(8, 28, 1.5f, true);
@@ -2015,9 +2112,10 @@ namespace MyShadowQuit.Core
             CreateTideSwitch(new Vector2(-4f, -0.7f), water, toggle: true);
             CreateCathedralBell(new Vector2(13f, 4.5f), maxAngle: 45f, speed: 2f);
 
-            AncientDoor door = CreateAncientDoor(new Vector2(23f, 2.3f), new List<PuzzleNode>());
+            ShadowSwitch sw40 = CreateShadowSwitch(new Vector2(20.5f, 2.25f));
+            AncientDoor door = CreateAncientDoor(new Vector2(23f, 2.3f), new List<PuzzleNode> { sw40 }, requireAll: true);
             CreateRefractionCrystal(new Vector2(18f, 2.3f), door, radius: 2.6f);
-            CreateExitPortal(new Vector2(26f, 2.3f), door, false);
+            CreateExitPortal(new Vector2(26f, 2.3f), door, requireShadowNear: true);
 
             SpawnCharactersAndTorch(new Vector2(-6.5f, -0.7f), new Vector2(-7.2f, -0.7f), new Vector2(-6.5f, -0.7f), true);
         }
@@ -2132,7 +2230,9 @@ namespace MyShadowQuit.Core
             // World 5 Enemy: Abyssal Echo
             CreateEnemy<AbyssalEcho>(new Vector2(8.5f, -1.2f));
 
-            AncientDoor door = CreateAncientDoor(new Vector2(9.5f, -1.2f), new List<PuzzleNode>());
+            ShadowEchoSwitch sw41 = CreateEchoSwitch(new Vector2(8.0f, -1.2f));
+            AncientDoor door = CreateAncientDoor(new Vector2(9.5f, -1.2f), new List<PuzzleNode> { sw41 }, requireAll: true);
+            sw41.Configure(door);
             CreateExitPortal(new Vector2(11.5f, -1.2f), door, false);
 
             SpawnCharactersAndTorch(new Vector2(-6.5f, -1.2f), new Vector2(-7.2f, -1.2f), new Vector2(-6.5f, -1.2f), true);
@@ -2146,7 +2246,9 @@ namespace MyShadowQuit.Core
             CreateDualRealityPlatform(new Vector2(3f, -2f), DualRealityPlatform.RealityState.AlternatingTimer, 3.5f, false);
             CreatePlatformRow(6, 12, -2f, true);
 
-            AncientDoor door = CreateAncientDoor(new Vector2(9.5f, -1.2f), new List<PuzzleNode>());
+            ShadowEchoSwitch sw42 = CreateEchoSwitch(new Vector2(8.0f, -1.2f));
+            AncientDoor door = CreateAncientDoor(new Vector2(9.5f, -1.2f), new List<PuzzleNode> { sw42 }, requireAll: true);
+            sw42.Configure(door);
             CreateExitPortal(new Vector2(11.5f, -1.2f), door, false);
 
             SpawnCharactersAndTorch(new Vector2(-6.5f, -1.2f), new Vector2(-7.2f, -1.2f), new Vector2(-6.5f, -1.2f), true);
@@ -2155,17 +2257,31 @@ namespace MyShadowQuit.Core
         // Level 43: Echoes Without Form
         private void BuildLevel43_EchoesWithoutForm()
         {
+            // Tier 1: West Spawning Terrace & Weapon Altar (x = -8..-3, y = -2)
             CreatePlatformRow(-8, -3, -2f, true);
-            CreatePlatformRow(5, 12, -2f, true);
 
-            // WEAPON UNLOCK 3: ABYSSAL SCEPTER
+            // WEAPON UNLOCK 3: ABYSSAL SCEPTER placed cleanly on the entry tier
             CreateWeaponPickup(WeaponType.AbyssalScepter, new Vector2(-4.5f, -1.2f));
 
-            AbyssalBridge bridge = CreateAbyssalBridge(new Vector2(1f, -2f), false, 4f);
-            CreateEchoSwitch(new Vector2(-4.5f, 0.5f), null, bridge);
+            // Shadow upper roost with ShadowEchoSwitch that materializes the spectral void bridge
+            CreatePlatformRow(-6, -4, 0.6f, true);
+            AbyssalBridge bridge = CreateAbyssalBridge(new Vector2(0f, -2f), startActive: false, width: 4.5f);
+            CreateEchoSwitch(new Vector2(-5f, 1.4f), null, bridge);
 
-            AncientDoor door = CreateAncientDoor(new Vector2(9.5f, -1.2f), new List<PuzzleNode>());
-            CreateExitPortal(new Vector2(11.5f, -1.2f), door, false);
+            // Tier 2: Central stepping platform across the chasm (x = 3..5, y = -2)
+            CreatePlatformRow(3, 5, -2f, true);
+
+            // Step up to upper Sanctuary Ledge for Protagonist (x = 6..7, y = 0.0)
+            CreatePlatformRow(6, 7, 0.0f, true);
+
+            // Tier 3: East Sanctuary Platform (x = 8..13, y = 1.8)
+            CreatePlatformRow(8, 13, 1.8f, true);
+
+            // East Puzzle Mechanism: Shadow switch unseals the ancient abyssal arch
+            ShadowEchoSwitch eastEchoSwitch = CreateEchoSwitch(new Vector2(9.5f, 2.6f));
+            AncientDoor door = CreateAncientDoor(new Vector2(10.8f, 2.6f), new List<PuzzleNode> { eastEchoSwitch }, requireAll: true, latchOpen: true);
+            eastEchoSwitch.Configure(door);
+            CreateExitPortal(new Vector2(12.2f, 2.6f), door, requireShadowNear: false);
 
             SpawnCharactersAndTorch(new Vector2(-6.5f, -1.2f), new Vector2(-7.2f, -1.2f), new Vector2(-6.5f, -1.2f), true);
         }
@@ -2179,7 +2295,9 @@ namespace MyShadowQuit.Core
 
             CreateFlameAnchor(new Vector2(-5f, -1.2f), new[] { p1 }, radius: 3.5f);
 
-            AncientDoor door = CreateAncientDoor(new Vector2(9.5f, -1.2f), new List<PuzzleNode>());
+            ShadowEchoSwitch sw44 = CreateEchoSwitch(new Vector2(8.0f, -1.2f));
+            AncientDoor door = CreateAncientDoor(new Vector2(9.5f, -1.2f), new List<PuzzleNode> { sw44 }, requireAll: true);
+            sw44.Configure(door);
             CreateExitPortal(new Vector2(11.5f, -1.2f), door, false);
 
             SpawnCharactersAndTorch(new Vector2(-6.5f, -1.2f), new Vector2(-7.2f, -1.2f), new Vector2(-6.5f, -1.2f), true);
@@ -2210,7 +2328,9 @@ namespace MyShadowQuit.Core
             DualRealityPlatform pShadow = CreateDualRealityPlatform(new Vector2(3f, 0.5f), DualRealityPlatform.RealityState.ShadowActive);
             _ = pLight; _ = pShadow;
 
-            AncientDoor door = CreateAncientDoor(new Vector2(9.5f, -1.2f), new List<PuzzleNode>());
+            ShadowEchoSwitch sw46 = CreateEchoSwitch(new Vector2(8.0f, -1.2f));
+            AncientDoor door = CreateAncientDoor(new Vector2(9.5f, -1.2f), new List<PuzzleNode> { sw46 }, requireAll: true);
+            sw46.Configure(door);
             CreateExitPortal(new Vector2(11.5f, -1.2f), door, false);
 
             SpawnCharactersAndTorch(new Vector2(-6.5f, -1.2f), new Vector2(-7.2f, -1.2f), new Vector2(-6.5f, -1.2f), true);
@@ -2220,10 +2340,12 @@ namespace MyShadowQuit.Core
         private void BuildLevel47_TheForgottenDivide()
         {
             CreatePlatformRow(-8, 12, -2f, true);
-            CreateWallColumn(0, -1, 3);
+            ShadowPassage passage = CreateShadowPassage(new Vector2(0f, -1.2f));
 
-            AncientDoor door = CreateAncientDoor(new Vector2(9.5f, -1.2f), new List<PuzzleNode>());
-            CreateEchoSwitch(new Vector2(3f, -1.2f), door);
+            ShadowEchoSwitch sw = CreateEchoSwitch(new Vector2(3f, -1.2f));
+            AncientDoor door = CreateAncientDoor(new Vector2(9.5f, -1.2f), new List<PuzzleNode> { sw }, requireAll: true);
+            sw.Configure(door);
+            passage.ConfigureUnlockNodes(new List<PuzzleNode> { sw }, requireAll: true, latchOpen: true);
             CreateExitPortal(new Vector2(11.5f, -1.2f), door, false);
 
             SpawnCharactersAndTorch(new Vector2(-6.5f, -1.2f), new Vector2(-7.2f, -1.2f), new Vector2(-6.5f, -1.2f), true);
@@ -2236,7 +2358,9 @@ namespace MyShadowQuit.Core
             CreateDualRealityPlatform(new Vector2(1f, -2f), DualRealityPlatform.RealityState.AlternatingTimer, 3f, true);
             CreatePlatformRow(5, 12, -2f, true);
 
-            AncientDoor door = CreateAncientDoor(new Vector2(9.5f, -1.2f), new List<PuzzleNode>());
+            ShadowEchoSwitch sw48 = CreateEchoSwitch(new Vector2(8.0f, -1.2f));
+            AncientDoor door = CreateAncientDoor(new Vector2(9.5f, -1.2f), new List<PuzzleNode> { sw48 }, requireAll: true);
+            sw48.Configure(door);
             CreateExitPortal(new Vector2(11.5f, -1.2f), door, false);
 
             SpawnCharactersAndTorch(new Vector2(-6.5f, -1.2f), new Vector2(-7.2f, -1.2f), new Vector2(-6.5f, -1.2f), true);

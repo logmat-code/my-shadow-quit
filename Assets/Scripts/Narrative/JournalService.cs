@@ -17,6 +17,20 @@ namespace MyShadowQuit.Narrative
     public static class JournalService
     {
         private const string PrefLorePrefix = "MSQ_LoreUnlocked_";
+        private const string PrefNPCReadPrefix = "MSQ_NPCRead_";
+
+        public static bool IsNPCConversationCompleted(string npcId)
+        {
+            if (string.IsNullOrEmpty(npcId)) return false;
+            return PlayerPrefs.GetInt(PrefNPCReadPrefix + npcId, 0) == 1;
+        }
+
+        public static void MarkNPCConversationCompleted(string npcId)
+        {
+            if (string.IsNullOrEmpty(npcId)) return;
+            PlayerPrefs.SetInt(PrefNPCReadPrefix + npcId, 1);
+            PlayerPrefs.Save();
+        }
 
         private static readonly Dictionary<string, LoreEntry> s_entries = new Dictionary<string, LoreEntry>
         {

@@ -15,19 +15,37 @@ namespace MyShadowQuit.Puzzle
 
         private void Awake()
         {
-            _sr = GetComponent<SpriteRenderer>();
-            _col = GetComponent<BoxCollider2D>();
-            _rb = GetComponent<Rigidbody2D>();
+            EnsureInitialized();
+        }
 
-            _sr.sortingOrder = 7;
-            _sr.sprite = AssetRegistry.GetSprite("Environment/movable_block");
+        public void EnsureInitialized()
+        {
+            if (_sr == null) _sr = GetComponent<SpriteRenderer>();
+            if (_col == null) _col = GetComponent<BoxCollider2D>();
+            if (_rb == null) _rb = GetComponent<Rigidbody2D>();
 
-            _col.size = new Vector2(0.92f, 0.92f);
-            _rb.mass = 2.2f;
-            _rb.linearDamping = 4f;
-            _rb.gravityScale = 2.5f;
-            _rb.constraints = RigidbodyConstraints2D.FreezeRotation;
-            _rb.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
+            if (_sr != null)
+            {
+                _sr.sortingOrder = 7;
+                if (_sr.sprite == null)
+                {
+                    _sr.sprite = AssetRegistry.GetSprite("Environment/movable_block");
+                }
+            }
+
+            if (_col != null)
+            {
+                _col.size = new Vector2(0.92f, 0.92f);
+            }
+
+            if (_rb != null)
+            {
+                _rb.mass = 2.2f;
+                _rb.linearDamping = 4f;
+                _rb.gravityScale = 2.5f;
+                _rb.constraints = RigidbodyConstraints2D.FreezeRotation;
+                _rb.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
+            }
         }
     }
 }

@@ -146,8 +146,18 @@ namespace MyShadowQuit.Core
             AudioListener.volume = _masterVolume;
         }
 
+        private void OnDestroy()
+        {
+            if (Instance == this)
+            {
+                Instance = null;
+            }
+        }
+
         private void SetupAudioSourcesSingleLifecycle()
         {
+            if (this == null || gameObject == null) return;
+
             // Clean up any pre-existing duplicate AudioSources on this GameObject
             AudioSource[] existing = GetComponents<AudioSource>();
             for (int i = 0; i < existing.Length; i++)

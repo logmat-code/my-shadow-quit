@@ -183,6 +183,10 @@ MonoBehaviour:
   maxSpeed: 6
   acceleration: 54
   deceleration: 62
-  jumpForce: 11.2
+  airControlMultiplier: 1.15
+  shadowGravityScale: 1.3
+  jumpForce: 7.8
+  doubleJumpForce: 7.4
   coyoteTimeDuration: 0.13
   jumpBufferDuration: 0.14
+  fallGravityMultiplier: 1.35

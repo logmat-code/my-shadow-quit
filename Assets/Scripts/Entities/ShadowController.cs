@@ -2,6 +2,7 @@ using UnityEngine;
 using MyShadowQuit.Core;
 using MyShadowQuit.Puzzle;
 using MyShadowQuit.Cosmetics;
+using MyShadowQuit.Combat;
 
 namespace MyShadowQuit.Entities
 {
@@ -11,9 +12,10 @@ namespace MyShadowQuit.Entities
     /// and a 2-jump state machine (Ground Jump + Mid-Air Double Jump with violet pulse & dark particles).
     /// Can separate from the protagonist, traverse shadow passages, activate shadow-only switches,
     /// and reconnect with the protagonist.
+    /// Implements IDamageable by delegating damage to the shared HealthSystem.
     /// </summary>
     [RequireComponent(typeof(Rigidbody2D), typeof(BoxCollider2D), typeof(SpriteRenderer))]
-    public class ShadowController : MonoBehaviour
+    public class ShadowController : MonoBehaviour, IDamageable
     {
         public const float DefaultGravityScale = 1.3f; // 50% of Protagonist's 2.6f gravityScale
         public const int MaxJumps = 2;
@@ -89,6 +91,7 @@ namespace MyShadowQuit.Entities
 
         public void EnsureInitialized()
         {
+            gameObject.tag = "Shadow";
             if (_rb == null) _rb = GetComponent<Rigidbody2D>();
             if (_col == null) _col = GetComponent<BoxCollider2D>();
             if (_sr == null) _sr = GetComponent<SpriteRenderer>();
@@ -709,5 +712,30 @@ namespace MyShadowQuit.Entities
                 _sr.sprite = activeSet[idx];
             }
         }
+
+        #region IDamageable Implementation
+        public bool IsDead => HealthSystem.Instance != null && HealthSystem.Instance.IsDead;
+
+        public bool TakeDamage(int damage, Vector2 knockbackForce, float invulnDuration = 0.85f)
+        {
+            if (HealthSystem.Instance != null)
+            {
+                return HealthSystem.Instance.TakeDamage(damage, knockbackForce, invulnDuration);
+            }
+            return false;
+        }
+
+        public void KillInstantly()
+        {
+            if (HealthSystem.Instance != null)
+            {
+                HealthSystem.Instance.KillInstantly();
+            }
+            else if (GameManager.Instance != null)
+            {
+                GameManager.Instance.RestartCurrentLevel();
+            }
+        }
+        #endregion
     }
 }

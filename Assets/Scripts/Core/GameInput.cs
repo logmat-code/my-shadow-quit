@@ -11,7 +11,9 @@ namespace MyShadowQuit.Core
     /// Controls:
     /// A / D or Left / Right: Horizontal move
     /// SPACE / W / Up: Jump
-    /// E: Interact / Pick up or place Torch
+    /// E: Interact / NPC talk / Switch activate / Dialogue advance
+    /// Q: Torch action (Pick up / Drop / Place in Pedestal)
+    /// F: Cycle equipped weapon (Emberblade / Crossbow / Greatsword)
     /// TAB: Switch between Protagonist and Shadow
     /// R: Restart current puzzle
     /// ESC / P: Pause
@@ -23,6 +25,7 @@ namespace MyShadowQuit.Core
         private static bool s_touchJumpHeld = false;
         private static bool s_touchJumpDownPending = false;
         private static bool s_touchInteractDownPending = false;
+        private static bool s_touchTorchActionDownPending = false;
         private static bool s_touchSwitchDownPending = false;
         private static bool s_touchRestartDownPending = false;
         private static bool s_touchPauseDownPending = false;
@@ -62,6 +65,11 @@ namespace MyShadowQuit.Core
             s_touchInteractDownPending = true;
         }
 
+        public static void TriggerTouchTorchAction()
+        {
+            s_touchTorchActionDownPending = true;
+        }
+
         public static void TriggerTouchSwitchCharacter()
         {
             s_touchSwitchDownPending = true;
@@ -91,6 +99,7 @@ namespace MyShadowQuit.Core
         {
             s_touchJumpDownPending = false;
             s_touchInteractDownPending = false;
+            s_touchTorchActionDownPending = false;
             s_touchSwitchDownPending = false;
             s_touchRestartDownPending = false;
             s_touchPauseDownPending = false;
@@ -180,6 +189,23 @@ namespace MyShadowQuit.Core
             try
             {
                 return Input.GetKeyDown(KeyCode.E);
+            }
+            catch { return false; }
+        }
+
+        public static bool GetTorchActionDown()
+        {
+            if (s_touchTorchActionDownPending) return true;
+
+#if ENABLE_INPUT_SYSTEM
+            if (Keyboard.current != null && Keyboard.current.qKey.wasPressedThisFrame)
+            {
+                return true;
+            }
+#endif
+            try
+            {
+                return Input.GetKeyDown(KeyCode.Q);
             }
             catch { return false; }
         }
@@ -336,13 +362,26 @@ namespace MyShadowQuit.Core
         {
             if (s_touchAttackDownPending) return true;
 
+            // Block mouse attack clicks if pointer is over any UI canvas / virtual buttons
+            bool pointerOverUI = false;
+            try
+            {
+                if (UnityEngine.EventSystems.EventSystem.current != null &&
+                    UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject())
+                {
+                    pointerOverUI = true;
+                }
+            }
+            catch { }
+
 #if ENABLE_INPUT_SYSTEM
-            if (Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame) return true;
-            if (Keyboard.current != null && (Keyboard.current.jKey.wasPressedThisFrame || Keyboard.current.kKey.wasPressedThisFrame)) return true;
+            if (!pointerOverUI && Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame) return true;
+            if (Keyboard.current != null && Keyboard.current.jKey.wasPressedThisFrame) return true;
 #endif
             try
             {
-                if (Input.GetMouseButtonDown(0) || Input.GetKeyDown(KeyCode.J) || Input.GetKeyDown(KeyCode.K)) return true;
+                if (!pointerOverUI && Input.GetMouseButtonDown(0)) return true;
+                if (Input.GetKeyDown(KeyCode.J)) return true;
             }
             catch { }
 
@@ -354,11 +393,11 @@ namespace MyShadowQuit.Core
             if (s_touchCycleWeaponDownPending) return true;
 
 #if ENABLE_INPUT_SYSTEM
-            if (Keyboard.current != null && Keyboard.current.qKey.wasPressedThisFrame) return true;
+            if (Keyboard.current != null && Keyboard.current.fKey.wasPressedThisFrame) return true;
 #endif
             try
             {
-                if (Input.GetKeyDown(KeyCode.Q)) return true;
+                if (Input.GetKeyDown(KeyCode.F)) return true;
             }
             catch { }
 

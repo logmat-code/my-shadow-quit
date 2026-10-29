@@ -1,36 +1,44 @@
-/[Ll]ibrary/
-/[Tt]emp/
-/[Oo]bj/
-/[Bb]uild/
-/[Bb]uilds/
-/[Ll]ogs/
-/[Uu]ser[Ss]ettings/
-/[Mm]emoryCaptures/
-/[Rr]ecordings/
+# Unity
+[Ll]ibrary/
+[Tt]emp/
+[Oo]bj/
+[Bb]uild/
+[Bb]uilds/
+[Ll]ogs/
+UserSettings/
+MemoryCaptures/
+Recordings/
+
+# Unity packages/installers
+*.unitypackage
+
+# Unity generated
 *.csproj
-*.unityproj
 *.sln
 *.suo
-*.tmp
 *.user
 *.userprefs
 *.pidb
 *.booproj
 *.svd
-*.pdb
-*.mdb
-*.opendb
-*.VC.db
-*.pidb.meta
-*.pdb.meta
-*.mdb.meta
-sysinfo.txt
-*.apk
-*.aab
-*.unitypackage
-*.app
-crashlytics-build.properties
-.DS_Store
-.vs/
+
+# IDE
 .vscode/
 .idea/
+.vs/
+
+# macOS
+.DS_Store
+
+# Android
+.gradle/
+*.apk
+*.aab
+
+# Signing
+*.keystore
+*.jks
+
+# Secrets
+.env
+.env.*

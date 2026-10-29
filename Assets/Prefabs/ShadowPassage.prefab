@@ -152,3 +152,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 81ab0569af0e6457f8c9203fa87da67b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MyShadowQuit.Puzzle.ShadowPassage
+  unlockNodes: []
+  requireAllNodes: 1
+  stayOpenOnceUnlocked: 1

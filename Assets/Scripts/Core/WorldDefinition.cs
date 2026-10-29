@@ -347,7 +347,7 @@ namespace MyShadowQuit.Core
             };
             w1.levels = new List<LevelEntry>
             {
-                new LevelEntry(0, "w1_lvl1", "LEVEL 1: AWAKENING", "A/D: Move   SPACE: Jump   E: Pick up / Place Torch   TAB: Control Shadow"),
+                new LevelEntry(0, "w1_lvl1", "LEVEL 1: AWAKENING", "A/D: Move   SPACE: Jump   Q: Pick up / Place Torch   E: Interact   TAB: Control Shadow"),
                 new LevelEntry(1, "w1_lvl2", "LEVEL 2: THE SEPARATION", "Stand on the lower stone plate, switch to Shadow [TAB], and Double Jump [SPACE x2 in mid-air] to the upper ledge."),
                 new LevelEntry(2, "w1_lvl3", "LEVEL 3: FOLLOW THE LIGHT", "Darkness webs dissolve in Torchlight. Guide your Shadow across the illuminated path."),
                 new LevelEntry(3, "w1_lvl4", "LEVEL 4: THE FORGOTTEN FLAME", "Ancient solar crystals awaken when bathed in the Torch's golden flame."),

@@ -11,10 +11,10 @@ namespace MyShadowQuit.Puzzle
     {
         [Header("Buoyancy Settings")]
         [SerializeField] private WaterLevelZone waterZone;
-        [SerializeField] private float waterOffset = 0.2f;
-        [SerializeField] private float floatSmoothing = 4.0f;
-        [SerializeField] private float bobbingAmplitude = 0.08f;
-        [SerializeField] private float bobbingFrequency = 1.6f;
+        [SerializeField] private float waterOffset = 0.25f;
+        [SerializeField] private float floatSmoothing = 15.0f;
+        [SerializeField] private float bobbingAmplitude = 0.05f;
+        [SerializeField] private float bobbingFrequency = 1.4f;
 
         private Rigidbody2D rb;
         private Vector2 previousPos;
@@ -49,13 +49,14 @@ namespace MyShadowQuit.Puzzle
         private void FixedUpdate()
         {
             bobbingTimer += Time.fixedDeltaTime * bobbingFrequency;
-            float targetY = transform.position.y;
+            float targetY = rb.position.y;
 
             if (waterZone != null)
             {
                 float baseWaterY = waterZone.CurrentWaterY + waterOffset;
                 float bob = Mathf.Sin(bobbingTimer) * bobbingAmplitude;
-                targetY = Mathf.Lerp(rb.position.y, baseWaterY + bob, Time.fixedDeltaTime * floatSmoothing);
+                float desiredY = baseWaterY + bob;
+                targetY = Mathf.MoveTowards(rb.position.y, desiredY, floatSmoothing * Time.fixedDeltaTime);
             }
 
             Vector2 nextPos = new Vector2(rb.position.x, targetY);

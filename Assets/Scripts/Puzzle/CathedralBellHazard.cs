@@ -39,7 +39,8 @@ namespace MyShadowQuit.Puzzle
 
         private void OnTriggerEnter2D(Collider2D collision)
         {
-            if (collision.CompareTag("Player"))
+            if (collision.CompareTag("Player") || collision.CompareTag("Shadow") ||
+                collision.GetComponent<Entities.PlayerController>() != null || collision.GetComponent<Entities.ShadowController>() != null)
             {
                 if (Combat.HealthSystem.Instance != null)
                 {

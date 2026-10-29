@@ -1,5 +1,6 @@
 using UnityEngine;
 using MyShadowQuit.Core;
+using MyShadowQuit.Entities;
 
 namespace MyShadowQuit.Combat
 {
@@ -62,7 +63,15 @@ namespace MyShadowQuit.Combat
         protected void FindPlayer()
         {
             var p = GameObject.FindWithTag("Player");
-            if (p != null) targetPlayer = p.transform;
+            if (p != null)
+            {
+                targetPlayer = p.transform;
+            }
+            else
+            {
+                PlayerController pc = FindAnyObjectByType<PlayerController>();
+                if (pc != null) targetPlayer = pc.transform;
+            }
         }
 
         protected virtual void Update()
@@ -163,16 +172,33 @@ namespace MyShadowQuit.Combat
 
         protected void CheckPlayerContact(Collider2D other)
         {
-            if (isDead) return;
+            if (isDead || other == null) return;
 
+            // Route to IDamageable on player, shadow, or parent
             IDamageable dmg = other.GetComponent<IDamageable>();
             if (dmg == null) dmg = other.GetComponentInParent<IDamageable>();
 
-            if (dmg != null && dmg is HealthSystem)
+            bool isPlayerOrShadow = other.CompareTag("Player") || other.CompareTag("Shadow") ||
+                                    other.GetComponent<PlayerController>() != null || other.GetComponentInParent<PlayerController>() != null ||
+                                    other.GetComponent<ShadowController>() != null || other.GetComponentInParent<ShadowController>() != null;
+
+            if (dmg != null && isPlayerOrShadow)
             {
                 Vector2 dir = (other.transform.position - transform.position).normalized;
                 Vector2 knockback = new Vector2(dir.x * 6.5f, 5.0f);
                 dmg.TakeDamage(contactDamage, knockback, 0.85f);
+            }
+            else if (dmg != null && dmg is HealthSystem)
+            {
+                Vector2 dir = (other.transform.position - transform.position).normalized;
+                Vector2 knockback = new Vector2(dir.x * 6.5f, 5.0f);
+                dmg.TakeDamage(contactDamage, knockback, 0.85f);
+            }
+            else if (isPlayerOrShadow && HealthSystem.Instance != null)
+            {
+                Vector2 dir = (other.transform.position - transform.position).normalized;
+                Vector2 knockback = new Vector2(dir.x * 6.5f, 5.0f);
+                HealthSystem.Instance.TakeDamage(contactDamage, knockback, 0.85f);
             }
         }
     }

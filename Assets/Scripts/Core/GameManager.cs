@@ -373,16 +373,43 @@ namespace MyShadowQuit.Core
         {
             StopEndingSequenceIfNeeded();
             int nextWorldIdx = 1;
-            if (ActiveWorldId == "world_2")
+            if (ActiveWorldId == "world_1")
             {
-                nextWorldIdx = 2;
+                nextWorldIdx = 1; // World 2
+            }
+            else if (ActiveWorldId == "world_2")
+            {
+                nextWorldIdx = 2; // World 3
+            }
+            else if (ActiveWorldId == "world_3")
+            {
+                nextWorldIdx = 3; // World 4
+            }
+            else if (ActiveWorldId == "world_4")
+            {
+                nextWorldIdx = 4; // World 5
             }
             SelectWorldAndStart(nextWorldIdx, continueSavedProgress: true);
         }
 
         public void StartNewGameWithReset()
         {
-            WorldProgressSave.ResetWorldProgress("world_1");
+            // Reset world campaign progress for all worlds
+            for (int w = 1; w <= WorldProgressSave.WorldCount; w++)
+            {
+                WorldProgressSave.ResetWorldProgress("world_" + w);
+            }
+            WorldProgressSave.SetLastPlayedWorld("world_1");
+
+            // Reset health progression back to base 3 hearts
+            if (Combat.HealthSystem.Instance != null)
+            {
+                Combat.HealthSystem.Instance.ResetAllProgression();
+            }
+
+            // Reset weapons back to starting state (None equipped)
+            Combat.WeaponCatalog.ResetToInitialWeapons();
+
             SelectWorldAndStart(0, continueSavedProgress: false);
         }
 
@@ -519,6 +546,7 @@ namespace MyShadowQuit.Core
 
         public void RestartCurrentLevel()
         {
+            Debug.Log($"[RESTART_DIAGNOSTIC] Level={_currentLevelIndex + 1}, Frame={Time.frameCount}, RequestSource=RestartCurrentLevel, Stack:\n{UnityEngine.StackTraceUtility.ExtractStackTrace()}");
             _hasRestartedCurrentLevel = true;
             _isPaused = false;
             Time.timeScale = 1f;
@@ -544,7 +572,7 @@ namespace MyShadowQuit.Core
                 _audioManager.PlaySFX("shadow_shift", 0.8f, _isControllingShadow ? 0.95f : 1.12f);
             }
 
-            if (_tutorialDirector != null && _currentLevelIndex == 0)
+            if (_tutorialDirector != null && _currentLevelIndex == 0 && CurrentWorldIndex == 0)
             {
                 _tutorialDirector.EvaluateAwakeningProgression(forceUpdate: true);
             }

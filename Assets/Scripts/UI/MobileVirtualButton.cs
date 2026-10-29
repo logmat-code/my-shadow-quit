@@ -19,6 +19,7 @@ namespace MyShadowQuit.UI
             Right,
             Jump,
             Interact,
+            TorchAction,
             SwitchCharacter,
             Attack,
             CycleWeapon
@@ -46,6 +47,16 @@ namespace MyShadowQuit.UI
             normalSprite = normal;
             pressedSprite = pressed;
             EnsureInitialized();
+        }
+
+        public void SetButtonSprites(Sprite normal, Sprite pressed)
+        {
+            normalSprite = normal;
+            pressedSprite = pressed;
+            if (_image != null)
+            {
+                _image.sprite = _isPressed ? pressedSprite : normalSprite;
+            }
         }
 
         private void Awake()
@@ -140,6 +151,13 @@ namespace MyShadowQuit.UI
                     if (pressed)
                     {
                         GameInput.TriggerTouchInteract();
+                    }
+                    break;
+
+                case VirtualButtonType.TorchAction:
+                    if (pressed)
+                    {
+                        GameInput.TriggerTouchTorchAction();
                     }
                     break;
 
